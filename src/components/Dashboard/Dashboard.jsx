@@ -3,9 +3,7 @@ import {
   DollarSign, 
   Package, 
   ShoppingCart, 
-  TrendingUp,
-  AlertTriangle,
-  Users
+  AlertTriangle
 } from 'lucide-react';
 import SalesChart from '../Charts/SalesChart';
 import InventoryChart from '../Charts/InventoryChart';

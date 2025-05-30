@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Download, Filter, TrendingUp, DollarSign } from 'lucide-react';
+import { Download, TrendingUp, DollarSign } from 'lucide-react';
 import { 
   subscribeToSales, 
   subscribeToProducts,
-  getSales,
   getTopProducts
 } from '../../services/firestore';
 import SalesChart from '../Charts/SalesChart';

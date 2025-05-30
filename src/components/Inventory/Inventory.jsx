@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Package, AlertTriangle, RefreshCw, Edit, Plus } from 'lucide-react';
+import { Package, AlertTriangle, RefreshCw } from 'lucide-react';
 import { 
   subscribeToInventory, 
   subscribeToProducts,
-  updateInventory,
   refillInventory 
 } from '../../services/firestore';
 import Modal from '../Common/Modal';
