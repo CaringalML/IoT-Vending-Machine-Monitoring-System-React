@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   DollarSign, 
   Package, 
@@ -30,7 +30,6 @@ const Dashboard = () => {
   const [dailySalesData, setDailySalesData] = useState([]);
 
   useEffect(() => {
-    // Subscribe to real-time data
     const unsubscribeSales = subscribeToSales((salesData) => {
       setSales(salesData);
       setRecentSales(salesData.slice(0, 5));
@@ -39,7 +38,6 @@ const Dashboard = () => {
     const unsubscribeInventory = subscribeToInventory(setInventory);
     const unsubscribeProducts = subscribeToProducts(setProducts);
 
-    // Load daily sales data
     loadDailySalesData();
 
     return () => {
@@ -49,15 +47,30 @@ const Dashboard = () => {
     };
   }, []);
 
+  // Memoize calculateStats to use it as a stable dependency
+  const calculateStats = useCallback(() => {
+    const totalRevenue = sales.reduce((sum, sale) => sum + (sale.price || 0), 0);
+    const totalSales = sales.length;
+    const lowStockItems = inventory.filter(item => 
+      item.quantity <= (item.lowStockThreshold || 5)
+    ).length;
+    const activeProducts = products.filter(product => product.active).length;
+
+    setStats({
+      totalRevenue,
+      totalSales,
+      lowStockItems,
+      activeProducts
+    });
+  }, [sales, inventory, products]);
+
   useEffect(() => {
     calculateStats();
-  }, [sales, inventory, products]);
+  }, [calculateStats]);
 
   const loadDailySalesData = async () => {
     try {
       const dailySales = await getDailySales(30);
-      
-      // Group sales by date
       const salesByDate = {};
       dailySales.forEach(sale => {
         const date = new Date(sale.timestamp?.seconds * 1000).toLocaleDateString();
@@ -76,22 +89,6 @@ const Dashboard = () => {
     } catch (error) {
       console.error('Error loading daily sales:', error);
     }
-  };
-
-  const calculateStats = () => {
-    const totalRevenue = sales.reduce((sum, sale) => sum + (sale.price || 0), 0);
-    const totalSales = sales.length;
-    const lowStockItems = inventory.filter(item => 
-      item.quantity <= (item.lowStockThreshold || 5)
-    ).length;
-    const activeProducts = products.filter(product => product.active).length;
-
-    setStats({
-      totalRevenue,
-      totalSales,
-      lowStockItems,
-      activeProducts
-    });
   };
 
   const formatCurrency = (amount) => {
@@ -119,12 +116,9 @@ const Dashboard = () => {
         <p>Monitor your vending machine performance in real-time</p>
       </div>
 
-      {/* Stats Cards */}
       <div className="stats-grid">
         <div className="stat-card revenue">
-          <div className="stat-icon">
-            <DollarSign size={24} />
-          </div>
+          <div className="stat-icon"><DollarSign size={24} /></div>
           <div className="stat-content">
             <h3>{formatCurrency(stats.totalRevenue)}</h3>
             <p>Total Revenue</p>
@@ -132,9 +126,7 @@ const Dashboard = () => {
         </div>
 
         <div className="stat-card sales">
-          <div className="stat-icon">
-            <ShoppingCart size={24} />
-          </div>
+          <div className="stat-icon"><ShoppingCart size={24} /></div>
           <div className="stat-content">
             <h3>{stats.totalSales}</h3>
             <p>Total Sales</p>
@@ -142,9 +134,7 @@ const Dashboard = () => {
         </div>
 
         <div className="stat-card products">
-          <div className="stat-icon">
-            <Package size={24} />
-          </div>
+          <div className="stat-icon"><Package size={24} /></div>
           <div className="stat-content">
             <h3>{stats.activeProducts}</h3>
             <p>Active Products</p>
@@ -152,9 +142,7 @@ const Dashboard = () => {
         </div>
 
         <div className="stat-card alerts">
-          <div className="stat-icon">
-            <AlertTriangle size={24} />
-          </div>
+          <div className="stat-icon"><AlertTriangle size={24} /></div>
           <div className="stat-content">
             <h3>{stats.lowStockItems}</h3>
             <p>Low Stock Alerts</p>
@@ -162,45 +150,31 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Charts Section */}
       <div className="charts-grid">
         <div className="chart-card">
-          <div className="chart-header">
-            <h3>Sales Trend (Last 30 Days)</h3>
-          </div>
+          <div className="chart-header"><h3>Sales Trend (Last 30 Days)</h3></div>
           <SalesChart data={dailySalesData} />
         </div>
 
         <div className="chart-card">
-          <div className="chart-header">
-            <h3>Revenue Overview</h3>
-          </div>
+          <div className="chart-header"><h3>Revenue Overview</h3></div>
           <RevenueChart data={dailySalesData} />
         </div>
       </div>
 
       <div className="dashboard-bottom">
-        {/* Recent Sales */}
         <div className="recent-sales card">
-          <div className="card-header">
-            <h3>Recent Sales</h3>
-          </div>
+          <div className="card-header"><h3>Recent Sales</h3></div>
           <div className="card-body">
             {recentSales.length > 0 ? (
               <div className="sales-list">
                 {recentSales.map((sale) => (
                   <div key={sale.id} className="sale-item">
                     <div className="sale-info">
-                      <span className="product-name">
-                        {getProductName(sale.productId)}
-                      </span>
-                      <span className="sale-time">
-                        {formatTimestamp(sale.timestamp)}
-                      </span>
+                      <span className="product-name">{getProductName(sale.productId)}</span>
+                      <span className="sale-time">{formatTimestamp(sale.timestamp)}</span>
                     </div>
-                    <div className="sale-price">
-                      {formatCurrency(sale.price)}
-                    </div>
+                    <div className="sale-price">{formatCurrency(sale.price)}</div>
                   </div>
                 ))}
               </div>
@@ -210,11 +184,8 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Inventory Status */}
         <div className="inventory-status card">
-          <div className="card-header">
-            <h3>Inventory Status</h3>
-          </div>
+          <div className="card-header"><h3>Inventory Status</h3></div>
           <div className="card-body">
             <InventoryChart data={inventory} />
             {stats.lowStockItems > 0 && (

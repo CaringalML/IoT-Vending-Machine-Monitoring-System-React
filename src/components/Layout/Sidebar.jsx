@@ -3,11 +3,9 @@ import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Package, 
-  ShoppingCart, 
   BarChart3, 
-  Settings,
   Coffee
-} from 'lucide-react';
+} from 'lucide-react'; // Removed unused ShoppingCart and Settings
 
 const Sidebar = () => {
   const navItems = [
@@ -37,7 +35,8 @@ const Sidebar = () => {
     <div className="sidebar">
       <div className="sidebar-header">
         <div className="sidebar-logo">
-          <ShoppingCart size={32} />
+          {/* You can replace ShoppingCart with your logo or keep it */}
+          <span>🛒</span> 
         </div>
         <h2>Vending Admin</h2>
       </div>

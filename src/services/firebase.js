@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
-import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore'; // Removed connectFirestoreEmulator
+import { getAuth } from 'firebase/auth'; // Removed connectAuthEmulator
 
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
@@ -19,11 +19,5 @@ export const db = getFirestore(app);
 
 // Initialize Auth
 export const auth = getAuth(app);
-
-// Connect to emulators in development
-if (process.env.NODE_ENV === 'development') {
-  // connectFirestoreEmulator(db, 'localhost', 8080);
-  // connectAuthEmulator(auth, 'http://localhost:9099');
-}
 
 export default app;

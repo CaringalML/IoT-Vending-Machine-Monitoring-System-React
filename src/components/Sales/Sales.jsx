@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Download, TrendingUp, DollarSign } from 'lucide-react';
 import { 
   subscribeToSales, 
@@ -52,30 +52,8 @@ const Sales = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (sales.length > 0) {
-      filterSalesByDate();
-      setLoading(false);
-    }
-  }, [sales, dateRange]);
-
-  useEffect(() => {
-    if (filteredSales.length > 0) {
-      calculateStats();
-      generateChartData();
-    }
-  }, [filteredSales, products]);
-
-  const loadTopProducts = async () => {
-    try {
-      const topProductsData = await getTopProducts(5);
-      setTopProducts(topProductsData);
-    } catch (error) {
-      console.error('Error loading top products:', error);
-    }
-  };
-
-  const filterSalesByDate = () => {
+  // Wrap filterSalesByDate in useCallback to use as dependency
+  const filterSalesByDate = useCallback(() => {
     if (!dateRange.startDate || !dateRange.endDate) {
       setFilteredSales(sales);
       return;
@@ -91,9 +69,10 @@ const Sales = () => {
     });
 
     setFilteredSales(filtered);
-  };
+  }, [dateRange.startDate, dateRange.endDate, sales]);
 
-  const calculateStats = () => {
+  // Wrap calculateStats in useCallback
+  const calculateStats = useCallback(() => {
     const totalSales = filteredSales.length;
     const totalRevenue = filteredSales.reduce((sum, sale) => sum + (sale.price || 0), 0);
     const averageTransaction = totalSales > 0 ? totalRevenue / totalSales : 0;
@@ -116,9 +95,10 @@ const Sales = () => {
       averageTransaction,
       topProduct
     });
-  };
+  }, [filteredSales, products]);
 
-  const generateChartData = () => {
+  // Wrap generateChartData in useCallback
+  const generateChartData = useCallback(() => {
     // Group sales by date
     const salesByDate = {};
     
@@ -136,6 +116,29 @@ const Sales = () => {
     );
 
     setChartData(chartData);
+  }, [filteredSales]);
+
+  useEffect(() => {
+    if (sales.length > 0) {
+      filterSalesByDate();
+      setLoading(false);
+    }
+  }, [sales, filterSalesByDate]);
+
+  useEffect(() => {
+    if (filteredSales.length > 0) {
+      calculateStats();
+      generateChartData();
+    }
+  }, [filteredSales, calculateStats, generateChartData]);
+
+  const loadTopProducts = async () => {
+    try {
+      const topProductsData = await getTopProducts(5);
+      setTopProducts(topProductsData);
+    } catch (error) {
+      console.error('Error loading top products:', error);
+    }
   };
 
   const handleDateRangeChange = (field, value) => {
@@ -294,42 +297,33 @@ const Sales = () => {
             <div className="card-header">
               <h3>Recent Sales</h3>
             </div>
-            <div className="card-body">
-              <div className="table-container">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Product</th>
-                      <th>Slot</th>
-                      <th>Price</th>
-                      <th>Payment</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredSales.slice(0, 20).map((sale) => (
-                      <tr key={sale.id}>
-                        <td>{formatTimestamp(sale.timestamp)}</td>
-                        <td>{getProductName(sale.productId)}</td>
-                        <td>{sale.slot}</td>
-                        <td>{formatCurrency(sale.price)}</td>
-                        <td>
-                          <span className="payment-method">
-                            {sale.paymentMethod || 'Cash'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
+            <table className="sales-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Product</th>
+                  <th>Slot</th>
+                  <th>Price</th>
+                  <th>Payment Method</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredSales.slice(0, 20).map(sale => (
+                  <tr key={sale.id}>
+                    <td>{formatTimestamp(sale.timestamp)}</td>
+                    <td>{getProductName(sale.productId)}</td>
+                    <td>{sale.slot}</td>
+                    <td>{formatCurrency(sale.price)}</td>
+                    <td>{sale.paymentMethod || 'cash'}</td>
+                  </tr>
+                ))}
                 {filteredSales.length === 0 && (
-                  <div className="no-data">
-                    <p>No sales found in the selected date range</p>
-                  </div>
+                  <tr>
+                    <td colSpan="5" className="no-data">No sales found for selected dates.</td>
+                  </tr>
                 )}
-              </div>
-            </div>
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -338,32 +332,15 @@ const Sales = () => {
             <div className="card-header">
               <h3>Top Products</h3>
             </div>
-            <div className="card-body">
-              <div className="top-products-list">
-                {topProducts.map((item, index) => {
-                  const product = products.find(p => p.id === item.productId);
-                  return (
-                    <div key={item.productId} className="top-product-item">
-                      <div className="product-rank">#{index + 1}</div>
-                      <div className="product-details">
-                        <div className="product-name">
-                          {product?.name || 'Unknown Product'}
-                        </div>
-                        <div className="product-sales">
-                          {item.count} sales • {formatCurrency(item.revenue)}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {topProducts.length === 0 && (
-                <div className="no-data">
-                  <p>No sales data available</p>
-                </div>
-              )}
-            </div>
+            <ul className="top-products-list">
+              {topProducts.map(product => (
+                <li key={product.id}>
+                  <span className="product-name">{product.name}</span>
+                  <span className="product-sales">{product.salesCount} sales</span>
+                </li>
+              ))}
+              {topProducts.length === 0 && <li>No top products data.</li>}
+            </ul>
           </div>
         </div>
       </div>
