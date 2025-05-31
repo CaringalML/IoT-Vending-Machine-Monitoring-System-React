@@ -10,7 +10,7 @@ import {
 } from 'firebase/auth';
 import { auth } from './firebase';
 
-// Get custom domain from environment variables
+// Get custom domain from environment variables or use default firebase domain
 const CUSTOM_DOMAIN = process.env.REACT_APP_CUSTOM_DOMAIN;
 
 export const loginUser = async (email, password) => {
