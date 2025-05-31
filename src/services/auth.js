@@ -11,7 +11,7 @@ import {
 import { auth } from './firebase';
 
 // Get custom domain from environment variables
-const CUSTOM_DOMAIN = process.env.REACT_APP_CUSTOM_DOMAIN || 'https://artisantiling.co.nz';
+const CUSTOM_DOMAIN = process.env.REACT_APP_CUSTOM_DOMAIN;
 
 export const loginUser = async (email, password) => {
   try {
