@@ -70,9 +70,18 @@ function AppContent() {
               </PublicRoute>
             } 
           />
-          {/* Firebase Auth Action Handler Route */}
+          {/* Firebase Auth Action Handler Routes - Updated */}
           <Route 
             path="/__/auth/action" 
+            element={
+              <PublicRoute>
+                <PasswordReset />
+              </PublicRoute>
+            } 
+          />
+          {/* Alternative route for password reset (in case Firebase uses different pattern) */}
+          <Route 
+            path="/auth/action" 
             element={
               <PublicRoute>
                 <PasswordReset />

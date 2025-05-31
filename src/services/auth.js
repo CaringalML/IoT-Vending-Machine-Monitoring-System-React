@@ -98,21 +98,25 @@ export const getUserInfo = () => {
 // Password reset functionality with custom domain from env
 export const resetPassword = async (email) => {
   try {
-    // Use custom domain from environment variable
+    // Configure action code settings to use custom domain
     const actionCodeSettings = {
+      // This URL will handle the password reset
       url: `${CUSTOM_DOMAIN}/login?message=password-reset-sent`,
       handleCodeInApp: false, // Let Firebase handle the reset page
     };
     
     await sendPasswordResetEmail(auth, email, actionCodeSettings);
   } catch (error) {
+    console.error('Password reset error:', error);
     switch (error.code) {
       case 'auth/user-not-found':
         throw new Error('No account found with this email address');
       case 'auth/invalid-email':
         throw new Error('Invalid email address');
+      case 'auth/too-many-requests':
+        throw new Error('Too many requests. Please try again later');
       default:
-        throw new Error('Failed to send password reset email');
+        throw new Error('Failed to send password reset email. Please try again.');
     }
   }
 };
@@ -123,6 +127,7 @@ export const verifyResetCode = async (code) => {
     const email = await verifyPasswordResetCode(auth, code);
     return email;
   } catch (error) {
+    console.error('Verify reset code error:', error);
     throw error;
   }
 };
@@ -132,6 +137,7 @@ export const confirmReset = async (code, newPassword) => {
   try {
     await confirmPasswordReset(auth, code, newPassword);
   } catch (error) {
+    console.error('Confirm reset error:', error);
     throw error;
   }
 };
