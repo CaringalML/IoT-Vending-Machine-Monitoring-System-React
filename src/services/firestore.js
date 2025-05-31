@@ -6,6 +6,7 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  setDoc,
   onSnapshot,
   query,
   where,
@@ -40,7 +41,35 @@ export const updateProduct = async (productId, updates) => {
 };
 
 export const deleteProduct = async (productId) => {
-  await deleteDoc(doc(db, 'products', productId));
+  // Get the product first to find its slot
+  const productRef = doc(db, 'products', productId);
+  const productSnap = await getDoc(productRef);
+  
+  if (productSnap.exists()) {
+    const productData = productSnap.data();
+    
+    // Delete the product
+    await deleteDoc(productRef);
+    
+    // If product has a slot, clear the productId from inventory but keep the slot
+    if (productData.slot) {
+      const inventoryRef = doc(db, 'inventory', productData.slot);
+      const inventorySnap = await getDoc(inventoryRef);
+      
+      if (inventorySnap.exists()) {
+        await updateDoc(inventoryRef, {
+          productId: null, // Mark as deleted product
+          deletedProductName: productData.name || 'Unknown Product',
+          deletedProductSKU: productData.sku || null,
+          deletedAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+      }
+    }
+  } else {
+    // Product doesn't exist, just try to delete it
+    await deleteDoc(productRef);
+  }
 };
 
 // Inventory
@@ -49,7 +78,37 @@ export const getInventory = async () => {
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
-export const updateInventory = async (slotId, quantity) => {
+// Enhanced inventory update function
+export const updateInventory = async (slotId, inventoryData) => {
+  const inventoryRef = doc(db, 'inventory', slotId);
+  
+  // Check if inventory document exists
+  const docSnap = await getDoc(inventoryRef);
+  
+  if (docSnap.exists()) {
+    // Update existing inventory
+    await updateDoc(inventoryRef, {
+      ...inventoryData,
+      updatedAt: serverTimestamp()
+    });
+  } else {
+    // Create new inventory document if it doesn't exist
+    await setDoc(inventoryRef, {
+      slot: slotId,
+      quantity: 0,
+      maxCapacity: 20,
+      lowStockThreshold: 5,
+      productId: null,
+      lastRefilled: null,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      ...inventoryData
+    });
+  }
+};
+
+// Legacy updateInventory function for backward compatibility
+export const updateInventoryQuantity = async (slotId, quantity) => {
   const inventoryRef = doc(db, 'inventory', slotId);
   await updateDoc(inventoryRef, {
     quantity,
@@ -261,4 +320,224 @@ export const initializeInventorySlots = async () => {
   });
   
   await batch.commit();
+};
+
+// Product-specific utilities
+export const getProductBySKU = async (sku) => {
+  const q = query(collection(db, 'products'), where('sku', '==', sku));
+  const querySnapshot = await getDocs(q);
+  
+  if (querySnapshot.empty) {
+    return null;
+  }
+  
+  const doc = querySnapshot.docs[0];
+  return { id: doc.id, ...doc.data() };
+};
+
+export const getProductsByCategory = async (category) => {
+  const q = query(collection(db, 'products'), where('category', '==', category));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+export const getActiveProducts = async () => {
+  const q = query(collection(db, 'products'), where('active', '==', true));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+// Inventory management utilities
+export const getInventoryBySlot = async (slot) => {
+  const inventoryRef = doc(db, 'inventory', slot);
+  const docSnap = await getDoc(inventoryRef);
+  return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null;
+};
+
+export const getLowStockItems = async (threshold = 5) => {
+  const inventory = await getInventory();
+  return inventory.filter(item => 
+    item.quantity <= (item.lowStockThreshold || threshold) && item.quantity > 0
+  );
+};
+
+export const getOutOfStockItems = async () => {
+  const inventory = await getInventory();
+  return inventory.filter(item => item.quantity === 0);
+};
+
+// Advanced analytics
+export const getSalesAnalytics = async (startDate, endDate) => {
+  const sales = await getSales(startDate, endDate);
+  const products = await getProducts();
+  
+  // Create product lookup
+  const productLookup = products.reduce((acc, product) => {
+    acc[product.id] = product;
+    return acc;
+  }, {});
+  
+  // Calculate analytics
+  const analytics = {
+    totalSales: sales.length,
+    totalRevenue: sales.reduce((sum, sale) => sum + (sale.price || 0), 0),
+    averageTransactionValue: 0,
+    salesByCategory: {},
+    salesByPaymentMethod: {},
+    hourlyDistribution: Array(24).fill(0),
+    topProducts: {}
+  };
+  
+  // Calculate average transaction value
+  if (analytics.totalSales > 0) {
+    analytics.averageTransactionValue = analytics.totalRevenue / analytics.totalSales;
+  }
+  
+  // Process each sale
+  sales.forEach(sale => {
+    const product = productLookup[sale.productId];
+    const saleDate = new Date(sale.timestamp?.seconds * 1000);
+    const hour = saleDate.getHours();
+    
+    // Sales by category
+    if (product?.category) {
+      analytics.salesByCategory[product.category] = 
+        (analytics.salesByCategory[product.category] || 0) + 1;
+    }
+    
+    // Sales by payment method
+    const paymentMethod = sale.paymentMethod || 'cash';
+    analytics.salesByPaymentMethod[paymentMethod] = 
+      (analytics.salesByPaymentMethod[paymentMethod] || 0) + 1;
+    
+    // Hourly distribution
+    analytics.hourlyDistribution[hour]++;
+    
+    // Top products
+    if (analytics.topProducts[sale.productId]) {
+      analytics.topProducts[sale.productId].count++;
+      analytics.topProducts[sale.productId].revenue += sale.price || 0;
+    } else {
+      analytics.topProducts[sale.productId] = {
+        product: product,
+        count: 1,
+        revenue: sale.price || 0
+      };
+    }
+  });
+  
+  // Convert top products to sorted array
+  analytics.topProductsList = Object.values(analytics.topProducts)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+  
+  return analytics;
+};
+
+// Clear inventory slot (remove old product data)
+export const clearInventorySlot = async (slotId) => {
+  const inventoryRef = doc(db, 'inventory', slotId);
+  await deleteDoc(inventoryRef);
+};
+
+// Clean up orphaned inventory slots (slots with no product and no deleted product data)
+export const cleanupOrphanedInventorySlots = async () => {
+  const inventory = await getInventory();
+  const batch = writeBatch(db);
+  let cleanedCount = 0;
+
+  inventory.forEach(item => {
+    // If no productId and no deleted product data, it's orphaned
+    if (!item.productId && !item.deletedProductName) {
+      const inventoryRef = doc(db, 'inventory', item.id);
+      batch.delete(inventoryRef);
+      cleanedCount++;
+    }
+  });
+
+  if (cleanedCount > 0) {
+    await batch.commit();
+  }
+
+  return cleanedCount;
+};
+
+// Get deleted products info from inventory
+export const getDeletedProductsFromInventory = async () => {
+  const inventory = await getInventory();
+  return inventory.filter(item => 
+    item.deletedProductName && !item.productId
+  );
+};
+export const cleanupOldSales = async (daysToKeep = 90) => {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+  
+  const q = query(
+    collection(db, 'sales'),
+    where('timestamp', '<', cutoffDate)
+  );
+  
+  const querySnapshot = await getDocs(q);
+  const batch = writeBatch(db);
+  
+  querySnapshot.docs.forEach(doc => {
+    batch.delete(doc.ref);
+  });
+  
+  if (querySnapshot.docs.length > 0) {
+    await batch.commit();
+    return querySnapshot.docs.length;
+  }
+  
+  return 0;
+};
+
+export const syncInventoryWithProducts = async () => {
+  const products = await getProducts();
+  const inventory = await getInventory();
+  
+  const inventorySlots = inventory.reduce((acc, item) => {
+    acc[item.slot] = item;
+    return acc;
+  }, {});
+  
+  const batch = writeBatch(db);
+  let updates = 0;
+  
+  products.forEach(product => {
+    if (product.slot) {
+      const currentInventory = inventorySlots[product.slot];
+      
+      if (!currentInventory) {
+        // Create inventory slot if it doesn't exist
+        const inventoryRef = doc(db, 'inventory', product.slot);
+        batch.set(inventoryRef, {
+          slot: product.slot,
+          productId: product.id,
+          quantity: product.stock || 0,
+          maxCapacity: 20,
+          lowStockThreshold: 5,
+          lastRefilled: null,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+        updates++;
+      } else if (currentInventory.productId !== product.id) {
+        // Update inventory slot with correct product
+        const inventoryRef = doc(db, 'inventory', product.slot);
+        batch.update(inventoryRef, {
+          productId: product.id,
+          updatedAt: serverTimestamp()
+        });
+        updates++;
+      }
+    }
+  });
+  
+  if (updates > 0) {
+    await batch.commit();
+  }
+  
+  return updates;
 };

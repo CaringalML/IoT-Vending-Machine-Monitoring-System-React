@@ -1,0 +1,122 @@
+.delete-confirmation {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.delete-icon {
+  color: #f56565;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.delete-content {
+  margin-bottom: 24px;
+}
+
+.delete-message {
+  font-size: 16px;
+  color: #2d3748;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.delete-item-name {
+  background: #fed7d7;
+  color: #742a2a;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin: 12px 0;
+  font-size: 14px;
+  border-left: 4px solid #f56565;
+}
+
+.delete-warning {
+  font-size: 14px;
+  color: #718096;
+  font-style: italic;
+  margin-bottom: 16px;
+}
+
+.delete-error {
+  background: #fed7d7;
+  color: #742a2a;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin: 12px 0;
+  font-size: 14px;
+  border-left: 4px solid #f56565;
+  text-align: left;
+}
+
+.delete-input-group {
+  margin: 16px 0;
+  text-align: left;
+}
+
+.delete-input-label {
+  display: block;
+  font-size: 14px;
+  color: #2d3748;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.delete-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.delete-input:focus {
+  outline: none;
+  border-color: #f56565;
+  box-shadow: 0 0 0 3px rgba(245, 101, 101, 0.1);
+}
+
+.delete-input:disabled {
+  background: #f7fafc;
+  color: #a0aec0;
+  cursor: not-allowed;
+}
+
+.delete-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.delete-actions .btn {
+  min-width: 100px;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .delete-confirmation {
+    padding: 16px 0;
+  }
+
+  .delete-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .delete-actions .btn {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .delete-message {
+    font-size: 15px;
+  }
+
+  .delete-item-name {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+}

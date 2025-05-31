@@ -63,6 +63,10 @@
   background: linear-gradient(135deg, #fc466b 0%, #3f5efb 100%);
 }
 
+.summary-card.deleted .summary-icon {
+  background: linear-gradient(135deg, #a0aec0 0%, #718096 100%);
+}
+
 .summary-content h3 {
   font-size: 20px;
   font-weight: 700;
@@ -159,6 +163,11 @@
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
 }
 
+.slot-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .refill-btn {
   background: #667eea;
   color: white;
@@ -177,6 +186,24 @@
   transform: scale(1.05);
 }
 
+.delete-btn {
+  background: none;
+  border: none;
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  color: #f56565;
+}
+
+.delete-btn:hover {
+  background: #f56565;
+  color: white;
+}
+
 .inventory-card-body {
   padding: 20px;
 }
@@ -186,6 +213,18 @@
   font-weight: 600;
   color: #2d3748;
   margin-bottom: 16px;
+}
+
+.product-name.deleted-name {
+  color: #718096;
+  font-style: italic;
+}
+
+.deleted-label {
+  font-size: 12px;
+  color: #a0aec0;
+  font-weight: normal;
+  margin-left: 8px;
 }
 
 .stock-info {
@@ -267,6 +306,22 @@
 .status-badge.status-out {
   background: #fed7d7;
   color: #742a2a;
+}
+
+.status-badge.status-deleted {
+  background: #e2e8f0;
+  color: #718096;
+}
+
+/* Deleted Products Styling */
+.inventory-card.deleted-product {
+  opacity: 0.8;
+  border: 2px dashed #cbd5e0;
+  background: #f7fafc;
+}
+
+.inventory-card.deleted-product .inventory-card-header {
+  background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%);
 }
 
 /* No Inventory */
