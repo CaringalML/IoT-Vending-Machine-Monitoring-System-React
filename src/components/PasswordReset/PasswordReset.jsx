@@ -25,25 +25,29 @@ const PasswordReset = () => {
 
   // Debug: Log URL parameters
   useEffect(() => {
-    console.log('URL Parameters:', {
+    console.log('PasswordReset - URL Parameters:', {
       oobCode,
       mode,
       continueUrl,
-      fullURL: window.location.href
+      fullURL: window.location.href,
+      searchParams: searchParams.toString()
     });
-  }, [oobCode, mode, continueUrl]);
+  }, [oobCode, mode, continueUrl, searchParams]);
 
   // Verify reset code on mount
   useEffect(() => {
     const verifyCode = async () => {
       // Check if we have the required parameters
       if (!oobCode) {
+        console.log('No oobCode found in URL');
         setError('Missing reset code. Please use the link from your email.');
         setVerifying(false);
         return;
       }
 
-      if (mode !== 'resetPassword') {
+      // For password reset, mode should be 'resetPassword' or might be missing
+      if (mode && mode !== 'resetPassword') {
+        console.log('Invalid mode:', mode);
         setError('Invalid reset link. Please request a new password reset.');
         setVerifying(false);
         return;
