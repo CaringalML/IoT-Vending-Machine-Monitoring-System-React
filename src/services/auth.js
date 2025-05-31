@@ -95,14 +95,14 @@ export const getUserInfo = () => {
   return null;
 };
 
-// Password reset functionality with custom domain from env
+// Password reset with proper custom domain configuration
 export const resetPassword = async (email) => {
   try {
-    // Configure action code settings to use custom domain
+    // Configure action code settings for custom domain
     const actionCodeSettings = {
-      // This URL will handle the password reset
+      // This URL will be where users land after the password reset process
       url: `${CUSTOM_DOMAIN}/login?message=password-reset-sent`,
-      handleCodeInApp: false, // Let Firebase handle the reset page
+      handleCodeInApp: false, // Let Firebase handle the reset via the email link
     };
     
     await sendPasswordResetEmail(auth, email, actionCodeSettings);
@@ -115,6 +115,8 @@ export const resetPassword = async (email) => {
         throw new Error('Invalid email address');
       case 'auth/too-many-requests':
         throw new Error('Too many requests. Please try again later');
+      case 'auth/unauthorized-continue-url':
+        throw new Error('Domain not authorized. Please contact support.');
       default:
         throw new Error('Failed to send password reset email. Please try again.');
     }

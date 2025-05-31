@@ -54,6 +54,7 @@ function AppContent() {
     <Router>
       <div className="App">
         <Routes>
+          {/* Standard auth routes */}
           <Route 
             path="/login" 
             element={
@@ -62,6 +63,8 @@ function AppContent() {
               </PublicRoute>
             } 
           />
+          
+          {/* Custom password reset route */}
           <Route 
             path="/reset-password" 
             element={
@@ -70,41 +73,67 @@ function AppContent() {
               </PublicRoute>
             } 
           />
-          {/* Firebase Auth Action Handler Routes - Updated */}
+          
+          {/* Firebase Auth Action Handler - This is the key route! */}
           <Route 
             path="/__/auth/action" 
-            element={
-              <PublicRoute>
-                <PasswordReset />
-              </PublicRoute>
-            } 
+            element={<PasswordReset />}
           />
-          {/* Alternative route for password reset (in case Firebase uses different pattern) */}
+          
+          {/* Alternative Firebase auth paths (backup) */}
           <Route 
             path="/auth/action" 
-            element={
-              <PublicRoute>
-                <PasswordReset />
-              </PublicRoute>
-            } 
+            element={<PasswordReset />}
           />
+          
+          {/* Protected routes */}
           <Route 
-            path="/*" 
+            path="/dashboard" 
             element={
               <ProtectedRoute>
                 <Layout>
-                  <Routes>
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/inventory" element={<Inventory />} />
-                    <Route path="/products" element={<Products />} />
-                    <Route path="/sales" element={<Sales />} />
-                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                  </Routes>
+                  <Dashboard />
                 </Layout>
               </ProtectedRoute>
             } 
           />
+          
+          <Route 
+            path="/inventory" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Inventory />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route 
+            path="/products" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Products />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route 
+            path="/sales" 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Sales />
+                </Layout>
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Default redirects */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </div>
     </Router>
