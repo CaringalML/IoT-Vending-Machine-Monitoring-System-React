@@ -54,3 +54,6 @@ firebase-debug.log
 # Temporary files
 tmp/
 temp/
+
+
+firebase-service-account.json

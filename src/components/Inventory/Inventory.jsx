@@ -21,6 +21,9 @@ const Inventory = () => {
   const [refillQuantity, setRefillQuantity] = useState('');
   const [processingRefill, setProcessingRefill] = useState(false);
   const [filter, setFilter] = useState('all'); // all, low, out, deleted
+  const [imageLoading, setImageLoading] = useState(false);
+  const [filteredItems, setFilteredItems] = useState([]);
+  const [refillError, setRefillError] = useState('');
 
   useEffect(() => {
     const unsubscribeInventory = subscribeToInventory((inventoryData) => {
@@ -35,6 +38,42 @@ const Inventory = () => {
       unsubscribeProducts();
     };
   }, []);
+
+  // Filter items whenever inventory or filter changes
+  useEffect(() => {
+    const filtered = inventory.filter(item => {
+      const isDeleted = isDeletedProduct(item);
+      const hasProduct = item.productId || isDeleted;
+      
+      // Only show items that have a product or are deleted products
+      if (!hasProduct) return false;
+      
+      console.log(`Filtering item ${item.slot}: filter="${filter}", quantity=${item.quantity}, maxCapacity=${item.maxCapacity}`);
+      
+      switch (filter) {
+        case 'low':
+          // Must not be deleted and must have quantity > 0
+          if (isDeleted || item.quantity === 0) return false;
+          // Calculate percentage and check if it's low stock (≤25%)
+          const percentage = getStockPercentage(item.quantity, item.maxCapacity || 20);
+          console.log(`Item ${item.slot} percentage: ${percentage}%, low stock: ${percentage <= 25}`);
+          return percentage <= 25;
+        case 'out':
+          // Must not be deleted and must have quantity = 0
+          return !isDeleted && item.quantity === 0;
+        case 'deleted':
+          // Must be a deleted product
+          return isDeleted;
+        case 'all':
+        default:
+          // Show all items with products
+          return true;
+      }
+    });
+    
+    console.log(`Filter "${filter}" applied. Showing ${filtered.length} items out of ${inventory.length}`);
+    setFilteredItems(filtered);
+  }, [inventory, filter]);
 
   const getProductInfo = (productId, inventoryItem = null) => {
     // If it's a deleted product, use the stored deleted product info
@@ -53,17 +92,38 @@ const Inventory = () => {
     };
   };
 
-  const getStockStatus = (quantity, threshold = 5) => {
+  const getStockStatus = (quantity, maxCapacity, threshold = 5) => {
     if (quantity === 0) return 'out';
-    if (quantity <= threshold) return 'low';
-    return 'good';
+    
+    const percentage = (quantity / maxCapacity) * 100;
+    
+    // Use percentage-based thresholds for better accuracy
+    if (percentage <= 25) return 'low';      // 25% or less = low stock
+    if (percentage <= 50) return 'medium';   // 26-50% = medium stock
+    return 'good';                           // 51%+ = good stock
+  };
+
+  const getStockPercentage = (quantity, maxCapacity) => {
+    if (maxCapacity === 0) return 0;
+    return Math.round((quantity / maxCapacity) * 100);
+  };
+
+  const getStockStatusLabel = (quantity, maxCapacity) => {
+    if (quantity === 0) return 'Out of Stock';
+    
+    const percentage = getStockPercentage(quantity, maxCapacity);
+    
+    if (percentage <= 25) return `Low Stock (${percentage}%)`;
+    if (percentage <= 50) return `Medium Stock (${percentage}%)`;
+    return `Good Stock (${percentage}%)`;
   };
 
   const getStockStatusColor = (status) => {
     switch (status) {
       case 'out': return '#f56565';
-      case 'low': return '#ed8936';
-      case 'good': return '#38a169';
+      case 'low': return '#f56565';       // Red for low stock
+      case 'medium': return '#ed8936';    // Orange for medium stock  
+      case 'good': return '#38a169';      // Green for good stock
       default: return '#718096';
     }
   };
@@ -72,24 +132,32 @@ const Inventory = () => {
     return !item.productId && item.deletedProductName;
   };
 
-  const filteredInventory = inventory.filter(item => {
-    const isDeleted = isDeletedProduct(item);
-    const hasProduct = item.productId || isDeleted;
-    
-    // Only show items that have a product or are deleted products
-    if (!hasProduct) return false;
-    
-    switch (filter) {
-      case 'low':
-        return !isDeleted && item.quantity <= (item.lowStockThreshold || 5) && item.quantity > 0;
-      case 'out':
-        return !isDeleted && item.quantity === 0;
-      case 'deleted':
-        return isDeleted;
-      default:
-        return true;
-    }
-  });
+  const getFilteredCount = (filterType) => {
+    return inventory.filter(item => {
+      const isDeleted = isDeletedProduct(item);
+      const hasProduct = item.productId || isDeleted;
+      
+      if (!hasProduct) return false;
+      
+      switch (filterType) {
+        case 'low':
+          if (isDeleted || item.quantity === 0) return false;
+          const percentage = getStockPercentage(item.quantity, item.maxCapacity || 20);
+          return percentage <= 25;
+        case 'out':
+          return !isDeleted && item.quantity === 0;
+        case 'deleted':
+          return isDeleted;
+        default:
+          return true;
+      }
+    }).length;
+  };
+
+  const handleFilterChange = (newFilter) => {
+    console.log(`Changing filter from "${filter}" to "${newFilter}"`);
+    setFilter(newFilter);
+  };
 
   const handleRefill = (slot) => {
     if (isDeletedProduct(slot)) {
@@ -97,7 +165,38 @@ const Inventory = () => {
     }
     setSelectedSlot(slot);
     setRefillQuantity(slot.maxCapacity || '20');
+    setImageLoading(false); // Reset image loading state
+    setRefillError(''); // Reset any previous errors
     setShowRefillModal(true);
+  };
+
+  const validateRefillQuantity = (quantity, maxCapacity) => {
+    const num = parseInt(quantity);
+    
+    if (isNaN(num)) {
+      return 'Please enter a valid number.';
+    }
+    
+    if (num < 0) {
+      return 'Quantity cannot be negative.';
+    }
+    
+    if (num > maxCapacity) {
+      return `Cannot exceed maximum capacity of ${maxCapacity} items.`;
+    }
+    
+    return ''; // No error
+  };
+
+  const handleRefillQuantityChange = (e) => {
+    const newQuantity = e.target.value;
+    setRefillQuantity(newQuantity);
+    
+    if (selectedSlot) {
+      const maxCapacity = selectedSlot.maxCapacity || 20;
+      const error = validateRefillQuantity(newQuantity, maxCapacity);
+      setRefillError(error);
+    }
   };
 
   const handleDeleteSlot = (slot) => {
@@ -108,15 +207,26 @@ const Inventory = () => {
   const handleRefillSubmit = async () => {
     if (!selectedSlot || !refillQuantity) return;
 
+    const maxCapacity = selectedSlot.maxCapacity || 20;
+    const error = validateRefillQuantity(refillQuantity, maxCapacity);
+    
+    if (error) {
+      setRefillError(error);
+      return;
+    }
+
+    const newQuantity = parseInt(refillQuantity);
+
     setProcessingRefill(true);
     try {
-      await refillInventory(selectedSlot.id, parseInt(refillQuantity));
+      await refillInventory(selectedSlot.id, newQuantity);
       setShowRefillModal(false);
       setSelectedSlot(null);
       setRefillQuantity('');
+      setRefillError('');
     } catch (error) {
       console.error('Error refilling inventory:', error);
-      alert('Error refilling inventory. Please try again.');
+      setRefillError('Error refilling inventory. Please try again.');
     } finally {
       setProcessingRefill(false);
     }
@@ -133,27 +243,6 @@ const Inventory = () => {
       console.error('Error clearing inventory slot:', error);
       throw new Error('Failed to clear inventory slot. Please try again.');
     }
-  };
-
-  const getLowStockCount = () => {
-    return inventory.filter(item => 
-      (item.productId || isDeletedProduct(item)) && // Only count items with products
-      !isDeletedProduct(item) && 
-      item.quantity <= (item.lowStockThreshold || 5) && 
-      item.quantity > 0
-    ).length;
-  };
-
-  const getOutOfStockCount = () => {
-    return inventory.filter(item => 
-      (item.productId || isDeletedProduct(item)) && // Only count items with products
-      !isDeletedProduct(item) && 
-      item.quantity === 0
-    ).length;
-  };
-
-  const getDeletedProductsCount = () => {
-    return inventory.filter(item => isDeletedProduct(item)).length;
   };
 
   if (loading) {
@@ -186,7 +275,7 @@ const Inventory = () => {
             <AlertTriangle size={24} />
           </div>
           <div className="summary-content">
-            <h3>{getLowStockCount()}</h3>
+            <h3>{getFilteredCount('low')}</h3>
             <p>Low Stock</p>
           </div>
         </div>
@@ -196,7 +285,7 @@ const Inventory = () => {
             <Package size={24} />
           </div>
           <div className="summary-content">
-            <h3>{getOutOfStockCount()}</h3>
+            <h3>{getFilteredCount('out')}</h3>
             <p>Out of Stock</p>
           </div>
         </div>
@@ -206,7 +295,7 @@ const Inventory = () => {
             <Archive size={24} />
           </div>
           <div className="summary-content">
-            <h3>{getDeletedProductsCount()}</h3>
+            <h3>{getFilteredCount('deleted')}</h3>
             <p>Old Products</p>
           </div>
         </div>
@@ -217,37 +306,37 @@ const Inventory = () => {
         <div className="filter-buttons">
           <button 
             className={filter === 'all' ? 'filter-btn active' : 'filter-btn'}
-            onClick={() => setFilter('all')}
+            onClick={() => handleFilterChange('all')}
           >
-            All Items ({inventory.length})
+            All Items ({inventory.filter(item => item.productId || isDeletedProduct(item)).length})
           </button>
           <button 
             className={filter === 'low' ? 'filter-btn active' : 'filter-btn'}
-            onClick={() => setFilter('low')}
+            onClick={() => handleFilterChange('low')}
           >
-            Low Stock ({getLowStockCount()})
+            Low Stock ({getFilteredCount('low')})
           </button>
           <button 
             className={filter === 'out' ? 'filter-btn active' : 'filter-btn'}
-            onClick={() => setFilter('out')}
+            onClick={() => handleFilterChange('out')}
           >
-            Out of Stock ({getOutOfStockCount()})
+            Out of Stock ({getFilteredCount('out')})
           </button>
           <button 
             className={filter === 'deleted' ? 'filter-btn active' : 'filter-btn'}
-            onClick={() => setFilter('deleted')}
+            onClick={() => handleFilterChange('deleted')}
           >
-            Old Products ({getDeletedProductsCount()})
+            Old Products ({getFilteredCount('deleted')})
           </button>
         </div>
       </div>
 
       {/* Inventory Grid */}
       <div className="inventory-grid">
-        {filteredInventory.map((item) => {
+        {filteredItems.map((item) => {
           const isDeleted = isDeletedProduct(item);
           const product = getProductInfo(item.productId, item);
-          const status = isDeleted ? 'deleted' : getStockStatus(item.quantity, item.lowStockThreshold);
+          const status = isDeleted ? 'deleted' : getStockStatus(item.quantity, item.maxCapacity || 20, item.lowStockThreshold);
           
           return (
             <div key={item.id} className={`inventory-card ${isDeleted ? 'deleted-product' : ''}`}>
@@ -292,12 +381,13 @@ const Inventory = () => {
                     <div className="stock-level">
                       <span className="current-stock">{item.quantity}</span>
                       <span className="max-capacity">/ {item.maxCapacity || 20}</span>
+                      <span className="stock-percentage-display">({getStockPercentage(item.quantity, item.maxCapacity || 20)}%)</span>
                     </div>
                     <div className="stock-percentage">
                       <div 
                         className="stock-bar"
                         style={{
-                          width: `${(item.quantity / (item.maxCapacity || 20)) * 100}%`,
+                          width: `${getStockPercentage(item.quantity, item.maxCapacity || 20)}%`,
                           backgroundColor: getStockStatusColor(status)
                         }}
                       ></div>
@@ -328,9 +418,7 @@ const Inventory = () => {
                   <div className="detail-item">
                     <span className="detail-label">Status:</span>
                     <span className={`status-badge status-${status}`}>
-                      {isDeleted ? 'Old Product' : 
-                       status === 'out' ? 'Out of Stock' : 
-                       status === 'low' ? 'Low Stock' : 'Good Stock'}
+                      {isDeleted ? 'Old Product' : getStockStatusLabel(item.quantity, item.maxCapacity || 20)}
                     </span>
                   </div>
                   
@@ -358,7 +446,7 @@ const Inventory = () => {
         })}
       </div>
 
-      {filteredInventory.length === 0 && (
+      {filteredItems.length === 0 && (
         <div className="no-inventory">
           <Package size={48} />
           <h3>No items found</h3>
@@ -374,10 +462,40 @@ const Inventory = () => {
         >
           <div className="refill-modal-content">
             <div className="refill-info">
-              <h4>Slot {selectedSlot?.slot}</h4>
-              <p>{getProductInfo(selectedSlot?.productId, selectedSlot).name}</p>
-              <p>Current Stock: {selectedSlot?.quantity}</p>
-              <p>Max Capacity: {selectedSlot?.maxCapacity || 20}</p>
+              <div className="refill-product-header">
+                <div className="refill-product-image">
+                  {(() => {
+                    const product = products.find(p => p.id === selectedSlot?.productId);
+                    return product?.image ? (
+                      <>
+                        {imageLoading && (
+                          <div className="refill-image-loading">
+                            <div className="refill-image-spinner"></div>
+                          </div>
+                        )}
+                        <img 
+                          src={product.image} 
+                          alt={product.name}
+                          onLoad={() => setImageLoading(false)}
+                          onLoadStart={() => setImageLoading(true)}
+                          onError={() => setImageLoading(false)}
+                          style={{ display: imageLoading ? 'none' : 'block' }}
+                        />
+                      </>
+                    ) : (
+                      <div className="refill-product-placeholder">
+                        <Package size={64} />
+                      </div>
+                    );
+                  })()}
+                </div>
+                <div className="refill-product-info">
+                  <h4>Slot {selectedSlot?.slot}</h4>
+                  <p className="refill-product-name">{getProductInfo(selectedSlot?.productId, selectedSlot).name}</p>
+                  <p>Current Stock: <span className="stock-highlight">{selectedSlot?.quantity}</span></p>
+                  <p>Max Capacity: <span className="capacity-highlight">{selectedSlot?.maxCapacity || 20}</span></p>
+                </div>
+              </div>
             </div>
 
             <div className="form-group">
@@ -388,18 +506,31 @@ const Inventory = () => {
                 type="number"
                 id="refillQuantity"
                 value={refillQuantity}
-                onChange={(e) => setRefillQuantity(e.target.value)}
-                className="form-input"
+                onChange={handleRefillQuantityChange}
+                className={`form-input ${refillError ? 'error' : ''}`}
                 min="0"
                 max={selectedSlot?.maxCapacity || 20}
                 placeholder="Enter quantity"
               />
+              {refillError && (
+                <div className="form-error" style={{ 
+                  color: '#e53e3e', 
+                  fontSize: '12px', 
+                  marginTop: '4px',
+                  fontWeight: '500'
+                }}>
+                  {refillError}
+                </div>
+              )}
+              <small className="form-help" style={{ display: 'block', marginTop: '4px' }}>
+                Maximum capacity: {selectedSlot?.maxCapacity || 20} items
+              </small>
             </div>
 
             <div className="modal-actions">
               <button
                 type="button"
-                className="btn btn-secondary"
+                className="refill-modal-btn secondary"
                 onClick={() => setShowRefillModal(false)}
                 disabled={processingRefill}
               >
@@ -407,11 +538,18 @@ const Inventory = () => {
               </button>
               <button
                 type="button"
-                className="btn btn-primary"
+                className="refill-modal-btn primary"
                 onClick={handleRefillSubmit}
-                disabled={processingRefill || !refillQuantity}
+                disabled={processingRefill || !refillQuantity || refillError}
               >
-                {processingRefill ? <LoadingSpinner size="small" /> : 'Refill'}
+                {processingRefill ? (
+                  <div className="refill-loading-content">
+                    <div className="refill-loading-spinner"></div>
+                    <span>Refilling...</span>
+                  </div>
+                ) : (
+                  'Refill'
+                )}
               </button>
             </div>
           </div>

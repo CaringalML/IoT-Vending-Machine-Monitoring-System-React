@@ -5,7 +5,8 @@ import {
   addProduct,
   updateProduct,
   deleteProduct,
-  updateInventory
+  updateInventory,
+  getInventoryBySlot
 } from '../../services/firestore';
 import Modal from '../Common/Modal';
 import LoadingSpinner from '../Common/LoadingSpinner';
@@ -194,6 +195,19 @@ const Products = () => {
     
     const formData = getCurrentFormData();
     const errors = validateFormData(formData);
+    
+    // Additional validation for max capacity vs existing stock
+    if (editingProduct && formData.slot && formData.maxCapacity) {
+      try {
+        const existingInventory = await getInventoryBySlot(formData.slot);
+        if (existingInventory && existingInventory.quantity > parseInt(formData.maxCapacity)) {
+          errors.maxCapacity = `Max capacity cannot be less than current stock (${existingInventory.quantity}). Please reduce stock first or increase max capacity.`;
+        }
+      } catch (error) {
+        console.warn('Could not check existing inventory:', error);
+      }
+    }
+
     setValidationErrors(errors);
 
     if (Object.keys(errors).length > 0) {
@@ -235,14 +249,24 @@ const Products = () => {
 
       if (formData.slot) {
         try {
-          await updateInventory(formData.slot, {
+          // Get existing inventory data to preserve quantity
+          const existingInventory = await getInventoryBySlot(formData.slot);
+          
+          const inventoryData = {
             productId: productId,
-            quantity: 0,
             maxCapacity: parseInt(formData.maxCapacity) || 20,
             lowStockThreshold: 5
-          });
+          };
+
+          // Only set quantity to 0 if this is a new product (no existing inventory)
+          // Otherwise, preserve the existing quantity
+          if (!existingInventory) {
+            inventoryData.quantity = 0;
+          }
+
+          await updateInventory(formData.slot, inventoryData);
         } catch (inventoryError) {
-          console.warn('Could not create inventory slot:', inventoryError);
+          console.warn('Could not update inventory slot:', inventoryError);
         }
       }
 

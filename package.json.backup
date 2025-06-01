@@ -19,11 +19,7 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "seed": "node scripts/seed.js seed",
-    "clear-db": "node scripts/seed.js clear",
-    "seed-quick": "node scripts/seed-quick.js",
-    "seed-full": "node scripts/seed-full.js"
+    "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": [

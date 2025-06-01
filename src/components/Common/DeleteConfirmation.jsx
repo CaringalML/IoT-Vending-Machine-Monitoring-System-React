@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { AlertTriangle, Trash2 } from 'lucide-react';
 import Modal from '../Common/Modal';
-import LoadingSpinner from '../Common/LoadingSpinner';
 import './DeleteConfirmation.css';
 
 const DeleteConfirmation = ({ 
@@ -113,10 +112,10 @@ const DeleteConfirmation = ({
             disabled={isConfirmDisabled}
           >
             {loading ? (
-              <>
-                <LoadingSpinner size="small" />
-                Deleting...
-              </>
+              <div className="delete-loading-content">
+                <div className="delete-loading-spinner"></div>
+                <span>Deleting...</span>
+              </div>
             ) : (
               <>
                 <Trash2 size={16} />

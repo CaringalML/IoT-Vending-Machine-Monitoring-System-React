@@ -249,6 +249,13 @@
   color: #718096;
 }
 
+.stock-percentage-display {
+  font-size: 14px;
+  color: #4a5568;
+  font-weight: 500;
+  margin-left: 4px;
+}
+
 .stock-percentage {
   width: 100%;
   height: 6px;
@@ -298,9 +305,14 @@
   color: #22543d;
 }
 
-.status-badge.status-low {
-  background: #fbb6ce;
+.status-badge.status-medium {
+  background: #fef5e7;
   color: #744210;
+}
+
+.status-badge.status-low {
+  background: #fed7d7;
+  color: #742a2a;
 }
 
 .status-badge.status-out {
@@ -345,22 +357,114 @@
 
 .refill-info {
   background: #f7fafc;
-  padding: 16px;
-  border-radius: 8px;
+  padding: 24px;
+  border-radius: 12px;
   margin-bottom: 20px;
 }
 
-.refill-info h4 {
-  font-size: 16px;
-  font-weight: 600;
+.refill-product-header {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.refill-product-image {
+  width: 160px;
+  height: 160px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #e2e8f0;
+  flex-shrink: 0;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+.refill-product-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.refill-image-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
+  z-index: 2;
+}
+
+.refill-image-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e2e8f0;
+  border-top: 3px solid #667eea;
+  border-radius: 50%;
+  animation: refill-image-spin 1s linear infinite;
+}
+
+@keyframes refill-image-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.refill-product-placeholder {
+  color: #cbd5e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.refill-product-info {
+  flex: 1;
+}
+
+.refill-product-info h4 {
+  font-size: 20px;
+  font-weight: 700;
   color: #2d3748;
   margin-bottom: 8px;
 }
 
-.refill-info p {
-  font-size: 14px;
+.refill-product-name {
+  font-size: 18px;
+  font-weight: 600;
   color: #4a5568;
-  margin-bottom: 4px;
+  margin-bottom: 16px;
+}
+
+.refill-product-info p {
+  font-size: 16px;
+  color: #4a5568;
+  margin-bottom: 8px;
+}
+
+.stock-highlight {
+  font-weight: 700;
+  color: #2d3748;
+  background: rgba(102, 126, 234, 0.15);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 16px;
+}
+
+.capacity-highlight {
+  font-weight: 700;
+  color: #2d3748;
+  background: rgba(56, 161, 105, 0.15);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 16px;
 }
 
 .modal-actions {
@@ -368,6 +472,70 @@
   gap: 12px;
   justify-content: flex-end;
   margin-top: 24px;
+}
+
+/* Refill Button Styles - Fixed Size and Loading State */
+.refill-modal-btn {
+  min-width: 100px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.refill-modal-btn.primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.refill-modal-btn.primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.refill-modal-btn.secondary {
+  background: #e2e8f0;
+  color: #4a5568;
+}
+
+.refill-modal-btn.secondary:hover:not(:disabled) {
+  background: #cbd5e0;
+}
+
+.refill-modal-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Loading Content Container */
+.refill-loading-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Custom Loading Spinner for Refill Button */
+.refill-loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: refill-spin 1s linear infinite;
+}
+
+@keyframes refill-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* Responsive */
@@ -412,7 +580,7 @@
     flex-direction: column;
   }
 
-  .modal-actions .btn {
+  .modal-actions .refill-modal-btn {
     width: 100%;
   }
 }
