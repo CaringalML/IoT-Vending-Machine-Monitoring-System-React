@@ -22,6 +22,13 @@
   font-size: 16px;
 }
 
+/* Header Actions */
+.header-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 /* Summary Cards */
 .inventory-summary {
   display: grid;
@@ -67,6 +74,23 @@
   background: linear-gradient(135deg, #a0aec0 0%, #718096 100%);
 }
 
+/* Additional Summary Cards */
+.summary-card.value {
+  grid-column: span 2;
+}
+
+.summary-card.average {
+  grid-column: span 2;
+}
+
+.value-icon {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.average-icon {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
 .summary-content h3 {
   font-size: 20px;
   font-weight: 700;
@@ -77,6 +101,83 @@
 .summary-content p {
   color: #718096;
   font-size: 14px;
+}
+
+/* Advanced Actions */
+.advanced-actions {
+  margin: 24px 0;
+  padding: 16px;
+  background: #f7fafc;
+  border-radius: 12px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cleanup-spinner,
+.sync-spinner {
+  margin-right: 8px;
+}
+
+/* Search and Filters */
+.search-and-filters {
+  margin-bottom: 24px;
+}
+
+.search-container {
+  position: relative;
+  margin-bottom: 16px;
+  max-width: 400px;
+}
+
+.search-input-wrapper {
+  position: relative;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #718096;
+  pointer-events: none;
+}
+
+.search-input {
+  padding-left: 40px;
+  padding-right: 40px;
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #718096;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.search-clear-btn:hover {
+  color: #4a5568;
+}
+
+.search-info {
+  font-size: 12px;
+  color: #718096;
+  margin-top: 4px;
+  padding-left: 40px;
+}
+
+.clear-search-btn {
+  margin-top: 16px;
 }
 
 /* Filters */
@@ -538,7 +639,348 @@
   100% { transform: rotate(360deg); }
 }
 
-/* Responsive */
+/* Refill Modal Error and Help */
+.refill-error {
+  color: #e53e3e;
+  font-size: 12px;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.refill-help {
+  display: block;
+  margin-top: 4px;
+}
+
+/* Bulk Update Modal */
+.bulk-description {
+  margin-bottom: 20px;
+  color: #718096;
+}
+
+.bulk-update-list {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.bulk-quantity-input {
+  width: 80px;
+}
+
+.bulk-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.bulk-action-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.bulk-modal-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.bulk-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 8px;
+}
+
+/* Export Modal */
+.export-info {
+  background: #f7fafc;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.export-summary-title {
+  margin: 0 0 8px 0;
+  color: #2d3748;
+}
+
+.export-summary-text {
+  margin: 0;
+  color: #4a5568;
+  font-size: 14px;
+}
+
+.format-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.format-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.format-option.active {
+  border-color: #667eea;
+  background: #f7fafc;
+}
+
+.format-radio {
+  display: none;
+}
+
+.format-icon {
+  color: #718096;
+}
+
+.format-icon.active {
+  color: #667eea;
+}
+
+.format-name {
+  margin-top: 8px;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.format-description {
+  font-size: 12px;
+  color: #718096;
+  text-align: center;
+}
+
+.export-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.export-preview {
+  background: #f7fafc;
+  padding: 16px;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+
+.export-preview-title {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #2d3748;
+}
+
+.export-preview-details {
+  font-size: 12px;
+  color: #718096;
+}
+
+/* PDF Styles (for PDF export) */
+.pdf-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.4;
+  color: #333;
+  background: white;
+  font-size: 12px;
+}
+
+.pdf-header {
+  text-align: center;
+  margin-bottom: 30px;
+  border-bottom: 3px solid #667eea;
+  padding-bottom: 20px;
+}
+
+.pdf-header h1 {
+  color: #667eea;
+  font-size: 28px;
+  margin-bottom: 10px;
+  font-weight: 700;
+}
+
+.pdf-header p {
+  color: #666;
+  margin: 5px 0;
+  font-size: 14px;
+}
+
+.pdf-summary {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 25px;
+  border-left: 5px solid #667eea;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.pdf-summary h3 {
+  color: #667eea;
+  margin-bottom: 15px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.pdf-summary-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.pdf-stat-item {
+  text-align: center;
+  padding: 15px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border: 1px solid #e2e8f0;
+}
+
+.pdf-stat-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #667eea;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.pdf-stat-label {
+  font-size: 12px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 500;
+}
+
+.pdf-table-container {
+  overflow-x: auto;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.pdf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+  background: white;
+}
+
+.pdf-table th,
+.pdf-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.pdf-table th {
+  background: #667eea;
+  color: white;
+  font-weight: bold;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pdf-table tr:nth-child(even) {
+  background: #f8f9fa;
+}
+
+.pdf-table tr:hover {
+  background: #e3f2fd;
+}
+
+.pdf-status-good {
+  color: #28a745;
+  font-weight: bold;
+}
+
+.pdf-status-medium {
+  color: #ffc107;
+  font-weight: bold;
+}
+
+.pdf-status-low {
+  color: #dc3545;
+  font-weight: bold;
+}
+
+.pdf-status-out {
+  color: #dc3545;
+  font-weight: bold;
+}
+
+.pdf-status-deleted {
+  color: #6c757d;
+  font-weight: bold;
+}
+
+.pdf-footer {
+  margin-top: 30px;
+  text-align: center;
+  font-size: 10px;
+  color: #666;
+  border-top: 1px solid #ddd;
+  padding-top: 15px;
+}
+
+/* Print Media Queries for PDF - FIXED */
+@media print {
+  body { 
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  .pdf-container {
+    padding: 10px;
+    max-width: 100%;
+    margin: 0;
+  }
+  
+  .pdf-table {
+    font-size: 9px;
+  }
+  
+  .pdf-table th,
+  .pdf-table td {
+    padding: 6px;
+  }
+  
+  .pdf-header h1 {
+    font-size: 24px;
+  }
+  
+  .pdf-summary {
+    margin-bottom: 20px;
+  }
+  
+  .pdf-stat-value {
+    font-size: 20px;
+  }
+  
+  @page {
+    margin: 0.5in;
+    size: A4;
+  }
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
   .inventory-header {
     flex-direction: column;
@@ -552,6 +994,18 @@
   .inventory-summary {
     grid-template-columns: 1fr;
     gap: 16px;
+  }
+
+  .header-actions {
+    flex-direction: column;
+  }
+
+  .advanced-actions {
+    flex-direction: column;
+  }
+
+  .search-container {
+    max-width: 100%;
   }
 
   .filter-buttons {
@@ -582,5 +1036,29 @@
 
   .modal-actions .refill-modal-btn {
     width: 100%;
+  }
+
+  .format-options {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .bulk-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .bulk-action-buttons {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .bulk-modal-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .export-options {
+    gap: 8px;
   }
 }

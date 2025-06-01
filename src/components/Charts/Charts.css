@@ -113,6 +113,214 @@
   margin-top: 4px;
 }
 
+/* Enhanced Chart Styles */
+.chart-enhanced-container {
+  width: 100%;
+  height: 300px;
+  padding: 20px;
+  position: relative;
+}
+
+.chart-enhanced-no-data {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #718096;
+  font-size: 14px;
+}
+
+.chart-enhanced-no-data-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.chart-enhanced-no-data-title {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.chart-enhanced-no-data-subtitle {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* Enhanced Tooltip Styles */
+.chart-enhanced-tooltip {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  min-width: 200px;
+}
+
+.chart-enhanced-tooltip-label {
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.chart-enhanced-tooltip-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chart-enhanced-tooltip-color-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.chart-enhanced-tooltip-text {
+  color: #4a5568;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.chart-enhanced-tooltip-badge {
+  color: #667eea;
+  font-size: 12px;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.chart-enhanced-tooltip-warning {
+  color: #ed8936;
+  font-size: 12px;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+/* Growth Indicator */
+.chart-growth-indicator {
+  position: absolute;
+  top: 30px;
+  right: 40px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  border-width: 1px;
+  border-style: solid;
+}
+
+.chart-growth-indicator.positive {
+  background: rgba(72, 187, 120, 0.1);
+  color: #38a169;
+  border-color: rgba(72, 187, 120, 0.3);
+}
+
+.chart-growth-indicator.negative {
+  background: rgba(245, 101, 101, 0.1);
+  color: #e53e3e;
+  border-color: rgba(245, 101, 101, 0.3);
+}
+
+/* Chart Reference Line Label */
+.chart-reference-label {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Custom Dot Styles */
+.chart-peak-dot {
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+}
+
+.chart-active-dot {
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+}
+
+/* Chart Gradient Definitions */
+.chart-sales-gradient {
+  /* Applied via defs in chart components */
+}
+
+.chart-revenue-gradient {
+  /* Applied via defs in chart components */
+}
+
+/* Enhanced Chart Container for Mobile */
+@media (max-width: 768px) {
+  .chart-container,
+  .chart-enhanced-container {
+    padding: 16px;
+    height: 250px;
+  }
+  
+  .recharts-cartesian-axis-tick-value {
+    font-size: 10px;
+  }
+  
+  .custom-tooltip,
+  .chart-enhanced-tooltip {
+    padding: 8px;
+    font-size: 12px;
+    min-width: 150px;
+  }
+
+  .chart-enhanced-tooltip-label {
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+
+  .chart-enhanced-tooltip-text {
+    font-size: 12px;
+  }
+
+  .chart-enhanced-no-data-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+  }
+
+  .chart-enhanced-no-data {
+    font-size: 12px;
+  }
+
+  .chart-growth-indicator {
+    top: 20px;
+    right: 25px;
+    font-size: 10px;
+    padding: 3px 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .chart-container,
+  .chart-enhanced-container {
+    padding: 12px;
+    height: 220px;
+  }
+
+  .chart-enhanced-tooltip {
+    min-width: 120px;
+    padding: 6px;
+  }
+
+  .chart-enhanced-tooltip-label {
+    font-size: 11px;
+  }
+
+  .chart-enhanced-tooltip-text {
+    font-size: 11px;
+  }
+
+  .chart-growth-indicator {
+    position: relative;
+    top: auto;
+    right: auto;
+    margin: 8px auto 0;
+    display: block;
+    text-align: center;
+    width: fit-content;
+  }
+}
+
 /* Responsive chart container */
 @media (max-width: 768px) {
   .chart-container {

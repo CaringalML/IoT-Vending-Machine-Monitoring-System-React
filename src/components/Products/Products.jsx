@@ -6,7 +6,7 @@ import {
   updateProduct,
   deleteProduct,
   updateInventory,
-  getInventoryBySlot
+  getMachineCapacity
 } from '../../services/firestore';
 import Modal from '../Common/Modal';
 import LoadingSpinner from '../Common/LoadingSpinner';
@@ -15,13 +15,21 @@ import './Products.css';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
+  const [machineCapacity, setMachineCapacity] = useState({
+    totalSlots: 0,
+    maxSlotNumber: 0,
+    occupiedSlots: 0,
+    availableSlots: 0
+  });
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [deletingProduct, setDeletingProduct] = useState(null);
   const [saving, setSaving] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
+
 
   // Form refs - direct access to input values
   const nameRef = useRef();
@@ -29,7 +37,8 @@ const Products = () => {
   const priceRef = useRef();
   const maxCapacityRef = useRef();
   const categoryRef = useRef();
-  const slotRef = useRef();
+  const slotRef = useRef(); // Now for custom slot input
+
   const imageRef = useRef();
   const activeRef = useRef();
 
@@ -41,21 +50,26 @@ const Products = () => {
     'other'
   ];
 
-  const availableSlots = [
-    'A1', 'A2', 'A3',
-    'B1', 'B2', 'B3',
-    'C1', 'C2', 'C3',
-    'D1', 'D2', 'D3'
-  ];
-
   useEffect(() => {
     const unsubscribe = subscribeToProducts((productsData) => {
       setProducts(productsData);
       setLoading(false);
     });
 
+    // Load capacity info
+    loadMachineCapacity();
+
     return unsubscribe;
   }, []);
+
+  const loadMachineCapacity = async () => {
+    try {
+      const capacity = await getMachineCapacity();
+      setMachineCapacity(capacity);
+    } catch (error) {
+      console.error('Error loading machine capacity:', error);
+    }
+  };
 
   const resetForm = () => {
     setTimeout(() => {
@@ -65,6 +79,7 @@ const Products = () => {
       if (maxCapacityRef.current) maxCapacityRef.current.value = '20';
       if (categoryRef.current) categoryRef.current.value = 'beverages';
       if (slotRef.current) slotRef.current.value = '';
+
       if (imageRef.current) imageRef.current.value = '';
       if (activeRef.current) activeRef.current.checked = true;
     }, 0);
@@ -79,6 +94,7 @@ const Products = () => {
       if (maxCapacityRef.current) maxCapacityRef.current.value = product.maxCapacity || '20';
       if (categoryRef.current) categoryRef.current.value = product.category || 'beverages';
       if (slotRef.current) slotRef.current.value = product.slot || '';
+
       if (imageRef.current) imageRef.current.value = product.image || '';
       if (activeRef.current) activeRef.current.checked = product.active !== undefined ? product.active : true;
     }, 0);
@@ -93,6 +109,7 @@ const Products = () => {
       maxCapacity: maxCapacityRef.current?.value || '20',
       category: categoryRef.current?.value || 'beverages',
       slot: slotRef.current?.value || '',
+      quantity: '0',
       image: imageRef.current?.value || '',
       active: activeRef.current?.checked ?? true
     };
@@ -107,8 +124,8 @@ const Products = () => {
     if (!formData.price) {
       errors.price = 'Price is required';
     }
-    if (!formData.slot) {
-      errors.slot = 'Slot position is required';
+    if (!formData.slot.trim()) {
+      errors.slot = 'Slot name is required';
     }
 
     const price = parseFloat(formData.price);
@@ -117,23 +134,25 @@ const Products = () => {
     }
 
     const maxCapacity = parseInt(formData.maxCapacity);
-    if (formData.maxCapacity && (isNaN(maxCapacity) || maxCapacity < 1 || maxCapacity > 50)) {
-      errors.maxCapacity = 'Max capacity must be between 1 and 50';
+    if (formData.maxCapacity && (isNaN(maxCapacity) || maxCapacity < 1 || maxCapacity > 100)) {
+      errors.maxCapacity = 'Max capacity must be between 1 and 100';
     }
 
-    if (formData.slot) {
+    // Check if slot name is already taken
+    if (formData.slot.trim()) {
       const slotTaken = products.some(p => 
-        p.slot === formData.slot && 
+        p.slot && p.slot.toLowerCase() === formData.slot.trim().toLowerCase() && 
         (!editingProduct || p.id !== editingProduct.id)
       );
       if (slotTaken) {
-        errors.slot = 'This slot is already taken by another product';
+        errors.slot = 'This slot name is already taken by another product';
       }
     }
 
-    if (formData.sku) {
+    // Check if SKU is already taken
+    if (formData.sku.trim()) {
       const skuTaken = products.some(p => 
-        p.sku === formData.sku && 
+        p.sku && p.sku.toLowerCase() === formData.sku.trim().toLowerCase() && 
         (!editingProduct || p.id !== editingProduct.id)
       );
       if (skuTaken) {
@@ -168,6 +187,8 @@ const Products = () => {
       await deleteProduct(deletingProduct.id);
       setShowDeleteConfirm(false);
       setDeletingProduct(null);
+      // Reload capacity after deletion
+      await loadMachineCapacity();
     } catch (error) {
       console.error('Error deleting product:', error);
       throw new Error('Failed to delete product. Please try again.');
@@ -195,18 +216,6 @@ const Products = () => {
     
     const formData = getCurrentFormData();
     const errors = validateFormData(formData);
-    
-    // Additional validation for max capacity vs existing stock
-    if (editingProduct && formData.slot && formData.maxCapacity) {
-      try {
-        const existingInventory = await getInventoryBySlot(formData.slot);
-        if (existingInventory && existingInventory.quantity > parseInt(formData.maxCapacity)) {
-          errors.maxCapacity = `Max capacity cannot be less than current stock (${existingInventory.quantity}). Please reduce stock first or increase max capacity.`;
-        }
-      } catch (error) {
-        console.warn('Could not check existing inventory:', error);
-      }
-    }
 
     setValidationErrors(errors);
 
@@ -232,7 +241,7 @@ const Products = () => {
         name: formData.name.trim(),
         price: parseFloat(formData.price),
         category: formData.category,
-        slot: formData.slot,
+        slot: formData.slot.trim(),
         image: formData.image.trim(),
         active: formData.active,
         maxCapacity: parseInt(formData.maxCapacity) || 20,
@@ -247,24 +256,17 @@ const Products = () => {
         productId = await addProduct(productData);
       }
 
-      if (formData.slot) {
+          // Create/update inventory slot
+      if (formData.slot.trim()) {
         try {
-          // Get existing inventory data to preserve quantity
-          const existingInventory = await getInventoryBySlot(formData.slot);
-          
           const inventoryData = {
             productId: productId,
             maxCapacity: parseInt(formData.maxCapacity) || 20,
-            lowStockThreshold: 5
+            lowStockThreshold: 5,
+            quantity: 0 // Always start with 0 quantity
           };
 
-          // Only set quantity to 0 if this is a new product (no existing inventory)
-          // Otherwise, preserve the existing quantity
-          if (!existingInventory) {
-            inventoryData.quantity = 0;
-          }
-
-          await updateInventory(formData.slot, inventoryData);
+          await updateInventory(formData.slot.trim(), inventoryData);
         } catch (inventoryError) {
           console.warn('Could not update inventory slot:', inventoryError);
         }
@@ -273,6 +275,9 @@ const Products = () => {
       setShowModal(false);
       setEditingProduct(null);
       setValidationErrors({});
+      
+      // Reload capacity after adding/updating product
+      await loadMachineCapacity();
     } catch (error) {
       console.error('Error saving product:', error);
       alert('Error saving product. Please try again.');
@@ -288,18 +293,6 @@ const Products = () => {
     }).format(amount);
   };
 
-  const getUsedSlots = () => {
-    return products.map(p => p.slot).filter(Boolean);
-  };
-
-  const getAvailableSlots = () => {
-    const usedSlots = getUsedSlots();
-    return availableSlots.filter(slot => 
-      !usedSlots.includes(slot) || 
-      (editingProduct && editingProduct.slot === slot)
-    );
-  };
-
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -310,13 +303,37 @@ const Products = () => {
         <div>
           <h1>Product Management</h1>
           <p>Manage your vending machine product catalog</p>
+          
+          {/* Machine Capacity Info */}
+          <div className="machine-capacity-info" style={{ 
+            marginTop: '12px', 
+            padding: '12px', 
+            background: '#f7fafc', 
+            borderRadius: '8px',
+            display: 'flex',
+            gap: '20px',
+            alignItems: 'center',
+            fontSize: '14px',
+            color: '#4a5568'
+          }}>
+            <span><strong>{machineCapacity.totalSlots}</strong> total slots</span>
+            <span><strong>{machineCapacity.occupiedSlots}</strong> occupied</span>
+            <span><strong>{machineCapacity.availableSlots}</strong> available</span>
+            <span style={{ color: '#718096' }}>
+              Unlimited slot creation
+            </span>
+          </div>
         </div>
-        <button className="btn btn-primary" onClick={handleAddProduct}>
-          <Plus size={16} />
-          Add Product
-        </button>
+        
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button className="btn btn-primary" onClick={handleAddProduct}>
+            <Plus size={16} />
+            Add Product
+          </button>
+        </div>
       </div>
 
+      {/* Products Grid */}
       <div className="products-grid">
         {products.map((product) => (
           <div key={product.id} className="product-card">
@@ -396,6 +413,7 @@ const Products = () => {
         </div>
       )}
 
+      {/* Product Form Modal */}
       {showModal && (
         <Modal
           title={editingProduct ? 'Edit Product' : 'Add New Product'}
@@ -473,10 +491,10 @@ const Products = () => {
                   className={`form-input ${validationErrors.maxCapacity ? 'error' : ''}`}
                   placeholder="20"
                   min="1"
-                  max="50"
+                  max="100"
                   onChange={() => handleInputChange('maxCapacity')}
                 />
-                <small className="form-help">Maximum items this slot can hold (1-50)</small>
+                <small className="form-help">Maximum items this slot can hold (1-100)</small>
                 {validationErrors.maxCapacity && (
                   <div className="form-error">{validationErrors.maxCapacity}</div>
                 )}
@@ -503,22 +521,18 @@ const Products = () => {
 
               <div className="form-group">
                 <label htmlFor="slot" className="form-label">
-                  Slot Position *
+                  Slot Name *
                 </label>
-                <select
+                <input
+                  type="text"
                   id="slot"
                   ref={slotRef}
-                  className={`form-select ${validationErrors.slot ? 'error' : ''}`}
+                  className={`form-input ${validationErrors.slot ? 'error' : ''}`}
+                  placeholder="e.g., Slot A1, Cold Drinks 1, etc."
                   onChange={() => handleInputChange('slot')}
                   required
-                >
-                  <option value="">Select slot</option>
-                  {getAvailableSlots().map(slot => (
-                    <option key={slot} value={slot}>
-                      {slot}
-                    </option>
-                  ))}
-                </select>
+                />
+                <small className="form-help">Enter any custom slot name you want</small>
                 {validationErrors.slot && (
                   <div className="form-error">{validationErrors.slot}</div>
                 )}
