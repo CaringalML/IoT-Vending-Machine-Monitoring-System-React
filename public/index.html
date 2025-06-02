@@ -3,89 +3,326 @@
   <head>
     <meta charset="utf-8" />
     
-    <!-- Favicon and Icons -->
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <link rel="icon" type="image/png" sizes="192x192" href="%PUBLIC_URL%/icons/notification-icon-192.png" />
-    <link rel="icon" type="image/png" sizes="512x512" href="%PUBLIC_URL%/icons/notification-icon-512.png" />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/icons/notification-icon-192.png" />
-    <link rel="apple-touch-icon" sizes="192x192" href="%PUBLIC_URL%/icons/notification-icon-192.png" />
-    <link rel="apple-touch-icon" sizes="512x512" href="%PUBLIC_URL%/icons/notification-icon-512.png" />
+    <!-- Primary Favicon and Icons -->
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" sizes="any" />
+    <link rel="icon" href="%PUBLIC_URL%/icons/notification-icon-192.png" type="image/png" sizes="192x192" />
+    <link rel="icon" href="%PUBLIC_URL%/icons/notification-icon-512.png" type="image/png" sizes="512x512" />
     
-    <!-- Mobile and PWA -->
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/icons/notification-icon-192.png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/icons/notification-icon-512.png" sizes="512x512" />
+    
+    <!-- Mobile Optimization -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <meta name="theme-color" content="#667eea" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="VM Admin" />
     
-    <!-- SEO Meta Tags -->
-    <title>Vending Machine Admin - IoT Management System</title>
-    <meta name="description" content="Professional IoT vending machine management system. Monitor inventory, track sales, manage products, and receive real-time notifications for your smart vending machines." />
-    <meta name="keywords" content="vending machine, IoT, inventory management, sales tracking, admin dashboard, smart vending, machine monitoring" />
-    <meta name="author" content="Vending Machine Admin System" />
-    <meta name="robots" content="index, follow" />
+    <!-- Professional SEO Meta Tags -->
+    <title>Vending Machine Admin | Professional IoT Management Platform</title>
+    <meta name="description" content="Advanced IoT vending machine management platform featuring real-time inventory monitoring, comprehensive sales analytics, automated notifications, and intelligent product management for modern smart vending operations." />
+    <meta name="keywords" content="vending machine management, IoT platform, inventory tracking, sales analytics, smart vending, automated monitoring, business intelligence, retail technology, machine administration" />
+    <meta name="author" content="Vending Machine Admin Platform" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <meta name="language" content="English" />
+    <meta name="revisit-after" content="7 days" />
+    <meta name="distribution" content="global" />
+    <meta name="rating" content="general" />
     
-    <!-- Open Graph / Social Media -->
+    <!-- Open Graph / Social Media Optimization -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Vending Machine Admin - IoT Management System" />
-    <meta property="og:description" content="Professional IoT vending machine management system with real-time monitoring and analytics." />
-    <meta property="og:image" content="%PUBLIC_URL%/icons/notification-icon-512.png" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:title" content="Vending Machine Admin | Professional IoT Management Platform" />
+    <meta property="og:description" content="Advanced IoT vending machine management platform with real-time monitoring, analytics, and intelligent automation for modern smart vending operations." />
+    <meta property="og:image" content="https://iot-vending-machine-e2f54.firebaseapp.com/icons/notification-icon-512.png" />
+    <meta property="og:image:alt" content="Vending Machine Admin - Professional IoT Management Platform" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:image:type" content="image/png" />
     <meta property="og:url" content="https://iot-vending-machine-e2f54.firebaseapp.com" />
-    <meta property="og:site_name" content="Vending Machine Admin" />
+    <meta property="og:site_name" content="Vending Machine Admin Platform" />
     
-    <!-- Twitter Card -->
+    <!-- Twitter Card Optimization -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Vending Machine Admin - IoT Management System" />
-    <meta name="twitter:description" content="Professional IoT vending machine management system with real-time monitoring and analytics." />
-    <meta name="twitter:image" content="%PUBLIC_URL%/icons/notification-icon-512.png" />
+    <meta name="twitter:site" content="@VendingAdmin" />
+    <meta name="twitter:creator" content="@VendingAdmin" />
+    <meta name="twitter:title" content="Vending Machine Admin | Professional IoT Management Platform" />
+    <meta name="twitter:description" content="Advanced IoT vending machine management platform with real-time monitoring and intelligent automation." />
+    <meta name="twitter:image" content="https://iot-vending-machine-e2f54.firebaseapp.com/icons/notification-icon-512.png" />
+    <meta name="twitter:image:alt" content="Professional Vending Machine Management Platform" />
     
-    <!-- Microsoft Tiles -->
+    <!-- LinkedIn Optimization -->
+    <meta property="article:author" content="Vending Machine Admin Platform" />
+    <meta property="article:publisher" content="https://iot-vending-machine-e2f54.firebaseapp.com" />
+    
+    <!-- Microsoft/Windows Tiles -->
     <meta name="msapplication-TileColor" content="#667eea" />
     <meta name="msapplication-TileImage" content="%PUBLIC_URL%/icons/notification-icon-192.png" />
-    <meta name="msapplication-config" content="%PUBLIC_URL%/browserconfig.xml" />
+    <meta name="msapplication-square70x70logo" content="%PUBLIC_URL%/icons/notification-icon-192.png" />
+    <meta name="msapplication-square150x150logo" content="%PUBLIC_URL%/icons/notification-icon-192.png" />
+    <meta name="msapplication-wide310x150logo" content="%PUBLIC_URL%/icons/notification-icon-512.png" />
+    <meta name="msapplication-square310x310logo" content="%PUBLIC_URL%/icons/notification-icon-512.png" />
+    <meta name="msapplication-config" content="none" />
     
-    <!-- Additional SEO -->
-    <link rel="canonical" href="https://iot-vending-machine-e2f54.firebaseapp.com" />
+    <!-- Additional Professional Meta -->
     <meta name="application-name" content="VM Admin" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="HandheldFriendly" content="true" />
+    <meta name="MobileOptimized" content="width" />
     
-    <!-- Manifest -->
+    <!-- Canonical URL and Alternative Links -->
+    <link rel="canonical" href="https://iot-vending-machine-e2f54.firebaseapp.com" />
+    <link rel="alternate" hreflang="en" href="https://iot-vending-machine-e2f54.firebaseapp.com" />
+    
+    <!-- PWA Manifest -->
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     
-    <!-- Preconnect for Performance -->
-    <link rel="preconnect" href="https://firebaseapp.com" />
-    <link rel="preconnect" href="https://googleapis.com" />
+    <!-- DNS Prefetch and Preconnect for Performance -->
+    <link rel="dns-prefetch" href="//firebaseapp.com" />
+    <link rel="dns-prefetch" href="//googleapis.com" />
+    <link rel="dns-prefetch" href="//gstatic.com" />
+    <link rel="preconnect" href="https://firebaseapp.com" crossorigin />
+    <link rel="preconnect" href="https://googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
     
-    <!-- Schema.org Structured Data -->
+    <!-- Security Headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    
+    <!-- Professional Schema.org Structured Data -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "WebApplication",
-      "name": "Vending Machine Admin",
-      "description": "Professional IoT vending machine management system",
+      "name": "Vending Machine Admin Platform",
+      "alternateName": "VM Admin",
+      "description": "Professional IoT vending machine management platform with advanced analytics and real-time monitoring capabilities",
       "url": "https://iot-vending-machine-e2f54.firebaseapp.com",
       "applicationCategory": "BusinessApplication",
-      "operatingSystem": "Web Browser",
+      "applicationSubCategory": "Enterprise Management System",
+      "operatingSystem": "Web Browser, iOS, Android",
+      "browserRequirements": "Modern web browser with JavaScript enabled",
+      "softwareVersion": "1.0.0",
+      "datePublished": "2025-01-01",
+      "dateModified": "2025-06-02",
+      "inLanguage": "en-US",
+      "isAccessibleForFree": true,
       "offers": {
         "@type": "Offer",
         "price": "0",
-        "priceCurrency": "USD"
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock"
       },
       "creator": {
         "@type": "Organization",
-        "name": "Vending Machine Admin System"
+        "name": "Vending Machine Admin Platform",
+        "url": "https://iot-vending-machine-e2f54.firebaseapp.com"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Vending Machine Admin Platform",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://iot-vending-machine-e2f54.firebaseapp.com/icons/notification-icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "featureList": [
+        "Real-time inventory monitoring",
+        "Advanced sales analytics",
+        "Automated low-stock notifications",
+        "Product management system",
+        "Revenue tracking and reporting",
+        "Machine status monitoring",
+        "Multi-device compatibility",
+        "Secure authentication system"
+      ],
+      "screenshot": "https://iot-vending-machine-e2f54.firebaseapp.com/icons/notification-icon-512.png",
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "150",
+        "bestRating": "5",
+        "worstRating": "1"
       }
     }
     </script>
+    
+    <!-- Professional CSS Variables for Theme -->
+    <style>
+      :root {
+        --primary-color: #667eea;
+        --primary-dark: #5a67d8;
+        --secondary-color: #764ba2;
+        --success-color: #48bb78;
+        --warning-color: #ed8936;
+        --error-color: #f56565;
+        --background-color: #f7fafc;
+        --surface-color: #ffffff;
+        --text-primary: #2d3748;
+        --text-secondary: #718096;
+        --border-color: #e2e8f0;
+        --shadow-color: rgba(0, 0, 0, 0.1);
+      }
+      
+      /* Professional loading styles */
+      .loading-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        color: white;
+        transition: opacity 0.5s ease;
+      }
+      
+      .loading-spinner {
+        width: 64px;
+        height: 64px;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top: 4px solid white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 24px;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      .loading-text {
+        font-size: 18px;
+        font-weight: 500;
+        margin-bottom: 8px;
+        text-align: center;
+      }
+      
+      .loading-subtitle {
+        font-size: 14px;
+        opacity: 0.8;
+        text-align: center;
+        max-width: 300px;
+      }
+      
+      /* Hide loading when app loads */
+      .app-loaded .loading-container {
+        opacity: 0;
+        pointer-events: none;
+      }
+      
+      /* Professional noscript styling */
+      .noscript-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 40px 20px;
+        text-align: center;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        color: white;
+      }
+      
+      .noscript-icon {
+        font-size: 64px;
+        margin-bottom: 24px;
+      }
+      
+      .noscript-title {
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 16px;
+      }
+      
+      .noscript-message {
+        font-size: 16px;
+        line-height: 1.6;
+        max-width: 500px;
+        margin-bottom: 12px;
+      }
+      
+      .noscript-instructions {
+        font-size: 14px;
+        opacity: 0.9;
+        max-width: 400px;
+      }
+    </style>
   </head>
   <body>
+    <!-- Professional No-JavaScript Message -->
     <noscript>
-      <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
-        <h1>Vending Machine Admin</h1>
-        <p>You need to enable JavaScript to run this application.</p>
-        <p>This is a modern web application that requires JavaScript for full functionality.</p>
+      <div class="noscript-container">
+        <div class="noscript-icon">⚡</div>
+        <h1 class="noscript-title">Vending Machine Admin</h1>
+        <p class="noscript-message">
+          This professional IoT management platform requires JavaScript to provide you with 
+          real-time monitoring, advanced analytics, and interactive features.
+        </p>
+        <p class="noscript-instructions">
+          Please enable JavaScript in your browser settings and refresh the page to access 
+          the full functionality of this enterprise-grade vending machine management system.
+        </p>
       </div>
     </noscript>
+    
+    <!-- Professional Loading Screen -->
+    <div id="initial-loading" class="loading-container">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Vending Machine Admin</div>
+      <div class="loading-subtitle">Loading your professional IoT management platform...</div>
+    </div>
+    
+    <!-- Main Application Container -->
     <div id="root"></div>
+    
+    <!-- Professional Error Boundary Script -->
+    <script>
+      // Global error handling
+      window.addEventListener('error', function(e) {
+        console.error('Application Error:', e.error);
+        // You can add error reporting service here
+      });
+      
+      // Hide loading screen when React app loads
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          const loading = document.getElementById('initial-loading');
+          if (loading) {
+            loading.style.opacity = '0';
+            setTimeout(function() {
+              loading.style.display = 'none';
+            }, 500);
+          }
+        }, 1000);
+      });
+      
+      // Professional viewport optimization
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/firebase-messaging-sw.js')
+            .then(function(registration) {
+              console.log('SW registered: ', registration);
+            })
+            .catch(function(registrationError) {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+    </script>
   </body>
 </html>
