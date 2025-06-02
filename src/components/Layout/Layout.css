@@ -321,3 +321,75 @@
     padding: 16px;
   }
 }
+
+
+/* Notification Container */
+.notification-container {
+  position: relative;
+}
+
+.notification-btn {
+  position: relative;
+  background: none;
+  border: none;
+  padding: 8px;
+  border-radius: 8px;
+  color: #4a5568;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-btn:hover {
+  background: #f7fafc;
+}
+
+.notification-btn:focus {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
+.notification-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: #f56565;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 5px;
+  border-radius: 8px;
+  min-width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(245, 101, 101, 0.3);
+}
+
+/* Update header-right to include notification spacing */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px; /* Reduced gap to accommodate notification button */
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .notification-btn {
+    padding: 6px;
+  }
+  
+  .notification-badge {
+    font-size: 9px;
+    padding: 1px 4px;
+    min-width: 14px;
+    height: 14px;
+  }
+  
+  .header-right {
+    gap: 8px;
+  }
+}

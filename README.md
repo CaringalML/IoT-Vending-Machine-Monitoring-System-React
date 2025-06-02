@@ -492,3 +492,11 @@ npm run clear-db
 - ✅ Active status for all items
 
 This comprehensive reference gives you everything you need to choose the right command for any situation! 🚀
+
+
+
+//Push notifications
+
+firebase > Project settings > Messaging > Web Push certificates
+
+generate your Key pair and update you .env and your github secrets
