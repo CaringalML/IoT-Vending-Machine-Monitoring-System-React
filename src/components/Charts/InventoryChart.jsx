@@ -15,40 +15,55 @@ const InventoryChart = ({ data }) => {
     return [value, name];
   };
 
+  // Calculate dynamic width based on number of items
+  const minWidth = 400; // Minimum width
+  const itemWidth = 60; // Width per item
+  const chartWidth = Math.max(minWidth, data.length * itemWidth);
+
   return (
-    <div style={{ width: '100%', height: '250px', padding: '16px 0' }}>
+    <div style={{ 
+      width: '100%', 
+      height: '250px', 
+      padding: '16px 0',
+      overflowX: 'auto',
+      overflowY: 'hidden'
+    }}>
       {data && data.length > 0 ? (
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data.slice(0, 8)}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis 
-              dataKey="slot" 
-              stroke="#718096"
-              fontSize={12}
-            />
-            <YAxis 
-              stroke="#718096" 
-              fontSize={12}
-            />
-            <Tooltip 
-              formatter={formatTooltipValue}
-              contentStyle={{
-                backgroundColor: '#ffffff',
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-              }}
-            />
-            <Bar dataKey="quantity" radius={[4, 4, 0, 0]}>
-              {data.slice(0, 8).map((entry, index) => (
-                <Cell 
-                  key={`cell-${index}`} 
-                  fill={getBarColor(entry.quantity, entry.lowStockThreshold)} 
-                />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+        <div style={{ width: `${chartWidth}px`, height: '100%' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis 
+                dataKey="slot" 
+                stroke="#718096"
+                fontSize={12}
+                interval={0}
+                tick={{ fontSize: 11 }}
+              />
+              <YAxis 
+                stroke="#718096" 
+                fontSize={12}
+              />
+              <Tooltip 
+                formatter={formatTooltipValue}
+                contentStyle={{
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                }}
+              />
+              <Bar dataKey="quantity" radius={[4, 4, 0, 0]}>
+                {data.map((entry, index) => (
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={getBarColor(entry.quantity, entry.lowStockThreshold)} 
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       ) : (
         <div style={{ 
           display: 'flex', 

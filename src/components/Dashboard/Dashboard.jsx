@@ -91,6 +91,14 @@ const Dashboard = () => {
     }
   };
 
+  // Helper function to check if item is deleted product
+  const isDeletedProduct = (item) => {
+    return !item.productId && item.deletedProductName;
+  };
+
+  // Filter inventory to exclude deleted products
+  const activeInventory = inventory.filter(item => !isDeletedProduct(item));
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-NZ', {
       style: 'currency',
@@ -150,18 +158,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="charts-grid">
-        <div className="chart-card">
-          <div className="chart-header"><h3>Sales Trend (Last 30 Days)</h3></div>
-          <SalesChart data={dailySalesData} />
-        </div>
-
-        <div className="chart-card">
-          <div className="chart-header"><h3>Revenue Overview</h3></div>
-          <RevenueChart data={dailySalesData} />
-        </div>
-      </div>
-
+      {/* Recent Sales Section - Now displayed first */}
       <div className="dashboard-bottom">
         <div className="recent-sales card">
           <div className="card-header"><h3>Recent Sales</h3></div>
@@ -172,7 +169,10 @@ const Dashboard = () => {
                   <div key={sale.id} className="sale-item">
                     <div className="sale-info">
                       <span className="product-name">{getProductName(sale.productId)}</span>
-                      <span className="sale-time">{formatTimestamp(sale.timestamp)}</span>
+                      <div className="sale-details">
+                        <span className="sale-slot">Slot: {sale.slot}</span>
+                        <span className="sale-time">{formatTimestamp(sale.timestamp)}</span>
+                      </div>
                     </div>
                     <div className="sale-price">{formatCurrency(sale.price)}</div>
                   </div>
@@ -187,7 +187,7 @@ const Dashboard = () => {
         <div className="inventory-status card">
           <div className="card-header"><h3>Inventory Status</h3></div>
           <div className="card-body">
-            <InventoryChart data={inventory} />
+            <InventoryChart data={activeInventory} />
             {stats.lowStockItems > 0 && (
               <div className="low-stock-alert">
                 <AlertTriangle size={16} />
@@ -195,6 +195,19 @@ const Dashboard = () => {
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Charts Section - Now displayed after Recent Sales */}
+      <div className="charts-grid">
+        <div className="chart-card">
+          <div className="chart-header"><h3>Sales Trend (Last 30 Days)</h3></div>
+          <SalesChart data={dailySalesData} />
+        </div>
+
+        <div className="chart-card">
+          <div className="chart-header"><h3>Revenue Overview</h3></div>
+          <RevenueChart data={dailySalesData} />
         </div>
       </div>
     </div>
