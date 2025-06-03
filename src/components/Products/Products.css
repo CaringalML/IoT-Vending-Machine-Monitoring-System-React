@@ -1,13 +1,12 @@
-/* FORCE BUTTONS TO BE VISIBLE - HIGH PRIORITY */
+/* FIXED PRODUCT ACTIONS - Remove conflicting absolute positioning */
 .product-actions {
   display: flex !important;
-  gap: 6px !important;
-  position: absolute !important;
-  top: 12px !important;
-  right: 12px !important;
-  z-index: 999 !important;
+  gap: 8px !important;
   opacity: 1 !important;
   visibility: visible !important;
+  position: relative !important; /* Changed from absolute */
+  z-index: 10 !important;
+  /* Removed top, right positioning that was causing floating */
 }
 
 .action-btn {
@@ -25,6 +24,7 @@
   opacity: 1 !important;
   visibility: visible !important;
   position: relative !important;
+  flex-shrink: 0 !important; /* Prevent buttons from shrinking */
 }
 
 .action-btn.edit {
@@ -45,7 +45,19 @@
   transform: scale(1.05) !important;
 }
 
-/* REST OF THE CSS */
+/* FIXED PRODUCT CARD HEADER - Better layout */
+.product-card-header {
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  min-height: 60px; /* Ensure consistent height */
+}
+
+/* REST OF THE CSS REMAINS THE SAME */
 .products {
   max-width: 1400px;
   margin: 0 auto;
@@ -123,16 +135,6 @@
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 }
 
-.product-card-header {
-  padding: 16px 20px;
-  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
-  border-bottom: 1px solid #e2e8f0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  position: relative;
-}
-
 .product-slot {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
@@ -141,6 +143,7 @@
   font-weight: 600;
   font-size: 14px;
   box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+  flex-shrink: 0; /* Prevent slot from shrinking */
 }
 
 .product-card-body {
@@ -514,16 +517,14 @@
     width: 100%;
   }
 
-  /* Mobile: Slightly larger buttons */
+  /* Mobile: Keep same button size but adjust spacing */
   .action-btn {
-    width: 36px !important;
-    height: 36px !important;
+    width: 32px !important;
+    height: 32px !important;
   }
 
   .product-actions {
-    top: 8px !important;
-    right: 8px !important;
-    gap: 8px !important;
+    gap: 6px !important;
   }
 }
 

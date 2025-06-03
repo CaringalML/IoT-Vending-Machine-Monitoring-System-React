@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Edit, Trash2, Coffee, Package } from 'lucide-react';
+import { Plus, Edit, Trash2, Coffee, Package, Search, X } from 'lucide-react';
 import {
   subscribeToProducts,
   addProduct,
   updateProduct,
   deleteProduct,
   updateInventory,
-  getMachineCapacity
+  subscribeToInventory // Add this import
 } from '../../services/firestore';
 import Modal from '../Common/Modal';
 import LoadingSpinner from '../Common/LoadingSpinner';
@@ -15,12 +15,10 @@ import './Products.css';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
-  const [machineCapacity, setMachineCapacity] = useState({
-    totalSlots: 0,
-    maxSlotNumber: 0,
-    occupiedSlots: 0,
-    availableSlots: 0
-  });
+  const [inventory, setInventory] = useState([]); // Add inventory state
+  const [totalActiveSlots, setTotalActiveSlots] = useState(0); // New state for active slots count
+  const [filteredProducts, setFilteredProducts] = useState([]); // Add filtered products state
+  const [searchTerm, setSearchTerm] = useState(''); // Add search term state
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
 
@@ -29,7 +27,6 @@ const Products = () => {
   const [deletingProduct, setDeletingProduct] = useState(null);
   const [saving, setSaving] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
-
 
   // Form refs - direct access to input values
   const nameRef = useRef();
@@ -51,24 +48,57 @@ const Products = () => {
   ];
 
   useEffect(() => {
-    const unsubscribe = subscribeToProducts((productsData) => {
+    const unsubscribeProducts = subscribeToProducts((productsData) => {
       setProducts(productsData);
+      setFilteredProducts(productsData); // Initialize filtered products
       setLoading(false);
     });
 
-    // Load capacity info
-    loadMachineCapacity();
+    // Subscribe to inventory to get accurate slot count
+    const unsubscribeInventory = subscribeToInventory((inventoryData) => {
+      setInventory(inventoryData);
+      // Calculate active slots (excluding old/deleted products)
+      const activeSlots = inventoryData.filter(item => {
+        // Include only slots that have current products (not deleted/old products)
+        return item.productId && !item.isArchivedSlot;
+      }).length;
+      setTotalActiveSlots(activeSlots);
+    });
 
-    return unsubscribe;
+    return () => {
+      unsubscribeProducts();
+      unsubscribeInventory();
+    };
   }, []);
 
-  const loadMachineCapacity = async () => {
-    try {
-      const capacity = await getMachineCapacity();
-      setMachineCapacity(capacity);
-    } catch (error) {
-      console.error('Error loading machine capacity:', error);
+  // Search functionality
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredProducts(products);
+      return;
     }
+
+    const searchLower = searchTerm.toLowerCase();
+    const filtered = products.filter(product => {
+      const searchFields = [
+        product.name,
+        product.sku,
+        product.category,
+        product.slot
+      ].filter(Boolean).map(field => field.toString().toLowerCase());
+
+      return searchFields.some(field => field.includes(searchLower));
+    });
+
+    setFilteredProducts(filtered);
+  }, [searchTerm, products]);
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const clearSearch = () => {
+    setSearchTerm('');
   };
 
   const resetForm = () => {
@@ -187,8 +217,6 @@ const Products = () => {
       await deleteProduct(deletingProduct.id);
       setShowDeleteConfirm(false);
       setDeletingProduct(null);
-      // Reload capacity after deletion
-      await loadMachineCapacity();
     } catch (error) {
       console.error('Error deleting product:', error);
       throw new Error('Failed to delete product. Please try again.');
@@ -275,9 +303,6 @@ const Products = () => {
       setShowModal(false);
       setEditingProduct(null);
       setValidationErrors({});
-      
-      // Reload capacity after adding/updating product
-      await loadMachineCapacity();
     } catch (error) {
       console.error('Error saving product:', error);
       alert('Error saving product. Please try again.');
@@ -304,7 +329,7 @@ const Products = () => {
           <h1>Product Management</h1>
           <p>Manage your vending machine product catalog</p>
           
-          {/* Machine Capacity Info */}
+          {/* Updated Machine Capacity Info - Only show total active slots */}
           <div className="machine-capacity-info" style={{ 
             marginTop: '12px', 
             padding: '12px', 
@@ -316,12 +341,12 @@ const Products = () => {
             fontSize: '14px',
             color: '#4a5568'
           }}>
-            <span><strong>{machineCapacity.totalSlots}</strong> total slots</span>
-            <span><strong>{machineCapacity.occupiedSlots}</strong> occupied</span>
-            <span><strong>{machineCapacity.availableSlots}</strong> available</span>
-            <span style={{ color: '#718096' }}>
-              Unlimited slot creation
-            </span>
+            <span><strong>{totalActiveSlots}</strong> active slots</span>
+            {searchTerm && (
+              <span style={{ color: '#667eea' }}>
+                Showing <strong>{filteredProducts.length}</strong> of <strong>{products.length}</strong> products
+              </span>
+            )}
           </div>
         </div>
         
@@ -333,9 +358,81 @@ const Products = () => {
         </div>
       </div>
 
+      {/* Search Bar */}
+      <div className="search-container" style={{ 
+        marginBottom: '24px',
+        position: 'relative',
+        maxWidth: '400px'
+      }}>
+        <div className="search-input-wrapper" style={{ position: 'relative' }}>
+          <Search 
+            size={20} 
+            style={{ 
+              position: 'absolute', 
+              left: '12px', 
+              top: '50%', 
+              transform: 'translateY(-50%)',
+              color: '#718096',
+              pointerEvents: 'none'
+            }} 
+          />
+          <input
+            type="text"
+            placeholder="Search products by name, SKU, category, or slot..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            className="form-input"
+            style={{ 
+              paddingLeft: '40px',
+              paddingRight: searchTerm ? '40px' : '12px'
+            }}
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={clearSearch}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                color: '#718096',
+                cursor: 'pointer',
+                padding: '4px',
+                borderRadius: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'color 0.2s ease'
+              }}
+              onMouseEnter={(e) => e.target.style.color = '#4a5568'}
+              onMouseLeave={(e) => e.target.style.color = '#718096'}
+              title="Clear search"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+        {searchTerm && (
+          <div style={{ 
+            fontSize: '12px', 
+            color: '#718096', 
+            marginTop: '4px',
+            paddingLeft: '40px'
+          }}>
+            {filteredProducts.length > 0 
+              ? `Found ${filteredProducts.length} product${filteredProducts.length !== 1 ? 's' : ''}`
+              : 'No products found'
+            }
+          </div>
+        )}
+      </div>
+
       {/* Products Grid */}
 <div className="products-grid">
-  {products.map((product) => (
+  {filteredProducts.map((product) => (
     <div key={product.id} className="product-card">
       <div className="product-card-header">
         <div className="product-slot">
@@ -404,7 +501,19 @@ const Products = () => {
 </div>
 
 
-      {products.length === 0 && (
+      {filteredProducts.length === 0 && searchTerm && (
+        <div className="no-products">
+          <Search size={48} />
+          <h3>No products found</h3>
+          <p>No products match "{searchTerm}". Try a different search term.</p>
+          <button className="btn btn-secondary" onClick={clearSearch}>
+            <X size={16} />
+            Clear Search
+          </button>
+        </div>
+      )}
+
+      {products.length === 0 && !searchTerm && (
         <div className="no-products">
           <Package size={48} />
           <h3>No products yet</h3>
