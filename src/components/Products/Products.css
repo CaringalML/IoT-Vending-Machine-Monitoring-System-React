@@ -1,3 +1,51 @@
+/* FORCE BUTTONS TO BE VISIBLE - HIGH PRIORITY */
+.product-actions {
+  display: flex !important;
+  gap: 6px !important;
+  position: absolute !important;
+  top: 12px !important;
+  right: 12px !important;
+  z-index: 999 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.action-btn {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 6px !important;
+  border: none !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
+  color: white !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  position: relative !important;
+}
+
+.action-btn.edit {
+  background: #38a169 !important;
+}
+
+.action-btn.edit:hover {
+  background: #2f855a !important;
+  transform: scale(1.05) !important;
+}
+
+.action-btn.delete {
+  background: #e53e3e !important;
+}
+
+.action-btn.delete:hover {
+  background: #c53030 !important;
+  transform: scale(1.05) !important;
+}
+
+/* REST OF THE CSS */
 .products {
   max-width: 1400px;
   margin: 0 auto;
@@ -67,6 +115,7 @@
   border: 1px solid #e2e8f0;
   overflow: hidden;
   transition: all 0.2s ease;
+  position: relative;
 }
 
 .product-card:hover {
@@ -81,6 +130,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  position: relative;
 }
 
 .product-slot {
@@ -91,43 +141,6 @@
   font-weight: 600;
   font-size: 14px;
   box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
-}
-
-.product-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.action-btn {
-  background: none;
-  border: none;
-  padding: 6px;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.action-btn.edit {
-  color: #667eea;
-}
-
-.action-btn.edit:hover {
-  background: #667eea;
-  color: white;
-  transform: scale(1.1);
-}
-
-.action-btn.delete {
-  color: #f56565;
-}
-
-.action-btn.delete:hover {
-  background: #f56565;
-  color: white;
-  transform: scale(1.1);
 }
 
 .product-card-body {
@@ -380,93 +393,6 @@
   background: inherit !important;
 }
 
-/* Ensure loading spinner is properly sized */
-.btn-loading-content .loading-container {
-  padding: 0;
-  margin: 0;
-  min-height: auto;
-}
-
-.btn-loading-content .spinner {
-  width: 16px !important;
-  height: 16px !important;
-  border-width: 2px !important;
-}
-
-.btn-disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none !important;
-  background: #cbd5e0 !important;
-  color: #718096 !important;
-}
-
-.btn-disabled:hover {
-  transform: none !important;
-  box-shadow: none !important;
-}
-
-/* Add Slots Modal Styles */
-.add-slots-modal {
-  max-width: 400px;
-}
-
-.add-slots-preview {
-  background: #f7fafc;
-  padding: 12px;
-  border-radius: 6px;
-  margin: 12px 0;
-  font-size: 13px;
-  color: #4a5568;
-  border-left: 4px solid #667eea;
-}
-
-.add-slots-preview strong {
-  color: #2d3748;
-  font-weight: 600;
-}
-
-.slots-info {
-  background: #edf2f7;
-  padding: 10px 12px;
-  border-radius: 6px;
-  margin-bottom: 16px;
-  font-size: 13px;
-  color: #4a5568;
-}
-
-.slots-info strong {
-  color: #2d3748;
-}
-
-/* Slot dropdown enhancements */
-.form-select option {
-  padding: 8px;
-}
-
-.form-help.warning {
-  color: #ed8936;
-  font-weight: 500;
-}
-
-/* Spinner animations */
-.spinner {
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-.spinner.small {
-  width: 16px;
-  height: 16px;
-  border: 2px solid #e2e8f0;
-  border-top: 2px solid #667eea;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
 /* Enhanced button styles */
 .btn {
   border-radius: 6px;
@@ -501,25 +427,22 @@
   color: #2d3748;
 }
 
-/* Capacity display enhancements */
-.capacity-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
+/* Spinner animations */
+.spinner {
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
-.capacity-stat-value {
-  font-size: 18px;
-  font-weight: 700;
-  color: #2d3748;
+.spinner.small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e2e8f0;
+  border-top: 2px solid #667eea;
 }
 
-.capacity-stat-label {
-  font-size: 12px;
-  color: #718096;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* Animation for new elements */
@@ -535,10 +458,6 @@
 }
 
 .product-card {
-  animation: fadeInUp 0.3s ease-out;
-}
-
-.machine-capacity-info {
   animation: fadeInUp 0.3s ease-out;
 }
 
@@ -595,58 +514,24 @@
     width: 100%;
   }
 
-  .add-slots-preview {
-    font-size: 12px;
-    padding: 10px;
-  }
-}
-
-@media (max-width: 480px) {
-  .no-products {
-    padding: 60px 20px;
+  /* Mobile: Slightly larger buttons */
+  .action-btn {
+    width: 36px !important;
+    height: 36px !important;
   }
 
-  .product-image {
-    height: 100px;
-  }
-
-  .product-name {
-    font-size: 14px;
-  }
-
-  .product-price {
-    font-size: 18px;
-  }
-
-  .product-details {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .product-meta {
-    margin: 6px 0 10px;
-  }
-
-  .product-sku,
-  .product-capacity {
-    margin-bottom: 2px;
-  }
-
-  .machine-capacity-info {
-    font-size: 13px;
-    padding: 10px;
-  }
-
-  .products-header > div:last-child .btn {
-    font-size: 13px;
-    padding: 8px 12px;
+  .product-actions {
+    top: 8px !important;
+    right: 8px !important;
+    gap: 8px !important;
   }
 }
 
 /* Focus states for accessibility */
 .btn:focus,
 .form-input:focus,
-.form-select:focus {
+.form-select:focus,
+.action-btn:focus {
   outline: 2px solid #667eea;
   outline-offset: 2px;
 }

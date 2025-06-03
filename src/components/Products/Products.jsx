@@ -334,72 +334,75 @@ const Products = () => {
       </div>
 
       {/* Products Grid */}
-      <div className="products-grid">
-        {products.map((product) => (
-          <div key={product.id} className="product-card">
-            <div className="product-card-header">
-              <div className="product-slot">
-                <span>{product.slot}</span>
-              </div>
-              <div className="product-actions">
-                <button 
-                  className="action-btn edit"
-                  onClick={() => handleEditProduct(product)}
-                  title="Edit Product"
-                >
-                  <Edit size={16} />
-                </button>
-                <button 
-                  className="action-btn delete"
-                  onClick={() => handleDeleteProduct(product)}
-                  title="Delete Product"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
+<div className="products-grid">
+  {products.map((product) => (
+    <div key={product.id} className="product-card">
+      <div className="product-card-header">
+        <div className="product-slot">
+          <span>{product.slot}</span>
+        </div>
+        
+        {/* SIMPLE: Clean action buttons */}
+        <div className="product-actions">
+          <button 
+            className="action-btn edit"
+            onClick={() => handleEditProduct(product)}
+            title="Edit Product"
+          >
+            <Edit size={16} />
+          </button>
+          <button 
+            className="action-btn delete"
+            onClick={() => handleDeleteProduct(product)}
+            title="Delete Product"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
+      </div>
+
+      <div className="product-card-body">
+        <div className="product-image">
+          {product.image ? (
+            <img src={product.image} alt={product.name} />
+          ) : (
+            <div className="product-placeholder">
+              <Coffee size={32} />
             </div>
+          )}
+        </div>
 
-            <div className="product-card-body">
-              <div className="product-image">
-                {product.image ? (
-                  <img src={product.image} alt={product.name} />
-                ) : (
-                  <div className="product-placeholder">
-                    <Coffee size={32} />
-                  </div>
-                )}
+        <div className="product-info">
+          <h3 className="product-name">{product.name}</h3>
+          <div className="product-price">
+            {formatCurrency(product.price)}
+          </div>
+          
+          <div className="product-meta">
+            {product.sku && (
+              <div className="product-sku">
+                <small>SKU: {product.sku}</small>
               </div>
-
-              <div className="product-info">
-                <h3 className="product-name">{product.name}</h3>
-                <div className="product-price">
-                  {formatCurrency(product.price)}
-                </div>
-                
-                <div className="product-meta">
-                  {product.sku && (
-                    <div className="product-sku">
-                      <small>SKU: {product.sku}</small>
-                    </div>
-                  )}
-                  <div className="product-capacity">
-                    <small>Max Capacity: {product.maxCapacity || 20}</small>
-                  </div>
-                </div>
-
-                <div className="product-details">
-                  <span className="product-category">
-                    {product.category || 'Other'}
-                  </span>
-                  <span className={`product-status ${product.active ? 'active' : 'inactive'}`}>
-                    {product.active ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-              </div>
+            )}
+            <div className="product-capacity">
+              <small>Max Capacity: {product.maxCapacity || 20}</small>
             </div>
           </div>
-        ))}
+
+          <div className="product-details">
+            <span className="product-category">
+              {product.category || 'Other'}
+            </span>
+            <span className={`product-status ${product.active ? 'active' : 'inactive'}`}>
+              {product.active ? 'Active' : 'Inactive'}
+            </span>
+          </div>
+        </div>
       </div>
+    </div>
+  ))}
+</div>
+
 
       {products.length === 0 && (
         <div className="no-products">
