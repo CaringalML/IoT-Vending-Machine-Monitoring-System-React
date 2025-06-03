@@ -129,6 +129,130 @@ const SAMPLE_PRODUCTS = [
   }
 ];
 
+// New Zealand products for today's demo
+const NZ_PRODUCTS_TODAY = [
+  {
+    name: "Griffin's Gingernuts",
+    price: 10.00,
+    category: 'snacks',
+    slot: 'Slot 1',
+    image: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=300&h=300&fit=crop',
+    active: true,
+    maxCapacity: 20,
+    sku: 'NZ-001',
+    quantity: 10,
+    salesToday: 1
+  },
+  {
+    name: 'Bluebird Chips',
+    price: 10.00,
+    category: 'snacks',
+    slot: 'Slot 2',
+    image: 'https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300&h=300&fit=crop',
+    active: true,
+    maxCapacity: 20,
+    sku: 'NZ-002',
+    quantity: 10,
+    salesToday: 2
+  },
+  {
+    name: "Whittaker's Peanut Slab",
+    price: 10.00,
+    category: 'candy',
+    slot: 'Slot 3',
+    image: 'https://images.unsplash.com/photo-1606312619070-d48b4c652a52?w=300&h=300&fit=crop',
+    active: true,
+    maxCapacity: 20,
+    sku: 'NZ-003',
+    quantity: 10,
+    salesToday: 3
+  },
+  {
+    name: 'Cookie Time Cookie',
+    price: 10.00,
+    category: 'snacks',
+    slot: 'Slot 4',
+    image: 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=300&h=300&fit=crop',
+    active: true,
+    maxCapacity: 20,
+    sku: 'NZ-004',
+    quantity: 10,
+    salesToday: 4
+  },
+  {
+    name: 'Eta Ripples',
+    price: 10.00,
+    category: 'snacks',
+    slot: 'Slot 5',
+    image: 'https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300&h=300&fit=crop',
+    active: true,
+    maxCapacity: 20,
+    sku: 'NZ-005',
+    quantity: 10,
+    salesToday: 5
+  },
+  {
+    name: "RJ's Licorice",
+    price: 10.00,
+    category: 'candy',
+    slot: 'Slot 6',
+    image: 'https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?w=300&h=300&fit=crop',
+    active: true,
+    maxCapacity: 20,
+    sku: 'NZ-006',
+    quantity: 10,
+    salesToday: 6
+  },
+  {
+    name: 'Pascall Pineapple Lumps',
+    price: 10.00,
+    category: 'candy',
+    slot: 'Slot 7',
+    image: 'https://images.unsplash.com/photo-1621939514649-280e2ee25f60?w=300&h=300&fit=crop',
+    active: true,
+    maxCapacity: 20,
+    sku: 'NZ-007',
+    quantity: 10,
+    salesToday: 7
+  },
+  {
+    name: "Griffin's MallowPuffs",
+    price: 10.00,
+    category: 'snacks',
+    slot: 'Slot 8',
+    image: 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=300&h=300&fit=crop',
+    active: true,
+    maxCapacity: 20,
+    sku: 'NZ-008',
+    quantity: 10,
+    salesToday: 8
+  },
+  {
+    name: 'Proper Crisps',
+    price: 10.00,
+    category: 'snacks',
+    slot: 'Slot 9',
+    image: 'https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300&h=300&fit=crop',
+    active: true,
+    maxCapacity: 20,
+    sku: 'NZ-009',
+    quantity: 10,
+    salesToday: 9
+  },
+  {
+    name: 'Nice & Natural Nut Bars',
+    price: 10.00,
+    category: 'healthy',
+    slot: 'Slot 10',
+    image: 'https://images.unsplash.com/photo-1527617834522-fae101ccc5fd?w=300&h=300&fit=crop',
+    active: true,
+    maxCapacity: 20,
+    sku: 'NZ-010',
+    quantity: 10,
+    salesToday: 10
+  }
+];
+
 const PAYMENT_METHODS = ['cash', 'card', 'contactless', 'mobile'];
 
 // Helper functions
@@ -190,6 +314,14 @@ const generateBusinessHourTime = (baseDate) => {
   return baseDate;
 };
 
+// Generate today's sales throughout the day
+const generateTodaysSales = (baseDate, hour, minute = null) => {
+  const saleDate = new Date(baseDate);
+  const actualMinute = minute !== null ? minute : Math.random() * 60;
+  saleDate.setHours(hour, Math.floor(actualMinute), Math.floor(Math.random() * 60), 0);
+  return saleDate;
+};
+
 // Create readline interface for user input
 const rl = readline.createInterface({
   input: process.stdin,
@@ -239,6 +371,83 @@ class CLISeeder {
     
     await batch.commit();
     console.log(`✅ Created ${this.createdProducts.length} products with inventory`);
+  }
+
+  // NEW: Seed NZ products for today's demo
+  async seedNZProductsToday() {
+    console.log('🇳🇿 Seeding New Zealand products for today...');
+    
+    const batch = db.batch();
+    this.createdProducts = [];
+    
+    for (const productData of NZ_PRODUCTS_TODAY) {
+      const productRef = db.collection('products').doc();
+      const { quantity, salesToday, ...productInfo } = productData;
+      
+      batch.set(productRef, {
+        ...productInfo,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      this.createdProducts.push({ ...productData, id: productRef.id });
+      
+      // Set up inventory with the specified quantity
+      const inventoryRef = db.collection('inventory').doc(productData.slot);
+      batch.set(inventoryRef, {
+        slot: productData.slot,
+        productId: productRef.id,
+        quantity: quantity,
+        maxCapacity: productData.maxCapacity,
+        lowStockThreshold: 5,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    }
+    
+    await batch.commit();
+    console.log(`✅ Created ${this.createdProducts.length} NZ products with inventory`);
+  }
+
+  // NEW: Generate today's sales for NZ products
+  async generateTodaysSalesForNZ() {
+    console.log('📊 Generating today\'s sales for NZ products...');
+    
+    const batch = db.batch();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    let totalSales = 0;
+    
+    for (const product of this.createdProducts) {
+      const salesCount = product.salesToday;
+      
+      // Generate sales throughout the day
+      for (let i = 0; i < salesCount; i++) {
+        // Spread sales throughout business hours (8 AM to 8 PM)
+        const hourSpread = 12; // 8 AM to 8 PM = 12 hours
+        const baseHour = 8; // Start at 8 AM
+        const saleHour = baseHour + Math.floor((i / salesCount) * hourSpread);
+        const saleMinute = Math.random() * 60;
+        
+        const saleTime = generateTodaysSales(today, saleHour, saleMinute);
+        
+        const saleRef = db.collection('sales').doc();
+        batch.set(saleRef, {
+          productId: product.id,
+          slot: product.slot,
+          price: product.price,
+          paymentMethod: getRandomItem(PAYMENT_METHODS),
+          timestamp: admin.firestore.Timestamp.fromDate(saleTime)
+        });
+        
+        totalSales++;
+      }
+    }
+    
+    await batch.commit();
+    this.totalSalesGenerated = totalSales;
+    console.log(`✅ Generated ${totalSales} sales for today`);
   }
 
   async generateSales(daysBack = 30, salesPerDay = { min: 15, max: 45 }) {
@@ -302,18 +511,25 @@ class CLISeeder {
       includeProducts = true,
       includeSales = true,
       daysBack = 30,
-      salesPerDay = { min: 15, max: 45 }
+      salesPerDay = { min: 15, max: 45 },
+      useNZProducts = false
     } = options;
 
     console.log('\n🚀 Starting database seeding...');
     const startTime = Date.now();
     
     if (includeProducts) {
-      await this.seedProducts();
-    }
-    
-    if (includeSales) {
-      await this.generateSales(daysBack, salesPerDay);
+      if (useNZProducts) {
+        await this.seedNZProductsToday();
+        if (includeSales) {
+          await this.generateTodaysSalesForNZ();
+        }
+      } else {
+        await this.seedProducts();
+        if (includeSales) {
+          await this.generateSales(daysBack, salesPerDay);
+        }
+      }
     }
     
     const endTime = Date.now();
@@ -323,7 +539,12 @@ class CLISeeder {
     console.log(`⏱️  Time: ${duration} seconds`);
     console.log(`📊 Products: ${this.createdProducts.length}`);
     console.log(`📊 Sales: ${this.totalSalesGenerated}`);
-    console.log(`💰 Est. Revenue: $${(this.totalSalesGenerated * 2.85).toFixed(2)}`);
+    if (useNZProducts) {
+      console.log(`💰 Today's Revenue: $${(this.totalSalesGenerated * 10).toFixed(2)}`);
+      console.log(`🇳🇿 All products priced at $10.00 NZD`);
+    } else {
+      console.log(`💰 Est. Revenue: $${(this.totalSalesGenerated * 2.85).toFixed(2)}`);
+    }
   }
 }
 
@@ -411,8 +632,9 @@ async function main() {
       console.log('3. Large seed (60 days, extensive)');
       console.log('4. Custom seed');
       console.log('5. Products only');
+      console.log('6. 🇳🇿 Today\'s NZ Products & Sales (Demo)');
       
-      const choice = await askQuestion('\nSelect option (1-5): ');
+      const choice = await askQuestion('\nSelect option (1-6): ');
       
       switch (choice) {
         case '1':
@@ -435,6 +657,17 @@ async function main() {
           break;
         case '5':
           await seeder.seedDatabase({ includeProducts: true, includeSales: false });
+          break;
+        case '6':
+          console.log('\n🇳🇿 Creating today\'s demo with New Zealand products...');
+          console.log('📦 This will create 10 NZ products with today\'s sales data');
+          console.log('💰 All products: $10.00 NZD');
+          console.log('📊 Sales range: 1-10 sales per product today\n');
+          await seeder.seedDatabase({ 
+            includeProducts: true, 
+            includeSales: true, 
+            useNZProducts: true 
+          });
           break;
         default:
           console.log('❌ Invalid option');
