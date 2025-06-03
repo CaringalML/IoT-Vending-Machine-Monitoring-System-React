@@ -45,6 +45,15 @@
   transform: scale(1.05) !important;
 }
 
+.action-btn.view-image {
+  background: #667eea !important;
+}
+
+.action-btn.view-image:hover {
+  background: #5a67d8 !important;
+  transform: scale(1.05) !important;
+}
+
 /* FIXED PRODUCT CARD HEADER - Better layout */
 .product-card-header {
   padding: 16px 20px;
@@ -448,7 +457,10 @@
   100% { transform: rotate(360deg); }
 }
 
-/* Animation for new elements */
+/* Enhanced product image hover effect */
+.product-image:hover .image-overlay {
+  opacity: 1 !important;
+}
 @keyframes fadeInUp {
   from {
     opacity: 0;

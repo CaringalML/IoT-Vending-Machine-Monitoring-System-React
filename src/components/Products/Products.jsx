@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Edit, Trash2, Coffee, Package, Search, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Coffee, Package, Search, X, Eye, ZoomIn } from 'lucide-react';
 import {
   subscribeToProducts,
   addProduct,
   updateProduct,
   deleteProduct,
   updateInventory,
-  subscribeToInventory // Add this import
+  subscribeToInventory
 } from '../../services/firestore';
 import Modal from '../Common/Modal';
 import LoadingSpinner from '../Common/LoadingSpinner';
@@ -15,12 +15,13 @@ import './Products.css';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
-  const [inventory, setInventory] = useState([]); // Add inventory state
-  const [totalActiveSlots, setTotalActiveSlots] = useState(0); // New state for active slots count
-  const [filteredProducts, setFilteredProducts] = useState([]); // Add filtered products state
-  const [searchTerm, setSearchTerm] = useState(''); // Add search term state
+  const [totalActiveSlots, setTotalActiveSlots] = useState(0);
+  const [filteredProducts, setFilteredProducts] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -28,14 +29,13 @@ const Products = () => {
   const [saving, setSaving] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
 
-  // Form refs - direct access to input values
+  // Form refs
   const nameRef = useRef();
   const skuRef = useRef();
   const priceRef = useRef();
   const maxCapacityRef = useRef();
   const categoryRef = useRef();
-  const slotRef = useRef(); // Now for custom slot input
-
+  const slotRef = useRef();
   const imageRef = useRef();
   const activeRef = useRef();
 
@@ -50,16 +50,12 @@ const Products = () => {
   useEffect(() => {
     const unsubscribeProducts = subscribeToProducts((productsData) => {
       setProducts(productsData);
-      setFilteredProducts(productsData); // Initialize filtered products
+      setFilteredProducts(productsData);
       setLoading(false);
     });
 
-    // Subscribe to inventory to get accurate slot count
     const unsubscribeInventory = subscribeToInventory((inventoryData) => {
-      setInventory(inventoryData);
-      // Calculate active slots (excluding old/deleted products)
       const activeSlots = inventoryData.filter(item => {
-        // Include only slots that have current products (not deleted/old products)
         return item.productId && !item.isArchivedSlot;
       }).length;
       setTotalActiveSlots(activeSlots);
@@ -93,6 +89,15 @@ const Products = () => {
     setFilteredProducts(filtered);
   }, [searchTerm, products]);
 
+  const handleViewImage = (product) => {
+    setSelectedImage({
+      url: product.image,
+      name: product.name,
+      sku: product.sku
+    });
+    setShowImageModal(true);
+  };
+
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
   };
@@ -109,7 +114,6 @@ const Products = () => {
       if (maxCapacityRef.current) maxCapacityRef.current.value = '20';
       if (categoryRef.current) categoryRef.current.value = 'beverages';
       if (slotRef.current) slotRef.current.value = '';
-
       if (imageRef.current) imageRef.current.value = '';
       if (activeRef.current) activeRef.current.checked = true;
     }, 0);
@@ -124,7 +128,6 @@ const Products = () => {
       if (maxCapacityRef.current) maxCapacityRef.current.value = product.maxCapacity || '20';
       if (categoryRef.current) categoryRef.current.value = product.category || 'beverages';
       if (slotRef.current) slotRef.current.value = product.slot || '';
-
       if (imageRef.current) imageRef.current.value = product.image || '';
       if (activeRef.current) activeRef.current.checked = product.active !== undefined ? product.active : true;
     }, 0);
@@ -284,14 +287,14 @@ const Products = () => {
         productId = await addProduct(productData);
       }
 
-          // Create/update inventory slot
+      // Create/update inventory slot
       if (formData.slot.trim()) {
         try {
           const inventoryData = {
             productId: productId,
             maxCapacity: parseInt(formData.maxCapacity) || 20,
             lowStockThreshold: 5,
-            quantity: 0 // Always start with 0 quantity
+            quantity: 0
           };
 
           await updateInventory(formData.slot.trim(), inventoryData);
@@ -329,7 +332,6 @@ const Products = () => {
           <h1>Product Management</h1>
           <p>Manage your vending machine product catalog</p>
           
-          {/* Updated Machine Capacity Info - Only show total active slots */}
           <div className="machine-capacity-info" style={{ 
             marginTop: '12px', 
             padding: '12px', 
@@ -431,75 +433,108 @@ const Products = () => {
       </div>
 
       {/* Products Grid */}
-<div className="products-grid">
-  {filteredProducts.map((product) => (
-    <div key={product.id} className="product-card">
-      <div className="product-card-header">
-        <div className="product-slot">
-          <span>{product.slot}</span>
-        </div>
-        
-        {/* SIMPLE: Clean action buttons */}
-        <div className="product-actions">
-          <button 
-            className="action-btn edit"
-            onClick={() => handleEditProduct(product)}
-            title="Edit Product"
-          >
-            <Edit size={16} />
-          </button>
-          <button 
-            className="action-btn delete"
-            onClick={() => handleDeleteProduct(product)}
-            title="Delete Product"
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
-      </div>
-
-      <div className="product-card-body">
-        <div className="product-image">
-          {product.image ? (
-            <img src={product.image} alt={product.name} />
-          ) : (
-            <div className="product-placeholder">
-              <Coffee size={32} />
-            </div>
-          )}
-        </div>
-
-        <div className="product-info">
-          <h3 className="product-name">{product.name}</h3>
-          <div className="product-price">
-            {formatCurrency(product.price)}
-          </div>
-          
-          <div className="product-meta">
-            {product.sku && (
-              <div className="product-sku">
-                <small>SKU: {product.sku}</small>
+      <div className="products-grid">
+        {filteredProducts.map((product) => (
+          <div key={product.id} className="product-card">
+            <div className="product-card-header">
+              <div className="product-slot">
+                <span>{product.slot}</span>
               </div>
-            )}
-            <div className="product-capacity">
-              <small>Max Capacity: {product.maxCapacity || 20}</small>
+              
+              {/* Enhanced action buttons with view image option */}
+              <div className="product-actions">
+                {product.image && (
+                  <button 
+                    className="action-btn view-image"
+                    onClick={() => handleViewImage(product)}
+                    title="View Image"
+                  >
+                    <Eye size={16} />
+                  </button>
+                )}
+                <button 
+                  className="action-btn edit"
+                  onClick={() => handleEditProduct(product)}
+                  title="Edit Product"
+                >
+                  <Edit size={16} />
+                </button>
+                <button 
+                  className="action-btn delete"
+                  onClick={() => handleDeleteProduct(product)}
+                  title="Delete Product"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </div>
+
+            <div className="product-card-body">
+              <div 
+                className="product-image"
+                style={{ cursor: product.image ? 'pointer' : 'default' }}
+                onClick={() => product.image && handleViewImage(product)}
+              >
+                {product.image ? (
+                  <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                    <img src={product.image} alt={product.name} />
+                    <div 
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0, 0, 0, 0.5)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: 0,
+                        transition: 'opacity 0.2s ease',
+                        borderRadius: '8px'
+                      }}
+                      className="image-overlay"
+                    >
+                      <ZoomIn size={24} color="white" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="product-placeholder">
+                    <Coffee size={32} />
+                  </div>
+                )}
+              </div>
+
+              <div className="product-info">
+                <h3 className="product-name">{product.name}</h3>
+                <div className="product-price">
+                  {formatCurrency(product.price)}
+                </div>
+                
+                <div className="product-meta">
+                  {product.sku && (
+                    <div className="product-sku">
+                      <small>SKU: {product.sku}</small>
+                    </div>
+                  )}
+                  <div className="product-capacity">
+                    <small>Max Capacity: {product.maxCapacity || 20}</small>
+                  </div>
+                </div>
+
+                <div className="product-details">
+                  <span className="product-category">
+                    {product.category || 'Other'}
+                  </span>
+                  <span className={`product-status ${product.active ? 'active' : 'inactive'}`}>
+                    {product.active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
-
-          <div className="product-details">
-            <span className="product-category">
-              {product.category || 'Other'}
-            </span>
-            <span className={`product-status ${product.active ? 'active' : 'inactive'}`}>
-              {product.active ? 'Active' : 'Inactive'}
-            </span>
-          </div>
-        </div>
+        ))}
       </div>
-    </div>
-  ))}
-</div>
-
 
       {filteredProducts.length === 0 && searchTerm && (
         <div className="no-products">
@@ -662,6 +697,7 @@ const Products = () => {
                 className="form-input"
                 placeholder="https://example.com/product-image.jpg"
               />
+              <small className="form-help">Add an image URL to display the product image</small>
             </div>
 
             <div className="form-group">
@@ -708,6 +744,82 @@ const Products = () => {
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* Image Viewer Modal */}
+      {showImageModal && selectedImage && (
+        <Modal
+          title="Product Image"
+          onClose={() => setShowImageModal(false)}
+          size="large"
+        >
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#2d3748' }}>
+                {selectedImage.name}
+              </h3>
+              {selectedImage.sku && (
+                <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#718096' }}>
+                  SKU: {selectedImage.sku}
+                </p>
+              )}
+            </div>
+            
+            <div style={{ 
+              maxWidth: '100%', 
+              maxHeight: '60vh',
+              overflow: 'hidden',
+              borderRadius: '8px',
+              border: '1px solid #e2e8f0',
+              display: 'inline-block'
+            }}>
+              <img 
+                src={selectedImage.url} 
+                alt={selectedImage.name}
+                style={{ 
+                  maxWidth: '100%', 
+                  maxHeight: '60vh',
+                  objectFit: 'contain',
+                  display: 'block'
+                }}
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+              <div 
+                style={{ 
+                  display: 'none',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '200px',
+                  color: '#718096',
+                  fontSize: '14px'
+                }}
+              >
+                Failed to load image
+              </div>
+            </div>
+            
+            <div style={{ marginTop: '16px' }}>
+              <a 
+                href={selectedImage.url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="btn btn-secondary"
+                style={{ marginRight: '8px' }}
+              >
+                Open Original
+              </a>
+              <button 
+                className="btn btn-primary" 
+                onClick={() => setShowImageModal(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </Modal>
       )}
 
