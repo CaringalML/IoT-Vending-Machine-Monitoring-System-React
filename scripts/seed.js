@@ -339,6 +339,7 @@ class CLISeeder {
   constructor() {
     this.createdProducts = [];
     this.totalSalesGenerated = 0;
+    this.singleProduct = null;
   }
 
   async seedProducts() {
@@ -371,6 +372,235 @@ class CLISeeder {
     
     await batch.commit();
     console.log(`✅ Created ${this.createdProducts.length} products with inventory`);
+  }
+
+  // NEW: Create a single custom product
+  async createSingleProduct() {
+    console.log('🛍️ Creating a single product...\n');
+    
+    const name = await askQuestion('Product name: ');
+    if (!name.trim()) {
+      console.log('❌ Product name is required');
+      return false;
+    }
+    
+    const priceInput = await askQuestion('Price (e.g., 2.50): ');
+    const price = parseFloat(priceInput);
+    if (isNaN(price) || price <= 0) {
+      console.log('❌ Invalid price');
+      return false;
+    }
+    
+    console.log('\nAvailable categories:');
+    console.log('- beverages');
+    console.log('- snacks');
+    console.log('- candy');
+    console.log('- healthy');
+    const category = await askQuestion('Category: ') || 'snacks';
+    
+    const slot = await askQuestion('Slot (e.g., A1, B2): ');
+    if (!slot.trim()) {
+      console.log('❌ Slot is required');
+      return false;
+    }
+    
+    const image = await askQuestion('Image URL (optional): ') || 'https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300&h=300&fit=crop';
+    
+    const capacityInput = await askQuestion('Max capacity (default 20): ') || '20';
+    const maxCapacity = parseInt(capacityInput);
+    if (isNaN(maxCapacity) || maxCapacity <= 0) {
+      console.log('❌ Invalid capacity');
+      return false;
+    }
+    
+    const quantityInput = await askQuestion('Current quantity (default 15): ') || '15';
+    const quantity = parseInt(quantityInput);
+    if (isNaN(quantity) || quantity < 0) {
+      console.log('❌ Invalid quantity');
+      return false;
+    }
+    
+    const sku = `CUSTOM-${Date.now()}`;
+    
+    const productData = {
+      name: name.trim(),
+      price,
+      category: category.trim(),
+      slot: slot.trim().toUpperCase(),
+      image,
+      active: true,
+      maxCapacity,
+      sku
+    };
+    
+    console.log('\n📦 Creating product with data:');
+    console.log(JSON.stringify(productData, null, 2));
+    
+    const batch = db.batch();
+    
+    // Create product
+    const productRef = db.collection('products').doc();
+    batch.set(productRef, {
+      ...productData,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    
+    // Create inventory
+    const inventoryRef = db.collection('inventory').doc(productData.slot);
+    batch.set(inventoryRef, {
+      slot: productData.slot,
+      productId: productRef.id,
+      quantity,
+      maxCapacity,
+      lowStockThreshold: 5,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    
+    await batch.commit();
+    
+    this.singleProduct = { ...productData, id: productRef.id };
+    this.createdProducts = [this.singleProduct];
+    
+    console.log(`✅ Created product: ${name} in slot ${slot}`);
+    console.log(`💰 Price: $${price.toFixed(2)}`);
+    console.log(`📦 Quantity: ${quantity}/${maxCapacity}`);
+    console.log(`🆔 Product ID: ${productRef.id}`);
+    
+    return true;
+  }
+
+  // NEW: Generate sales for the single product
+  async generateSalesForSingleProduct() {
+    if (!this.singleProduct) {
+      // Try to find the most recently created product
+      console.log('🔍 Looking for recently created product...');
+      const productsSnapshot = await db.collection('products')
+        .orderBy('createdAt', 'desc')
+        .limit(1)
+        .get();
+      
+      if (productsSnapshot.empty) {
+        console.log('❌ No products found. Please create a product first (option 8).');
+        return false;
+      }
+      
+      const productDoc = productsSnapshot.docs[0];
+      this.singleProduct = { id: productDoc.id, ...productDoc.data() };
+      console.log(`📦 Found product: ${this.singleProduct.name}`);
+    }
+    
+    // Get current inventory
+    const inventoryDoc = await db.collection('inventory').doc(this.singleProduct.slot).get();
+    if (!inventoryDoc.exists) {
+      console.log('❌ No inventory found for this product.');
+      return false;
+    }
+    
+    const currentInventory = inventoryDoc.data();
+    const currentQuantity = currentInventory.quantity;
+    
+    console.log(`\n📊 Generating sales for: ${this.singleProduct.name}`);
+    console.log(`📦 Current inventory: ${currentQuantity} units`);
+    
+    const salesCountInput = await askQuestion(`Number of sales to generate (max ${currentQuantity}, default 5): `) || '5';
+    const salesCount = parseInt(salesCountInput);
+    if (isNaN(salesCount) || salesCount <= 0) {
+      console.log('❌ Invalid sales count');
+      return false;
+    }
+    
+    if (salesCount > currentQuantity) {
+      console.log(`❌ Cannot generate ${salesCount} sales. Only ${currentQuantity} units in stock.`);
+      return false;
+    }
+    
+    console.log('\nSales time options:');
+    console.log('1. Today only');
+    console.log('2. Last 7 days');
+    console.log('3. Last 30 days');
+    console.log('4. Custom date range');
+    
+    const timeOption = await askQuestion('Select time option (1-4): ') || '1';
+    
+    let startDate, endDate;
+    const now = new Date();
+    
+    switch (timeOption) {
+      case '1':
+        startDate = new Date(now);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(now);
+        break;
+      case '2':
+        startDate = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+        endDate = new Date(now);
+        break;
+      case '3':
+        startDate = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+        endDate = new Date(now);
+        break;
+      case '4':
+        const daysBackInput = await askQuestion('Days back from today (default 7): ') || '7';
+        const daysBack = parseInt(daysBackInput);
+        startDate = new Date(now.getTime() - (daysBack * 24 * 60 * 60 * 1000));
+        endDate = new Date(now);
+        break;
+      default:
+        startDate = new Date(now);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(now);
+    }
+    
+    console.log(`\n⏰ Generating ${salesCount} sales between ${startDate.toLocaleDateString()} and ${endDate.toLocaleDateString()}`);
+    
+    const batch = db.batch();
+    
+    for (let i = 0; i < salesCount; i++) {
+      // Generate random time between start and end date
+      const randomTime = startDate.getTime() + Math.random() * (endDate.getTime() - startDate.getTime());
+      let saleTime = new Date(randomTime);
+      
+      // If it's a business day, adjust to business hours
+      if (saleTime.getDay() >= 1 && saleTime.getDay() <= 5) {
+        saleTime = generateBusinessHourTime(saleTime);
+      }
+      
+      const saleRef = db.collection('sales').doc();
+      batch.set(saleRef, {
+        productId: this.singleProduct.id,
+        slot: this.singleProduct.slot,
+        price: this.singleProduct.price,
+        paymentMethod: getRandomItem(PAYMENT_METHODS),
+        timestamp: admin.firestore.Timestamp.fromDate(saleTime)
+      });
+      
+      this.totalSalesGenerated++;
+    }
+    
+    // Update inventory - deduct the sold quantity
+    const inventoryRef = db.collection('inventory').doc(this.singleProduct.slot);
+    const newQuantity = currentQuantity - salesCount;
+    batch.update(inventoryRef, {
+      quantity: newQuantity,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    
+    await batch.commit();
+    
+    const totalRevenue = salesCount * this.singleProduct.price;
+    
+    console.log(`✅ Generated ${salesCount} sales for ${this.singleProduct.name}`);
+    console.log(`💰 Total revenue: ${totalRevenue.toFixed(2)}`);
+    console.log(`📦 Inventory updated: ${currentQuantity} → ${newQuantity} units`);
+    console.log(`📊 Average sales per day: ${(salesCount / Math.ceil((endDate - startDate) / (24 * 60 * 60 * 1000))).toFixed(1)}`);
+    
+    if (newQuantity <= currentInventory.lowStockThreshold) {
+      console.log(`⚠️  Low stock warning: Only ${newQuantity} units remaining (threshold: ${currentInventory.lowStockThreshold})`);
+    }
+    
+    return true;
   }
 
   // NEW: Seed NZ products for today's demo
@@ -443,17 +673,32 @@ class CLISeeder {
         
         totalSales++;
       }
+      
+      // Update inventory - deduct the sold quantity
+      const inventoryRef = db.collection('inventory').doc(product.slot);
+      const newQuantity = product.quantity - product.salesToday;
+      batch.update(inventoryRef, {
+        quantity: newQuantity,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
     }
     
     await batch.commit();
     this.totalSalesGenerated = totalSales;
     console.log(`✅ Generated ${totalSales} sales for today`);
+    console.log(`📦 Updated inventory for all ${this.createdProducts.length} products`);
   }
 
   async generateSales(daysBack = 30, salesPerDay = { min: 15, max: 45 }) {
     console.log(`📊 Generating sales data for ${daysBack} days...`);
     
-    const batchSize = 500; // Firestore batch limit
+    // Track inventory changes for each product
+    const inventoryChanges = {};
+    this.createdProducts.forEach(product => {
+      inventoryChanges[product.slot] = 0; // Track total sales per slot
+    });
+    
+    const batchSize = 400; // Reduced batch size to accommodate inventory updates
     let currentBatch = db.batch();
     let batchCount = 0;
     
@@ -478,6 +723,9 @@ class CLISeeder {
           timestamp: admin.firestore.Timestamp.fromDate(saleTime)
         });
         
+        // Track inventory change
+        inventoryChanges[product.slot]++;
+        
         this.totalSalesGenerated++;
         batchCount++;
         
@@ -498,12 +746,57 @@ class CLISeeder {
       }
     }
     
-    // Commit any remaining operations
+    // Commit any remaining sales operations
     if (batchCount > 0) {
       await currentBatch.commit();
     }
     
+    console.log(`\n📦 Updating inventory for ${Object.keys(inventoryChanges).length} products...`);
+    
+    // Update inventory in batches
+    const inventoryBatch = db.batch();
+    let inventoryUpdates = 0;
+    
+    for (const [slot, totalSold] of Object.entries(inventoryChanges)) {
+      if (totalSold > 0) {
+        const inventoryRef = db.collection('inventory').doc(slot);
+        
+        // Get current inventory to calculate new quantity
+        const inventoryDoc = await inventoryRef.get();
+        if (inventoryDoc.exists) {
+          const currentData = inventoryDoc.data();
+          const newQuantity = Math.max(0, currentData.quantity - totalSold);
+          
+          inventoryBatch.update(inventoryRef, {
+            quantity: newQuantity,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+          
+          inventoryUpdates++;
+          
+          // Log low stock warnings
+          if (newQuantity <= currentData.lowStockThreshold) {
+            console.log(`⚠️  Low stock: ${slot} has ${newQuantity} units remaining`);
+          }
+        }
+      }
+    }
+    
+    if (inventoryUpdates > 0) {
+      await inventoryBatch.commit();
+      console.log(`✅ Updated inventory for ${inventoryUpdates} products`);
+    }
+    
     console.log(`\n✅ Generated ${this.totalSalesGenerated} sales records`);
+    
+    // Summary of inventory changes
+    console.log('\n📊 Inventory Summary:');
+    for (const [slot, totalSold] of Object.entries(inventoryChanges)) {
+      if (totalSold > 0) {
+        const product = this.createdProducts.find(p => p.slot === slot);
+        console.log(`   ${slot} (${product?.name}): ${totalSold} units sold`);
+      }
+    }
   }
 
   async seedDatabase(options = {}) {
@@ -543,7 +836,7 @@ class CLISeeder {
       console.log(`💰 Today's Revenue: $${(this.totalSalesGenerated * 10).toFixed(2)}`);
       console.log(`🇳🇿 All products priced at $10.00 NZD`);
     } else {
-      console.log(`💰 Est. Revenue: $${(this.totalSalesGenerated * 2.85).toFixed(2)}`);
+      console.log(`💰 Est. Revenue: ${(this.totalSalesGenerated * 2.85).toFixed(2)}`);
     }
   }
 }
@@ -633,8 +926,11 @@ async function main() {
       console.log('4. Custom seed');
       console.log('5. Products only');
       console.log('6. 🇳🇿 Today\'s NZ Products & Sales (Demo)');
+      console.log('7. ──────────────────────────────────');
+      console.log('8. 🛍️  Create Single Product');
+      console.log('9. 📊 Generate Sales for Single Product');
       
-      const choice = await askQuestion('\nSelect option (1-6): ');
+      const choice = await askQuestion('\nSelect option (1-9): ');
       
       switch (choice) {
         case '1':
@@ -668,6 +964,22 @@ async function main() {
             includeSales: true, 
             useNZProducts: true 
           });
+          break;
+        case '8':
+          console.log('\n🛍️ Creating a single custom product...');
+          console.log('📝 You will be prompted for product details\n');
+          const created = await seeder.createSingleProduct();
+          if (created) {
+            const generateSales = await askQuestion('\n🎯 Generate sales for this product now? (y/N): ');
+            if (generateSales.toLowerCase() === 'y') {
+              await seeder.generateSalesForSingleProduct();
+            }
+          }
+          break;
+        case '9':
+          console.log('\n📊 Generating sales for a single product...');
+          console.log('🔍 This will work with the most recently created product\n');
+          await seeder.generateSalesForSingleProduct();
           break;
         default:
           console.log('❌ Invalid option');
@@ -728,6 +1040,9 @@ async function main() {
       console.log('\nOr directly:');
       console.log('  node scripts/seed.js seed');
       console.log('  node scripts/seed.js clear');
+      console.log('\n🆕 New Options:');
+      console.log('  Option 8: Create a single custom product');
+      console.log('  Option 9: Generate sales for single product');
     }
 
   } catch (error) {
