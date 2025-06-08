@@ -3,11 +3,10 @@ import {
   DollarSign, 
   Package, 
   ShoppingCart, 
-  AlertTriangle
+  AlertTriangle,
 } from 'lucide-react';
 // Import date-fns for robust date manipulation
 import { format, subDays, startOfDay } from 'date-fns';
-import { toDate } from 'date-fns-tz';
 
 import SalesChart from '../Charts/SalesChart';
 import InventoryChart from '../Charts/InventoryChart';
@@ -16,7 +15,7 @@ import {
   subscribeToSales, 
   subscribeToInventory, 
   subscribeToProducts,
-  getDailySales // Assuming this function fetches sales for a given period
+  getDailySales // This function is now fixed in firestore.js
 } from '../../services/firestore';
 import './Dashboard.css';
 
@@ -32,32 +31,34 @@ const Dashboard = () => {
   });
   const [recentSales, setRecentSales] = useState([]);
   const [dailySalesData, setDailySalesData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true); // State for loading charts
 
-  // Memoize the data loading function to keep it stable
+  // Memoize the data loading function to make it stable
   const loadDailySalesData = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const allSales = await getDailySales(30); // Fetch last 30 days of sales
+      // This now correctly fetches sales from the last 30 days
+      const allSales = await getDailySales(30); 
       
-      // 1. Initialize a map with the last 30 days, ensuring all days are present
+      // Initialize a map with the last 30 days to ensure all days are present
       const salesMap = new Map();
       const today = startOfDay(new Date());
-      for (let i = 0; i < 30; i++) {
+      // Loop from past to present to ensure chronological order for the chart
+      for (let i = 29; i >= 0; i--) {
         const date = subDays(today, i);
-        // Use a consistent, sortable date format (YYYY-MM-DD)
         const formattedDate = format(date, 'yyyy-MM-dd');
         salesMap.set(formattedDate, { 
           date: formattedDate, 
-          // Format for display on the chart's X-axis
           displayDate: format(date, 'MMM d'), 
           sales: 0, 
           revenue: 0 
         });
       }
 
-      // 2. Populate the map with actual sales data
+      // Populate the map with actual sales data
       allSales.forEach(sale => {
         if (sale.timestamp?.seconds) {
-          const saleDate = toDate(new Date(sale.timestamp.seconds * 1000));
+          const saleDate = new Date(sale.timestamp.seconds * 1000);
           const formattedSaleDate = format(saleDate, 'yyyy-MM-dd');
           
           if (salesMap.has(formattedSaleDate)) {
@@ -68,17 +69,20 @@ const Dashboard = () => {
         }
       });
       
-      // 3. Convert map to a sorted array for the chart
-      const chartData = Array.from(salesMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+      // Convert map to a sorted array for the chart
+      const chartData = Array.from(salesMap.values());
       
+      console.log("Final aggregated chart data:", chartData);
       setDailySalesData(chartData);
+
     } catch (error) {
-      console.error('Error loading daily sales:', error);
+      console.error('Error in loadDailySalesData:', error);
+    } finally {
+      setIsLoading(false);
     }
-  }, []); // Empty dependency array means this function is created only once
+  }, []);
 
   useEffect(() => {
-    // Initial data load for charts
     loadDailySalesData();
 
     const unsubscribeSales = subscribeToSales((salesData) => {
@@ -89,7 +93,6 @@ const Dashboard = () => {
 
     const unsubscribeInventory = subscribeToInventory(setInventory);
 
-    // Convert products array to a map for efficient lookups
     const unsubscribeProducts = subscribeToProducts((productsData) => {
         const productsMap = productsData.reduce((acc, product) => {
             acc[product.id] = product;
@@ -103,9 +106,8 @@ const Dashboard = () => {
       unsubscribeInventory();
       unsubscribeProducts();
     };
-  }, [loadDailySalesData]); // Depend on the memoized function
+  }, [loadDailySalesData]);
 
-  // Calculate high-level stats whenever underlying data changes
   useEffect(() => {
     const totalRevenue = sales.reduce((sum, sale) => sum + (sale.price || 0), 0);
     const lowStockItems = inventory.filter(item => item.quantity <= (item.lowStockThreshold || 5)).length;
@@ -129,14 +131,13 @@ const Dashboard = () => {
     try {
       const saleDate = new Date(timestamp.seconds * 1000);
       const now = new Date();
-      const diffDays = Math.floor((now - saleDate) / (1000 * 60 * 60 * 24));
+      const diffDays = Math.floor((startOfDay(now) - startOfDay(saleDate)) / (1000 * 60 * 60 * 24));
 
       if (isNaN(saleDate.getTime())) return 'Invalid Date';
 
       if (diffDays === 0) return `Today at ${format(saleDate, 'p')}`;
       if (diffDays === 1) return `Yesterday at ${format(saleDate, 'p')}`;
       return `${format(saleDate, 'MMM d')} at ${format(saleDate, 'p')}`;
-
     } catch (error) {
       console.error('Error formatting sale time:', error);
       return 'Invalid Date';
@@ -148,6 +149,9 @@ const Dashboard = () => {
   };
   
   const activeInventory = inventory.filter(item => products[item.productId]);
+
+  const hasSalesData = !isLoading && dailySalesData.some(d => d.sales > 0);
+  const hasRevenueData = !isLoading && dailySalesData.some(d => d.revenue > 0);
 
   return (
     <div className="dashboard">
@@ -232,12 +236,23 @@ const Dashboard = () => {
       <div className="charts-grid">
         <div className="chart-card">
           <div className="chart-header"><h3>Sales Trend (Last 30 Days)</h3></div>
-          {/* The key prop helps React re-render the chart when data updates */}
-          <SalesChart key={`sales-${dailySalesData.length}`} data={dailySalesData} />
+          {isLoading ? <p className='loading-text'>Loading Chart Data...</p> : 
+           hasSalesData ? <SalesChart data={dailySalesData} /> : 
+           <div className='no-data-placeholder'>
+             <p>No product sales data</p>
+             <span>No sales in selected period</span>
+           </div>
+          }
         </div>
         <div className="chart-card">
           <div className="chart-header"><h3>Revenue Overview (Last 30 Days)</h3></div>
-          <RevenueChart key={`revenue-${dailySalesData.length}`} data={dailySalesData} />
+          {isLoading ? <p className='loading-text'>Loading Chart Data...</p> : 
+           hasRevenueData ? <RevenueChart data={dailySalesData} /> :
+           <div className='no-data-placeholder'>
+             <p>No revenue data</p>
+             <span>No sales in selected period</span>
+           </div>
+          }
         </div>
       </div>
     </div>

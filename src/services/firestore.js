@@ -13,9 +13,11 @@ import {
   orderBy,
   limit,
   serverTimestamp,
-  writeBatch
+  writeBatch,
+  Timestamp // CORRECT: Import Timestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { subDays } from 'date-fns'; // CORRECT: Import subDays for reliable date math
 
 // Products
 export const getProducts = async () => {
@@ -229,7 +231,8 @@ export const addSale = async (saleData) => {
 
 // Real-time listeners
 export const subscribeToInventory = (callback) => {
-  return onSnapshot(collection(db, 'inventory'), (snapshot) => {
+  const q = query(collection(db, 'inventory'), orderBy('slot'));
+  return onSnapshot(q, (snapshot) => {
     const inventory = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     callback(inventory);
   });
@@ -244,7 +247,8 @@ export const subscribeToSales = (callback) => {
 };
 
 export const subscribeToProducts = (callback) => {
-  return onSnapshot(collection(db, 'products'), (snapshot) => {
+  const q = query(collection(db, 'products'), orderBy('name'));
+  return onSnapshot(q, (snapshot) => {
     const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     callback(products);
   });
@@ -277,20 +281,41 @@ export const subscribeToMachineStatus = (callback) => {
 };
 
 // Analytics helpers
+/**
+ * **CORRECTED FUNCTION**
+ * Fetches all sales records from the last X days using Firestore Timestamps.
+ * @param {number} days The number of days to look back.
+ * @returns {Promise<Array>} A promise that resolves to an array of sales documents.
+ */
 export const getDailySales = async (days = 30) => {
-  const endDate = new Date();
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days);
-  
-  const q = query(
-    collection(db, 'sales'),
-    where('timestamp', '>=', startDate),
-    where('timestamp', '<=', endDate),
-    orderBy('timestamp', 'asc')
-  );
-  
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    try {
+        const endDate = new Date();
+        const startDate = subDays(endDate, days);
+        
+        // The key fix: use Timestamp.fromDate() for reliable querying
+        const startTimestamp = Timestamp.fromDate(startDate);
+        const endTimestamp = Timestamp.fromDate(endDate);
+
+        const q = query(
+            collection(db, 'sales'),
+            where('timestamp', '>=', startTimestamp),
+            where('timestamp', '<=', endTimestamp),
+            orderBy('timestamp', 'asc')
+        );
+        
+        const querySnapshot = await getDocs(q);
+        const salesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        console.log(`[getDailySales] Fetched ${salesData.length} sales from the last ${days} days.`);
+        return salesData;
+    } catch (error) {
+        console.error("[getDailySales] Error fetching daily sales:", error);
+        // Provide a link to create the necessary Firestore index if that's the error
+        if (error.code === 'failed-precondition') {
+            console.error("This error usually means you need to create a composite index in Firestore. Please visit the link in the error message in the console to create it.");
+        }
+        return []; // Return an empty array on error to prevent crashes.
+    }
 };
 
 export const getTopProducts = async (limitCount = 10) => {
@@ -711,7 +736,7 @@ export const cleanupOldSales = async (daysToKeep = 90) => {
   
   const q = query(
     collection(db, 'sales'),
-    where('timestamp', '<', cutoffDate)
+    where('timestamp', '<', Timestamp.fromDate(cutoffDate)) // Correct: Use Timestamp
   );
   
   const querySnapshot = await getDocs(q);
