@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// scripts/seed.js
+// scripts/seeder_Today.js
 // Main CLI database seeder for Vending Machine Admin
 
 const admin = require('firebase-admin');
 const readline = require('readline');
 
-// Initialize Firebase Admin SDK
+// --- Firebase Admin SDK Initialization ---
 let serviceAccount;
 try {
   serviceAccount = require('../firebase-service-account.json');
@@ -16,7 +16,6 @@ try {
   process.exit(1);
 }
 
-// Prevent re-initialization of the app
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
@@ -26,8 +25,8 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 const PAYMENT_METHODS = ['cash', 'card', 'contactless', 'mobile'];
-const COLLECTIONS_TO_DELETE = ['products', 'inventory', 'sales'];
 
+// --- Readline Interface for User Input ---
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
@@ -39,43 +38,7 @@ const askQuestion = (question) => {
   });
 };
 
-/**
- * Deletes all documents in a specified Firestore collection in batches.
- * @param {string} collectionPath The path to the collection to delete.
- * @param {number} batchSize The number of documents to delete in each batch.
- * @returns {Promise<void>}
- */
-async function deleteCollection(collectionPath, batchSize) {
-    const collectionRef = db.collection(collectionPath);
-    const query = collectionRef.orderBy('__name__').limit(batchSize);
-  
-    return new Promise((resolve, reject) => {
-      deleteQueryBatch(query, resolve).catch(reject);
-    });
-}
-
-async function deleteQueryBatch(query, resolve) {
-    const snapshot = await query.get();
-  
-    if (snapshot.size === 0) {
-      return resolve();
-    }
-  
-    const batch = db.batch();
-    snapshot.docs.forEach((doc) => {
-      batch.delete(doc.ref);
-    });
-    await batch.commit();
-  
-    process.nextTick(() => {
-      deleteQueryBatch(query, resolve);
-    });
-}
-
-
 class CLISeeder {
-    // ... (createSingleProduct and generateSalesForChosenProduct functions are unchanged)
-    
     /**
      * Creates a single product and its corresponding inventory record.
      */
@@ -108,7 +71,6 @@ class CLISeeder {
             return false;
         }
 
-
         const image = await askQuestion('Image URL (optional): ') || 'https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300&h=300&fit=crop';
 
         const maxCapacityInput = await askQuestion('Max capacity (default: 20): ') || '20';
@@ -128,14 +90,14 @@ class CLISeeder {
         const sku = `CUSTOM-${Date.now()}`;
 
         const productData = {
-        name: name.trim(),
-        price,
-        category: category.trim().toLowerCase(),
-        slot: slot.trim().toUpperCase(),
-        image,
-        active: true,
-        maxCapacity,
-        sku
+            name: name.trim(),
+            price,
+            category: category.trim().toLowerCase(),
+            slot: slot.trim().toUpperCase(),
+            image,
+            active: true,
+            maxCapacity,
+            sku
         };
 
         console.log('\n📦 Creating product with data:');
@@ -144,22 +106,21 @@ class CLISeeder {
         const batch = db.batch();
         const productRef = db.collection('products').doc();
 
-        // Use server timestamp for creation and update times to ensure accuracy.
         batch.set(productRef, {
-        ...productData,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            ...productData,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
         const inventoryRef = db.collection('inventory').doc(productData.slot);
         batch.set(inventoryRef, {
-        slot: productData.slot,
-        productId: productRef.id,
-        quantity,
-        maxCapacity,
-        lowStockThreshold: 5,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            slot: productData.slot,
+            productId: productRef.id,
+            quantity,
+            maxCapacity,
+            lowStockThreshold: 5,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
         await batch.commit();
@@ -168,7 +129,6 @@ class CLISeeder {
         console.log(`💰 Price: $${price.toFixed(2)}`);
         console.log(`📦 Quantity: ${quantity}/${maxCapacity}`);
         console.log(`🆔 Product ID: ${productRef.id}`);
-
         return true;
     }
 
@@ -178,27 +138,25 @@ class CLISeeder {
     async generateSalesForChosenProduct() {
         const productsSnapshot = await db.collection('products').where('active', '==', true).get();
         if (productsSnapshot.empty) {
-        console.log('❌ No active products found. Please create a product first.');
-        return false;
+            console.log('❌ No active products found. Please create a product first.');
+            return false;
         }
 
         const products = [];
         console.log('\n--- Choose a Product ---');
-        productsSnapshot.forEach((doc, index) => {
-        const data = doc.data();
-        products.push({ id: doc.id, ...data });
-        // Display a numbered list for easy selection
-        console.log(`${index + 1}. ${data.name} (Slot: ${data.slot}, Price: $${data.price.toFixed(2)})`);
+        productsSnapshot.docs.forEach((doc, index) => {
+            const data = doc.data();
+            products.push({ id: doc.id, ...data });
+            console.log(`${index + 1}. ${data.name} (Slot: ${data.slot}, Price: $${data.price.toFixed(2)})`);
         });
         console.log('------------------------');
-
 
         const productChoice = await askQuestion('\nEnter the number of the product to add sales to: ');
         const productIndex = parseInt(productChoice, 10) - 1;
 
         if (isNaN(productIndex) || productIndex < 0 || productIndex >= products.length) {
-        console.log('❌ Invalid selection.');
-        return false;
+            console.log('❌ Invalid selection.');
+            return false;
         }
 
         const product = products[productIndex];
@@ -206,8 +164,8 @@ class CLISeeder {
         const inventoryDoc = await inventoryRef.get();
 
         if (!inventoryDoc.exists) {
-        console.log(`❌ No inventory record found for product in slot ${product.slot}.`);
-        return false;
+            console.log(`❌ No inventory record found for product in slot ${product.slot}.`);
+            return false;
         }
 
         const currentQuantity = inventoryDoc.data().quantity;
@@ -220,15 +178,15 @@ class CLISeeder {
         const salesCount = parseInt(salesCountInput, 10);
 
         if (isNaN(salesCount) || salesCount <= 0) {
-        console.log('❌ Invalid sales count. Please enter a positive integer.');
-        return false;
+            console.log('❌ Invalid sales count. Please enter a positive integer.');
+            return false;
         }
 
         if (salesCount > currentQuantity) {
-        console.log(`❌ Cannot generate ${salesCount} sales. Only ${currentQuantity} units are in stock.`);
-        return false;
+            console.log(`❌ Cannot generate ${salesCount} sales. Only ${currentQuantity} units are in stock.`);
+            return false;
         }
-        
+
         const generationTime = new Date();
         const formattedDateTime = generationTime.toLocaleString('en-NZ', {
             dateStyle: 'medium',
@@ -240,121 +198,78 @@ class CLISeeder {
         console.log(`\n🔄 Generating ${salesCount} sales for ${product.name}...`);
 
         for (let i = 0; i < salesCount; i++) {
-        const saleRef = db.collection('sales').doc();
-        batch.set(saleRef, {
-            productId: product.id,
-            slot: product.slot,
-            price: product.price,
-            paymentMethod: PAYMENT_METHODS[Math.floor(Math.random() * PAYMENT_METHODS.length)],
-            timestamp: admin.firestore.FieldValue.serverTimestamp()
-        });
+            const saleRef = db.collection('sales').doc();
+            batch.set(saleRef, {
+                productId: product.id,
+                slot: product.slot,
+                price: product.price,
+                paymentMethod: PAYMENT_METHODS[Math.floor(Math.random() * PAYMENT_METHODS.length)],
+                timestamp: admin.firestore.FieldValue.serverTimestamp()
+            });
         }
 
         const newQuantity = currentQuantity - salesCount;
         batch.update(inventoryRef, {
-        quantity: newQuantity,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            quantity: newQuantity,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
         await batch.commit();
 
         console.log(`\n✅ Generated ${salesCount} sales for "${product.name}" at approximately ${formattedDateTime}`);
         console.log(`📦 Inventory updated: ${currentQuantity} → ${newQuantity} units`);
-
         return true;
     }
-
-  /**
-   * !! DANGEROUS !!
-   * Clears all specified collections from the database after user confirmation.
-   */
-  async clearDatabase() {
-    const projectId = serviceAccount.project_id;
-    console.error('\n🛑 DANGER ZONE! THIS IS A DESTRUCTIVE OPERATION! 🛑');
-    console.error('====================================================');
-    console.error(`You are about to permanently delete all data from the following collections in the "${projectId}" project:`);
-    COLLECTIONS_TO_DELETE.forEach(col => console.error(`  - ${col}`));
-    console.error('\nThis action cannot be undone.');
-
-    const confirmation = await askQuestion(`To confirm, please type your Firebase project ID ("${projectId}"): `);
-
-    if (confirmation.trim() !== projectId) {
-      console.log('\n❌ Project ID mismatch. Database clearing aborted.');
-      return false;
-    }
-
-    console.log('\n✅ Confirmation received. Proceeding with database clearing...');
-
-    try {
-      await Promise.all(
-        COLLECTIONS_TO_DELETE.map(col => {
-          console.log(`  - Deleting collection: ${col}...`);
-          return deleteCollection(col, 200);
-        })
-      );
-      console.log('\n✅ All specified collections have been successfully cleared.');
-    } catch (error) {
-      console.error('\n💥 An error occurred while clearing the database:', error);
-    }
-    
-    return true;
-  }
 }
 
+/**
+ * Main function to run the seeder's interactive menu.
+ */
 async function main() {
-  const seeder = new CLISeeder();
-  const args = process.argv.slice(2);
+    // --- Add a message to confirm the current date ---
+    const today = new Date();
+    const formattedDate = today.toLocaleString('en-NZ', {
+        dateStyle: 'full',
+        timeStyle: 'long',
+        timeZone: 'Pacific/Auckland'
+    });
+    console.log(`\n🌱 Seeder running for: ${formattedDate} 🌱`);
+    // --- End of new message ---
 
-  // Handle direct command for clearing the DB
-  if (args[0] === 'clear') {
-    await seeder.clearDatabase();
-    rl.close();
-    return;
-  }
-  
-  // Otherwise, show the interactive menu
-  try {
-    console.log('\n🏪 Vending Machine Database Management CLI');
-    console.log('==========================================\n');
-    console.log('1. Create Single Product');
-    console.log('2. Generate Sales for a Product');
-    console.log('3. Exit');
-    console.log('\n--- Dangerous Operations ---');
-    console.log('4. Clear Entire Database');
-    console.log('----------------------------\n');
+    const seeder = new CLISeeder();
+    try {
+        console.log('\n🏪 Vending Machine Database Management CLI');
+        console.log('==========================================\n');
+        console.log('1. Create Single Product');
+        console.log('2. Generate Sales for a Product');
+        console.log('3. Exit\n');
 
-    const choice = await askQuestion('Select an option: ');
+        const choice = await askQuestion('Select an option: ');
 
-    switch (choice.trim()) {
-      case '1':
-        await seeder.createSingleProduct();
-        break;
-      case '2':
-        await seeder.generateSalesForChosenProduct();
-        break;
-      case '3':
-        console.log('👋 Exiting CLI. Goodbye!');
-        break;
-      case '4':
-        await seeder.clearDatabase();
-        break;
-      default:
-        console.log('❌ Invalid option. Please try again.');
-        break;
+        switch (choice.trim()) {
+            case '1':
+                await seeder.createSingleProduct();
+                break;
+            case '2':
+                await seeder.generateSalesForChosenProduct();
+                break;
+            case '3':
+                console.log('👋 Exiting CLI. Goodbye!');
+                break;
+            default:
+                console.log('❌ Invalid option. Please try again.');
+                break;
+        }
+    } catch (error) {
+        console.error('💥 An unexpected error occurred:', error.message);
+        process.exit(1);
+    } finally {
+        if (rl.writable) {
+            rl.close();
+        }
+        process.exit(0);
     }
-  } catch (error) {
-    console.error('💥 An unexpected error occurred:', error.message);
-    process.exit(1);
-  } finally {
-    if (rl.writable) {
-        rl.close();
-    }
-    process.exit(0);
-  }
 }
 
-if (require.main === module) {
-  main();
-}
-
-module.exports = { CLISeeder };
+// --- Run the Script ---
+main();

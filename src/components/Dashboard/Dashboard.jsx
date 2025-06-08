@@ -5,6 +5,10 @@ import {
   ShoppingCart, 
   AlertTriangle
 } from 'lucide-react';
+// Import date-fns for robust date manipulation
+import { format, subDays, startOfDay } from 'date-fns';
+import { toDate } from 'date-fns-tz';
+
 import SalesChart from '../Charts/SalesChart';
 import InventoryChart from '../Charts/InventoryChart';
 import RevenueChart from '../Charts/RevenueChart';
@@ -12,14 +16,14 @@ import {
   subscribeToSales, 
   subscribeToInventory, 
   subscribeToProducts,
-  getDailySales 
+  getDailySales // Assuming this function fetches sales for a given period
 } from '../../services/firestore';
 import './Dashboard.css';
 
 const Dashboard = () => {
   const [sales, setSales] = useState([]);
   const [inventory, setInventory] = useState([]);
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState({}); // Use an object for faster lookups
   const [stats, setStats] = useState({
     totalRevenue: 0,
     totalSales: 0,
@@ -29,213 +33,110 @@ const Dashboard = () => {
   const [recentSales, setRecentSales] = useState([]);
   const [dailySalesData, setDailySalesData] = useState([]);
 
+  // Memoize the data loading function to keep it stable
+  const loadDailySalesData = useCallback(async () => {
+    try {
+      const allSales = await getDailySales(30); // Fetch last 30 days of sales
+      
+      // 1. Initialize a map with the last 30 days, ensuring all days are present
+      const salesMap = new Map();
+      const today = startOfDay(new Date());
+      for (let i = 0; i < 30; i++) {
+        const date = subDays(today, i);
+        // Use a consistent, sortable date format (YYYY-MM-DD)
+        const formattedDate = format(date, 'yyyy-MM-dd');
+        salesMap.set(formattedDate, { 
+          date: formattedDate, 
+          // Format for display on the chart's X-axis
+          displayDate: format(date, 'MMM d'), 
+          sales: 0, 
+          revenue: 0 
+        });
+      }
+
+      // 2. Populate the map with actual sales data
+      allSales.forEach(sale => {
+        if (sale.timestamp?.seconds) {
+          const saleDate = toDate(new Date(sale.timestamp.seconds * 1000));
+          const formattedSaleDate = format(saleDate, 'yyyy-MM-dd');
+          
+          if (salesMap.has(formattedSaleDate)) {
+            const dayData = salesMap.get(formattedSaleDate);
+            dayData.sales += 1;
+            dayData.revenue += sale.price || 0;
+          }
+        }
+      });
+      
+      // 3. Convert map to a sorted array for the chart
+      const chartData = Array.from(salesMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+      
+      setDailySalesData(chartData);
+    } catch (error) {
+      console.error('Error loading daily sales:', error);
+    }
+  }, []); // Empty dependency array means this function is created only once
+
   useEffect(() => {
+    // Initial data load for charts
+    loadDailySalesData();
+
     const unsubscribeSales = subscribeToSales((salesData) => {
       setSales(salesData);
-      // Sort sales by timestamp in descending order (newest first) and take top 5
-      const sortedSales = salesData.sort((a, b) => {
-        const timeA = a.timestamp?.seconds || 0;
-        const timeB = b.timestamp?.seconds || 0;
-        return timeB - timeA; // Descending order (newest first)
-      });
+      const sortedSales = [...salesData].sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
       setRecentSales(sortedSales.slice(0, 5));
     });
 
     const unsubscribeInventory = subscribeToInventory(setInventory);
-    const unsubscribeProducts = subscribeToProducts(setProducts);
 
-    loadDailySalesData();
+    // Convert products array to a map for efficient lookups
+    const unsubscribeProducts = subscribeToProducts((productsData) => {
+        const productsMap = productsData.reduce((acc, product) => {
+            acc[product.id] = product;
+            return acc;
+        }, {});
+        setProducts(productsMap);
+    });
 
     return () => {
       unsubscribeSales();
       unsubscribeInventory();
       unsubscribeProducts();
     };
-  }, []);
+  }, [loadDailySalesData]); // Depend on the memoized function
 
-  // Memoize calculateStats to use it as a stable dependency
-  const calculateStats = useCallback(() => {
+  // Calculate high-level stats whenever underlying data changes
+  useEffect(() => {
     const totalRevenue = sales.reduce((sum, sale) => sum + (sale.price || 0), 0);
-    const totalSales = sales.length;
-    const lowStockItems = inventory.filter(item => 
-      item.quantity <= (item.lowStockThreshold || 5)
-    ).length;
-    const activeProducts = products.filter(product => product.active).length;
-
+    const lowStockItems = inventory.filter(item => item.quantity <= (item.lowStockThreshold || 5)).length;
+    
     setStats({
       totalRevenue,
-      totalSales,
+      totalSales: sales.length,
       lowStockItems,
-      activeProducts
+      activeProducts: Object.values(products).filter(p => p.active).length,
     });
   }, [sales, inventory, products]);
 
-  useEffect(() => {
-    calculateStats();
-  }, [calculateStats]);
-
-  const loadDailySalesData = async () => {
-    try {
-      const dailySales = await getDailySales(30);
-      const salesByDate = {};
-      dailySales.forEach(sale => {
-        const date = new Date(sale.timestamp?.seconds * 1000).toLocaleDateString();
-        if (!salesByDate[date]) {
-          salesByDate[date] = { date, sales: 0, revenue: 0 };
-        }
-        salesByDate[date].sales += 1;
-        salesByDate[date].revenue += sale.price || 0;
-      });
-
-      const chartData = Object.values(salesByDate).sort((a, b) => 
-        new Date(a.date) - new Date(b.date)
-      );
-
-      setDailySalesData(chartData);
-    } catch (error) {
-      console.error('Error loading daily sales:', error);
-    }
-  };
-
-  // Helper function to check if item is deleted product
-  const isDeletedProduct = (item) => {
-    return !item.productId && item.deletedProductName;
-  };
-
-  // Filter inventory to exclude deleted products
-  const activeInventory = inventory.filter(item => !isDeletedProduct(item));
+  // --- Helper Functions ---
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-NZ', {
-      style: 'currency',
-      currency: 'NZD'
-    }).format(amount);
+    return new Intl.NumberFormat('en-NZ', { style: 'currency', currency: 'NZD' }).format(amount);
   };
 
-  // Updated formatTimestamp function with better browser time handling
-  const formatTimestamp = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    
-    try {
-      // Handle Firestore timestamp format
-      let date;
-      if (timestamp.seconds) {
-        // Convert Firestore timestamp to JavaScript Date
-        date = new Date(timestamp.seconds * 1000);
-      } else if (timestamp instanceof Date) {
-        date = timestamp;
-      } else {
-        // Try to parse as regular timestamp
-        date = new Date(timestamp);
-      }
-
-      // Check if date is valid
-      if (isNaN(date.getTime())) {
-        return 'Invalid Date';
-      }
-
-      // Get current browser time for comparison
-      const now = new Date();
-      const timeDiff = now.getTime() - date.getTime();
-      const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-
-      // Format based on how recent the timestamp is
-      if (daysDiff === 0) {
-        // Today - show time only
-        return date.toLocaleString('en-NZ', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: true
-        });
-      } else if (daysDiff === 1) {
-        // Yesterday - show "Yesterday" with time
-        return `Yesterday ${date.toLocaleString('en-NZ', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true
-        })}`;
-      } else if (daysDiff <= 7) {
-        // This week - show day name with time
-        return date.toLocaleString('en-NZ', {
-          weekday: 'short',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true
-        });
-      } else {
-        // Older - show full date and time
-        return date.toLocaleString('en-NZ', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true
-        });
-      }
-    } catch (error) {
-      console.error('Error formatting timestamp:', error);
-      return 'Invalid Date';
-    }
-  };
-
-  // Format actual sale time with proper date/time display
   const formatSaleTime = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    
+    if (!timestamp?.seconds) return 'N/A';
     try {
-      let date;
-      if (timestamp.seconds) {
-        date = new Date(timestamp.seconds * 1000);
-      } else if (timestamp instanceof Date) {
-        date = timestamp;
-      } else {
-        date = new Date(timestamp);
-      }
-
-      if (isNaN(date.getTime())) {
-        return 'Invalid Date';
-      }
-
+      const saleDate = new Date(timestamp.seconds * 1000);
       const now = new Date();
-      const daysDiff = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+      const diffDays = Math.floor((now - saleDate) / (1000 * 60 * 60 * 24));
 
-      // Show actual time based on how recent it is
-      if (daysDiff === 0) {
-        // Today - show "Today at HH:MM AM/PM"
-        return `Today at ${date.toLocaleString('en-NZ', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true
-        })}`;
-      } else if (daysDiff === 1) {
-        // Yesterday - show "Yesterday at HH:MM AM/PM"
-        return `Yesterday at ${date.toLocaleString('en-NZ', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true
-        })}`;
-      } else if (daysDiff <= 7) {
-        // This week - show "Day at HH:MM AM/PM"
-        return `${date.toLocaleDateString('en-NZ', { weekday: 'long' })} at ${date.toLocaleString('en-NZ', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true
-        })}`;
-      } else {
-        // Older - show "MMM DD at HH:MM AM/PM" or "MMM DD, YYYY at HH:MM AM/PM"
-        const sameYear = date.getFullYear() === now.getFullYear();
-        return `${date.toLocaleDateString('en-NZ', {
-          month: 'short',
-          day: 'numeric',
-          year: sameYear ? undefined : 'numeric'
-        })} at ${date.toLocaleString('en-NZ', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true
-        })}`;
-      }
+      if (isNaN(saleDate.getTime())) return 'Invalid Date';
+
+      if (diffDays === 0) return `Today at ${format(saleDate, 'p')}`;
+      if (diffDays === 1) return `Yesterday at ${format(saleDate, 'p')}`;
+      return `${format(saleDate, 'MMM d')} at ${format(saleDate, 'p')}`;
+
     } catch (error) {
       console.error('Error formatting sale time:', error);
       return 'Invalid Date';
@@ -243,9 +144,10 @@ const Dashboard = () => {
   };
 
   const getProductName = (productId) => {
-    const product = products.find(p => p.id === productId);
-    return product?.name || 'Unknown Product';
+    return products[productId]?.name || 'Unknown Product';
   };
+  
+  const activeInventory = inventory.filter(item => products[item.productId]);
 
   return (
     <div className="dashboard">
@@ -256,51 +158,40 @@ const Dashboard = () => {
 
       <div className="stats-grid">
         <div className="stat-card revenue">
-          <div className="stat-icon"><DollarSign size={24} /></div>
-          <div className="stat-content">
-            <h3>{formatCurrency(stats.totalRevenue)}</h3>
-            <p>Total Revenue</p>
-          </div>
+            <div className="stat-icon"><DollarSign size={24} /></div>
+            <div className="stat-content">
+                <h3>{formatCurrency(stats.totalRevenue)}</h3>
+                <p>Total Revenue</p>
+            </div>
         </div>
-
         <div className="stat-card sales">
-          <div className="stat-icon"><ShoppingCart size={24} /></div>
-          <div className="stat-content">
-            <h3>{stats.totalSales}</h3>
-            <p>Total Sales</p>
-          </div>
+            <div className="stat-icon"><ShoppingCart size={24} /></div>
+            <div className="stat-content">
+                <h3>{stats.totalSales}</h3>
+                <p>Total Sales</p>
+            </div>
         </div>
-
         <div className="stat-card products">
-          <div className="stat-icon"><Package size={24} /></div>
-          <div className="stat-content">
-            <h3>{stats.activeProducts}</h3>
-            <p>Active Products</p>
-          </div>
+            <div className="stat-icon"><Package size={24} /></div>
+            <div className="stat-content">
+                <h3>{stats.activeProducts}</h3>
+                <p>Active Products</p>
+            </div>
         </div>
-
         <div className="stat-card alerts">
-          <div className="stat-icon"><AlertTriangle size={24} /></div>
-          <div className="stat-content">
-            <h3>{stats.lowStockItems}</h3>
-            <p>Low Stock Alerts</p>
-          </div>
+            <div className="stat-icon"><AlertTriangle size={24} /></div>
+            <div className="stat-content">
+                <h3>{stats.lowStockItems}</h3>
+                <p>Low Stock Alerts</p>
+            </div>
         </div>
       </div>
 
-      {/* Recent Sales Section - Now displayed first with improved time formatting */}
       <div className="dashboard-bottom">
         <div className="recent-sales card">
           <div className="card-header">
             <h3>Recent Sales</h3>
-            <div style={{ fontSize: '12px', color: '#718096' }}>
-              Live updates • Browser time: {new Date().toLocaleString('en-NZ', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: true
-              })}
-            </div>
+            <span className="live-indicator">Live</span>
           </div>
           <div className="card-body">
             {recentSales.length > 0 ? (
@@ -311,9 +202,7 @@ const Dashboard = () => {
                       <span className="product-name">{getProductName(sale.productId)}</span>
                       <div className="sale-details">
                         <span className="sale-slot">Slot: {sale.slot}</span>
-                        <span className="sale-time" title={formatTimestamp(sale.timestamp)}>
-                          {formatSaleTime(sale.timestamp)}
-                        </span>
+                        <span className="sale-time">{formatSaleTime(sale.timestamp)}</span>
                       </div>
                     </div>
                     <div className="sale-price">{formatCurrency(sale.price)}</div>
@@ -321,7 +210,7 @@ const Dashboard = () => {
                 ))}
               </div>
             ) : (
-              <p className="no-data">No recent sales</p>
+              <p className="no-data">No recent sales to display.</p>
             )}
           </div>
         </div>
@@ -340,16 +229,15 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Charts Section - Now displayed after Recent Sales */}
       <div className="charts-grid">
         <div className="chart-card">
           <div className="chart-header"><h3>Sales Trend (Last 30 Days)</h3></div>
-          <SalesChart data={dailySalesData} />
+          {/* The key prop helps React re-render the chart when data updates */}
+          <SalesChart key={`sales-${dailySalesData.length}`} data={dailySalesData} />
         </div>
-
         <div className="chart-card">
-          <div className="chart-header"><h3>Revenue Overview</h3></div>
-          <RevenueChart data={dailySalesData} />
+          <div className="chart-header"><h3>Revenue Overview (Last 30 Days)</h3></div>
+          <RevenueChart key={`revenue-${dailySalesData.length}`} data={dailySalesData} />
         </div>
       </div>
     </div>
