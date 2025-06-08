@@ -4,9 +4,6 @@ import {
   subscribeToSales, 
   subscribeToProducts
 } from '../../services/firestore';
-import SalesChart from '../Charts/SalesChart';
-import TimeSalesChart from '../Charts/TimeSalesChart';
-import RevenueChart from '../Charts/RevenueChart';
 import LoadingSpinner from '../Common/LoadingSpinner';
 import './Sales.css';
 
@@ -25,8 +22,9 @@ const Sales = () => {
     averageTransaction: 0,
     topProduct: null
   });
-  const [chartData, setChartData] = useState([]);
   const [quickFilter, setQuickFilter] = useState('30days');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
 
   useEffect(() => {
     // Set default date range based on quick filter
@@ -130,44 +128,118 @@ const Sales = () => {
     });
   }, [filteredSales, products]);
 
-  // Generate chart data from filtered sales
-  const generateChartData = useCallback(() => {
-    if (filteredSales.length === 0) {
-      setChartData([]);
+  // Enhanced search functionality with flexible date searching
+  const performSearch = useCallback((term) => {
+    if (!term.trim()) {
+      setSearchResults([]);
       return;
     }
 
-    // Create a complete date range for the chart
-    const startDate = new Date(dateRange.startDate);
-    const endDate = new Date(dateRange.endDate);
-    const dateMap = {};
-
-    // Initialize all dates in range with zero values
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      const dateStr = d.toDateString();
-      dateMap[dateStr] = { date: dateStr, sales: 0, revenue: 0 };
-    }
-
-    // Fill in actual sales data
-    filteredSales.forEach(sale => {
-      if (sale.timestamp?.seconds) {
-        const date = new Date(sale.timestamp.seconds * 1000);
-        const dateStr = date.toDateString();
+    const searchLower = term.toLowerCase();
+    const results = filteredSales.filter(sale => {
+      const product = products.find(p => p.id === sale.productId);
+      const saleDate = new Date(sale.timestamp?.seconds * 1000);
+      
+      // Enhanced date searching with multiple formats
+      const getDateSearchStrings = (date) => {
+        const dateStrings = [];
         
-        if (dateMap[dateStr]) {
-          dateMap[dateStr].sales += 1;
-          dateMap[dateStr].revenue += sale.price || 0;
+        // Full date formats
+        dateStrings.push(date.toLocaleDateString('en-NZ')); // DD/MM/YYYY
+        dateStrings.push(date.toLocaleDateString('en-US')); // MM/DD/YYYY
+        dateStrings.push(date.toISOString().split('T')[0]); // YYYY-MM-DD
+        
+        // Date parts
+        dateStrings.push(date.getDate().toString()); // Day (1-31)
+        dateStrings.push(date.getDate().toString().padStart(2, '0')); // Day (01-31)
+        dateStrings.push((date.getMonth() + 1).toString()); // Month (1-12)
+        dateStrings.push((date.getMonth() + 1).toString().padStart(2, '0')); // Month (01-12)
+        dateStrings.push(date.getFullYear().toString()); // Year (2024)
+        
+        // Month names
+        dateStrings.push(date.toLocaleDateString('en-NZ', { month: 'long' })); // January
+        dateStrings.push(date.toLocaleDateString('en-NZ', { month: 'short' })); // Jan
+        
+        // Day names
+        dateStrings.push(date.toLocaleDateString('en-NZ', { weekday: 'long' })); // Monday
+        dateStrings.push(date.toLocaleDateString('en-NZ', { weekday: 'short' })); // Mon
+        
+        // Combined formats
+        dateStrings.push(date.toLocaleDateString('en-NZ', { 
+          month: 'short', 
+          day: 'numeric' 
+        })); // Jan 15
+        
+        dateStrings.push(date.toLocaleDateString('en-NZ', { 
+          month: 'short', 
+          day: 'numeric', 
+          year: 'numeric' 
+        })); // Jan 15, 2024
+        
+        // Time formats
+        dateStrings.push(date.toLocaleTimeString('en-NZ', { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        })); // 14:30
+        
+        dateStrings.push(date.toLocaleTimeString('en-NZ', { 
+          hour: 'numeric', 
+          minute: '2-digit',
+          hour12: true 
+        })); // 2:30 PM
+        
+        // Relative date terms
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        if (date.toDateString() === today.toDateString()) {
+          dateStrings.push('today');
+        } else if (date.toDateString() === yesterday.toDateString()) {
+          dateStrings.push('yesterday');
         }
-      }
+        
+        // Calculate days ago
+        const diffTime = Math.abs(today - date);
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays <= 7 && diffDays > 0) {
+          dateStrings.push(`${diffDays} day${diffDays !== 1 ? 's' : ''} ago`);
+        }
+        
+        return dateStrings.map(str => str.toLowerCase());
+      };
+      
+      // Search in multiple fields including enhanced date formats
+      const searchFields = [
+        product?.name || 'Unknown Product',           // Product name
+        product?.sku || '',                          // Product SKU
+        product?.category || '',                     // Product category
+        sale.slot || '',                             // Slot
+        sale.paymentMethod || 'cash',                // Payment method
+        formatCurrency(sale.price),                  // Price ($2.50)
+        sale.price?.toString() || '',                // Raw price (2.5)
+        ...getDateSearchStrings(saleDate)            // All date formats
+      ].filter(Boolean).map(field => field.toString().toLowerCase());
+
+      return searchFields.some(field => field.includes(searchLower));
     });
 
-    const chartData = Object.values(dateMap).sort((a, b) => 
-      new Date(a.date) - new Date(b.date)
-    );
+    setSearchResults(results);
+  }, [filteredSales, products]);
 
-    console.log(`Generated chart data with ${chartData.length} data points`);
-    setChartData(chartData);
-  }, [filteredSales, dateRange.startDate, dateRange.endDate]);
+  // Debounced search effect
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      performSearch(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, performSearch]);
+
+  // Get sales to display (search results or all filtered sales)
+  const getSalesToDisplay = () => {
+    return searchTerm.trim() ? searchResults : filteredSales;
+  };
 
   // Apply filters when sales data changes
   useEffect(() => {
@@ -183,15 +255,22 @@ const Sales = () => {
         averageTransaction: 0,
         topProduct: null
       });
-      setChartData([]);
     }
   }, [sales, filterSalesByDate, loading]);
 
   // Recalculate stats and charts when filtered sales change
   useEffect(() => {
     calculateStats();
-    generateChartData();
-  }, [filteredSales, calculateStats, generateChartData]);
+  }, [filteredSales, calculateStats]);
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const clearSearch = () => {
+    setSearchTerm('');
+    setSearchResults([]);
+  };
 
   const handleDateRangeChange = (field, value) => {
     setDateRange(prev => ({
@@ -280,7 +359,50 @@ const Sales = () => {
       .slice(0, 5);
   };
 
+  // Calculate product totals for the current filtered period
+  const getProductTotals = useCallback(() => {
+    const productTotals = {};
+    
+    filteredSales.forEach(sale => {
+      if (sale.productId) {
+        if (!productTotals[sale.productId]) {
+          productTotals[sale.productId] = {
+            totalSales: 0,
+            totalRevenue: 0
+          };
+        }
+        productTotals[sale.productId].totalSales += 1;
+        productTotals[sale.productId].totalRevenue += sale.price || 0;
+      }
+    });
+    
+    return productTotals;
+  }, [filteredSales]);
+
   const filteredTopProducts = getFilteredTopProducts();
+  const productTotals = getProductTotals();
+
+  // Get the total unique products that have sales in the filtered period
+  const getUniqueProductCount = () => {
+    const uniqueProducts = new Set();
+    filteredSales.forEach(sale => {
+      if (sale.productId) {
+        uniqueProducts.add(sale.productId);
+      }
+    });
+    return uniqueProducts.size;
+  };
+
+  // Generate dynamic header for Top Products
+  const getTopProductsHeader = () => {
+    const uniqueProductCount = getUniqueProductCount();
+    
+    if (uniqueProductCount >= 5) {
+      return `Top 5 Products (${quickFilter || 'Custom Period'})`;
+    } else {
+      return `Top Products (${quickFilter || 'Custom Period'})`;
+    }
+  };
 
   if (loading) {
     return <LoadingSpinner text="Loading sales data..." />;
@@ -423,72 +545,105 @@ const Sales = () => {
         </div>
       </div>
 
-      {/* Enhanced Charts Section */}
-      <div className="sales-charts">
-        <div className="chart-card">
-          <div className="chart-header">
+      {/* Enhanced Sales Table - Full Width */}
+      <div className="sales-table-container" style={{ marginBottom: '32px' }}>
+        <div className="card">
+          <div className="card-header">
             <h3>Product Sales</h3>
-            {filteredSales.length > 0 && (
-              <div className="chart-summary">
-                Top {Math.min(10, filteredTopProducts.length)} products • {salesStats.totalSales} total sales
-              </div>
-            )}
-          </div>
-          <SalesChart 
-            data={chartData} 
-            products={products} 
-            filteredSales={filteredSales} 
-          />
-        </div>
-
-        <div className="chart-card">
-          <div className="chart-header">
-            <h3>Sales Trend</h3>
-            {chartData.length > 0 && (
-              <div className="chart-summary">
-                {chartData.length} days • {chartData.reduce((sum, day) => sum + day.sales, 0)} total sales
-              </div>
-            )}
-          </div>
-          <TimeSalesChart data={chartData} />
-        </div>
-
-        <div className="chart-card">
-          <div className="chart-header">
-            <h3>Revenue Trend</h3>
-            {chartData.length > 0 && (
-              <div className="chart-summary">
-                {chartData.length} days • {formatCurrency(chartData.reduce((sum, day) => sum + day.revenue, 0))} total
-              </div>
-            )}
-          </div>
-          <RevenueChart data={chartData} />
-        </div>
-      </div>
-
-      {/* Enhanced Sales Table and Top Products */}
-      <div className="sales-bottom">
-        <div className="sales-table-container">
-          <div className="card">
-            <div className="card-header">
-              <h3>Recent Sales</h3>
-              <div className="table-info">
-                Showing {Math.min(20, filteredSales.length)} of {filteredSales.length} sales
-              </div>
+            <div className="table-info">
+              Showing {getSalesToDisplay().length} of {filteredSales.length} sales
+              {searchTerm && (
+                <span style={{ color: '#667eea', marginLeft: '8px' }}>
+                  • Filtered by "{searchTerm}"
+                </span>
+              )}
             </div>
-            <div className="table-container">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Date & Time</th>
-                    <th>Product</th>
-                    <th>Slot</th>
-                    <th>Price</th>
-                    <th>Payment</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredSales.slice(0, 20).map(sale => (
+          </div>
+          
+          {/* Search Bar */}
+          <div style={{ 
+            padding: '16px 20px', 
+            borderBottom: '1px solid #e2e8f0',
+            background: '#f7fafc'
+          }}>
+            <div style={{ 
+              position: 'relative', 
+              maxWidth: '400px'
+            }}>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  placeholder="Search by product, slot, date (today, yesterday, Jan 15, 2024), payment..."
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  className="form-input"
+                  style={{ 
+                    paddingLeft: '12px',
+                    paddingRight: searchTerm ? '40px' : '12px',
+                    fontSize: '14px'
+                  }}
+                />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={clearSearch}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: '#718096',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      borderRadius: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'color 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => e.target.style.color = '#4a5568'}
+                    onMouseLeave={(e) => e.target.style.color = '#718096'}
+                    title="Clear search"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+              {searchTerm && (
+                <div style={{ 
+                  fontSize: '12px', 
+                  color: '#718096', 
+                  marginTop: '4px'
+                }}>
+                  {searchResults.length > 0 
+                    ? `Found ${searchResults.length} result${searchResults.length !== 1 ? 's' : ''}`
+                    : 'No results found'
+                  }
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="table-container">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Date & Time</th>
+                  <th>Product</th>
+                  <th>Slot</th>
+                  <th>Price</th>
+                  <th>Payment</th>
+                  <th>Product Sales</th>
+                  <th>Product Revenue</th>
+                </tr>
+              </thead>
+              <tbody>
+                {getSalesToDisplay().map(sale => {
+                  const productTotal = productTotals[sale.productId] || { totalSales: 0, totalRevenue: 0 };
+                  
+                  return (
                     <tr key={sale.id}>
                       <td className="table-timestamp">
                         <div className="table-date">
@@ -521,57 +676,93 @@ const Sales = () => {
                           {sale.paymentMethod || 'cash'}
                         </span>
                       </td>
-                    </tr>
-                  ))}
-                  {filteredSales.length === 0 && (
-                    <tr>
-                      <td colSpan="5" className="no-data">
-                        <div className="no-data-content">
-                          <div className="no-data-icon">📊</div>
-                          <div className="no-data-title">No sales found</div>
-                          <div className="no-data-subtitle">Try adjusting your date range</div>
+                      <td>
+                        <div style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '4px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: '#667eea'
+                        }}>
+                          <span>{productTotal.totalSales}</span>
+                          <span style={{ 
+                            fontSize: '11px', 
+                            color: '#718096',
+                            fontWeight: 'normal'
+                          }}>
+                            {productTotal.totalSales === 1 ? 'sale' : 'sales'}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ 
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: '#38a169'
+                        }}>
+                          {formatCurrency(productTotal.totalRevenue)}
                         </div>
                       </td>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  );
+                })}
+                {getSalesToDisplay().length === 0 && (
+                  <tr>
+                    <td colSpan="7" className="no-data">
+                      <div className="no-data-content">
+                        <div className="no-data-icon">📊</div>
+                        <div className="no-data-title">
+                          {searchTerm ? 'No matching sales found' : 'No sales found'}
+                        </div>
+                        <div className="no-data-subtitle">
+                          {searchTerm 
+                            ? `No sales match "${searchTerm}" in the selected period`
+                            : 'Try adjusting your date range'
+                          }
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
+      </div>
 
-        <div className="top-products-container">
-          <div className="card">
-            <div className="card-header">
-              <h3>Top Products ({quickFilter || 'Custom Period'})</h3>
-            </div>
-            <div className="card-body">
-              {filteredTopProducts.length > 0 ? (
-                <div className="top-products-list">
-                  {filteredTopProducts.map((product, index) => (
-                    <div key={product.productId} className="top-product-item">
-                      <div className="product-rank">
-                        {index + 1}
+      {/* Top Products - Moved Below Sales Table */}
+      <div className="top-products-container" style={{ marginBottom: '32px' }}>
+        <div className="card">
+          <div className="card-header">
+            <h3>{getTopProductsHeader()}</h3>
+          </div>
+          <div className="card-body">
+            {filteredTopProducts.length > 0 ? (
+              <div className="top-products-list">
+                {filteredTopProducts.map((product, index) => (
+                  <div key={product.productId} className="top-product-item">
+                    <div className="product-rank">
+                      {index + 1}
+                    </div>
+                    <div className="product-details">
+                      <div className="product-name">
+                        {products.find(p => p.id === product.productId)?.name || 'Unknown Product'}
                       </div>
-                      <div className="product-details">
-                        <div className="product-name">
-                          {products.find(p => p.id === product.productId)?.name || 'Unknown Product'}
-                        </div>
-                        <div className="product-sales">
-                          {product.count} sales • {formatCurrency(product.revenue)} revenue
-                        </div>
+                      <div className="product-sales">
+                        {product.count} sales • {formatCurrency(product.revenue)} revenue
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="no-data-content">
-                  <div className="no-data-icon">🏆</div>
-                  <div className="no-data-title">No top products</div>
-                  <div className="no-data-subtitle">No sales in selected period</div>
-                </div>
-              )}
-            </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="no-data-content">
+                <div className="no-data-icon">🏆</div>
+                <div className="no-data-title">No top products</div>
+                <div className="no-data-subtitle">No sales in selected period</div>
+              </div>
+            )}
           </div>
         </div>
       </div>
