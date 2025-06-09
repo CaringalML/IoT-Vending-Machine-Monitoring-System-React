@@ -196,40 +196,16 @@
   margin-top: 2px;
 }
 
-/* Charts */
-.sales-charts {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 24px;
-  margin-bottom: 32px;
-}
-
-/* Responsive chart layout */
-@media (min-width: 1200px) {
-  .sales-charts {
-    grid-template-columns: 1fr 1fr 1fr;
-  }
-}
-
-@media (max-width: 1199px) and (min-width: 768px) {
-  .sales-charts {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-@media (max-width: 767px) {
-  .sales-charts {
-    grid-template-columns: 1fr;
-  }
-}
-
+/* Chart Card Styles */
 .chart-card {
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   border: 1px solid #e2e8f0;
-  overflow: hidden;
+  /* overflow: hidden; */ /* <--- THIS LINE HAS BEEN REMOVED TO FIX THE TOOLTIP */
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
 }
 
 .chart-card:hover {
@@ -257,6 +233,10 @@
   font-size: 12px;
   color: #718096;
   font-weight: 500;
+}
+
+.chart-body {
+    padding: 20px;
 }
 
 /* Bottom Section */
@@ -494,11 +474,6 @@
     gap: 20px;
   }
 
-  .sales-charts {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
-
   .chart-header {
     flex-direction: column;
     align-items: flex-start;
@@ -573,10 +548,6 @@
 
   .stat-product-name {
     font-size: 14px !important;
-  }
-
-  .sales-charts {
-    gap: 16px;
   }
 
   .top-products-container {
@@ -741,27 +712,31 @@
   }
 }
 
-/* Custom scrollbar for tables and lists */
+/* Custom scrollbar for tables, lists, and chart */
 .table-container::-webkit-scrollbar,
-.top-products-list::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+.top-products-list::-webkit-scrollbar,
+.custom-chart-scroll-area::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
 .table-container::-webkit-scrollbar-track,
-.top-products-list::-webkit-scrollbar-track {
+.top-products-list::-webkit-scrollbar-track,
+.custom-chart-scroll-area::-webkit-scrollbar-track {
   background: #f1f1f1;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 .table-container::-webkit-scrollbar-thumb,
-.top-products-list::-webkit-scrollbar-thumb {
+.top-products-list::-webkit-scrollbar-thumb,
+.custom-chart-scroll-area::-webkit-scrollbar-thumb {
   background: #c1c1c1;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 .table-container::-webkit-scrollbar-thumb:hover,
-.top-products-list::-webkit-scrollbar-thumb:hover {
+.top-products-list::-webkit-scrollbar-thumb:hover,
+.custom-chart-scroll-area::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
 }
 

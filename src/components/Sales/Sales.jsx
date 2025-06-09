@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Download, TrendingUp, DollarSign, Calendar, Filter } from 'lucide-react';
-import { 
-  subscribeToSales, 
+import {
+  subscribeToSales,
   subscribeToProducts
 } from '../../services/firestore';
 import LoadingSpinner from '../Common/LoadingSpinner';
-import './Sales.css';
+import CustomBarChart from './CustomBarChart'; 
+import './Sales.css'; 
 
 const Sales = () => {
   const [sales, setSales] = useState([]);
@@ -27,10 +28,7 @@ const Sales = () => {
   const [searchResults, setSearchResults] = useState([]);
 
   useEffect(() => {
-    // Set default date range based on quick filter
     applyQuickFilter('30days');
-
-    // Subscribe to real-time data
     const unsubscribeSales = subscribeToSales(setSales);
     const unsubscribeProducts = subscribeToProducts(setProducts);
 
@@ -43,7 +41,7 @@ const Sales = () => {
   const applyQuickFilter = (filterType) => {
     const endDate = new Date();
     const startDate = new Date();
-    
+
     switch (filterType) {
       case 'today':
         startDate.setHours(0, 0, 0, 0);
@@ -67,7 +65,7 @@ const Sales = () => {
       default:
         startDate.setDate(startDate.getDate() - 30);
     }
-    
+
     setDateRange({
       startDate: startDate.toISOString().split('T')[0],
       endDate: endDate.toISOString().split('T')[0]
@@ -75,7 +73,6 @@ const Sales = () => {
     setQuickFilter(filterType);
   };
 
-  // Filter sales by date range
   const filterSalesByDate = useCallback(() => {
     if (!dateRange.startDate || !dateRange.endDate || sales.length === 0) {
       setFilteredSales([]);
@@ -84,7 +81,7 @@ const Sales = () => {
 
     const startDate = new Date(dateRange.startDate);
     const endDate = new Date(dateRange.endDate);
-    endDate.setHours(23, 59, 59, 999); // Include the entire end date
+    endDate.setHours(23, 59, 59, 999);
 
     const filtered = sales.filter(sale => {
       if (!sale.timestamp?.seconds) return false;
@@ -92,17 +89,14 @@ const Sales = () => {
       return saleDate >= startDate && saleDate <= endDate;
     });
 
-    console.log(`Filtered ${filtered.length} sales from ${sales.length} total for period ${dateRange.startDate} to ${dateRange.endDate}`);
     setFilteredSales(filtered);
   }, [dateRange.startDate, dateRange.endDate, sales]);
 
-  // Calculate stats from filtered sales
   const calculateStats = useCallback(() => {
     const totalSales = filteredSales.length;
     const totalRevenue = filteredSales.reduce((sum, sale) => sum + (sale.price || 0), 0);
     const averageTransaction = totalSales > 0 ? totalRevenue / totalSales : 0;
 
-    // Find top product in FILTERED period (not all-time)
     const productCounts = {};
     filteredSales.forEach(sale => {
       if (sale.productId) {
@@ -112,13 +106,11 @@ const Sales = () => {
 
     let topProduct = null;
     if (Object.keys(productCounts).length > 0) {
-      const topProductId = Object.keys(productCounts).reduce((a, b) => 
+      const topProductId = Object.keys(productCounts).reduce((a, b) =>
         productCounts[a] > productCounts[b] ? a : b
       );
       topProduct = products.find(p => p.id === topProductId);
     }
-
-    console.log('Stats calculated:', { totalSales, totalRevenue, averageTransaction, topProduct: topProduct?.name });
 
     setSalesStats({
       totalSales,
@@ -128,7 +120,18 @@ const Sales = () => {
     });
   }, [filteredSales, products]);
 
-  // Enhanced search functionality with flexible date searching
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-NZ', {
+      style: 'currency',
+      currency: 'NZD'
+    }).format(amount);
+  };
+
+  const getProductName = useCallback((productId) => {
+    const product = products.find(p => p.id === productId);
+    return product?.name || 'Unknown Product';
+  }, [products]);
+
   const performSearch = useCallback((term) => {
     if (!term.trim()) {
       setSearchResults([]);
@@ -139,95 +142,26 @@ const Sales = () => {
     const results = filteredSales.filter(sale => {
       const product = products.find(p => p.id === sale.productId);
       const saleDate = new Date(sale.timestamp?.seconds * 1000);
-      
-      // Enhanced date searching with multiple formats
-      const getDateSearchStrings = (date) => {
-        const dateStrings = [];
-        
-        // Full date formats
-        dateStrings.push(date.toLocaleDateString('en-NZ')); // DD/MM/YYYY
-        dateStrings.push(date.toLocaleDateString('en-US')); // MM/DD/YYYY
-        dateStrings.push(date.toISOString().split('T')[0]); // YYYY-MM-DD
-        
-        // Date parts
-        dateStrings.push(date.getDate().toString()); // Day (1-31)
-        dateStrings.push(date.getDate().toString().padStart(2, '0')); // Day (01-31)
-        dateStrings.push((date.getMonth() + 1).toString()); // Month (1-12)
-        dateStrings.push((date.getMonth() + 1).toString().padStart(2, '0')); // Month (01-12)
-        dateStrings.push(date.getFullYear().toString()); // Year (2024)
-        
-        // Month names
-        dateStrings.push(date.toLocaleDateString('en-NZ', { month: 'long' })); // January
-        dateStrings.push(date.toLocaleDateString('en-NZ', { month: 'short' })); // Jan
-        
-        // Day names
-        dateStrings.push(date.toLocaleDateString('en-NZ', { weekday: 'long' })); // Monday
-        dateStrings.push(date.toLocaleDateString('en-NZ', { weekday: 'short' })); // Mon
-        
-        // Combined formats
-        dateStrings.push(date.toLocaleDateString('en-NZ', { 
-          month: 'short', 
-          day: 'numeric' 
-        })); // Jan 15
-        
-        dateStrings.push(date.toLocaleDateString('en-NZ', { 
-          month: 'short', 
-          day: 'numeric', 
-          year: 'numeric' 
-        })); // Jan 15, 2024
-        
-        // Time formats
-        dateStrings.push(date.toLocaleTimeString('en-NZ', { 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        })); // 14:30
-        
-        dateStrings.push(date.toLocaleTimeString('en-NZ', { 
-          hour: 'numeric', 
-          minute: '2-digit',
-          hour12: true 
-        })); // 2:30 PM
-        
-        // Relative date terms
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        
-        if (date.toDateString() === today.toDateString()) {
-          dateStrings.push('today');
-        } else if (date.toDateString() === yesterday.toDateString()) {
-          dateStrings.push('yesterday');
-        }
-        
-        // Calculate days ago
-        const diffTime = Math.abs(today - date);
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        if (diffDays <= 7 && diffDays > 0) {
-          dateStrings.push(`${diffDays} day${diffDays !== 1 ? 's' : ''} ago`);
-        }
-        
-        return dateStrings.map(str => str.toLowerCase());
-      };
-      
-      // Search in multiple fields including enhanced date formats
+
       const searchFields = [
-        product?.name || 'Unknown Product',           // Product name
-        product?.sku || '',                          // Product SKU
-        product?.category || '',                     // Product category
-        sale.slot || '',                             // Slot
-        sale.paymentMethod || 'cash',                // Payment method
-        formatCurrency(sale.price),                  // Price ($2.50)
-        sale.price?.toString() || '',                // Raw price (2.5)
-        ...getDateSearchStrings(saleDate)            // All date formats
+        product?.name || 'Unknown Product',
+        product?.sku || '',
+        product?.category || '',
+        sale.slot || '',
+        sale.paymentMethod || 'cash',
+        formatCurrency(sale.price),
+        sale.price?.toString() || '',
+        saleDate.toLocaleDateString('en-NZ'),
+        saleDate.toLocaleDateString('en-US'),
+        saleDate.toISOString().split('T')[0]
       ].filter(Boolean).map(field => field.toString().toLowerCase());
 
       return searchFields.some(field => field.includes(searchLower));
     });
 
     setSearchResults(results);
-  }, [filteredSales, products]);
+  }, [filteredSales, products, getProductName]);
 
-  // Debounced search effect
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       performSearch(searchTerm);
@@ -235,19 +169,43 @@ const Sales = () => {
 
     return () => clearTimeout(timeoutId);
   }, [searchTerm, performSearch]);
+  
+  const rankedProductData = useMemo(() => {
+    if (filteredSales.length === 0 || products.length === 0) return [];
 
-  // Get sales to display (search results or all filtered sales)
+    const productStats = {};
+    filteredSales.forEach(sale => {
+      if (sale.productId) {
+        if (!productStats[sale.productId]) {
+          productStats[sale.productId] = {
+            count: 0,
+            revenue: 0
+          };
+        }
+        productStats[sale.productId].count += 1;
+        productStats[sale.productId].revenue += sale.price || 0;
+      }
+    });
+
+    return Object.entries(productStats)
+      .map(([productId, stats]) => ({
+        productId,
+        productName: getProductName(productId),
+        ...stats,
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [filteredSales, products, getProductName]);
+
+
   const getSalesToDisplay = () => {
     return searchTerm.trim() ? searchResults : filteredSales;
   };
 
-  // Apply filters when sales data changes
   useEffect(() => {
     if (sales.length > 0) {
       filterSalesByDate();
       setLoading(false);
     } else if (sales.length === 0 && !loading) {
-      // Handle case where all sales are loaded but array is empty
       setFilteredSales([]);
       setSalesStats({
         totalSales: 0,
@@ -258,7 +216,6 @@ const Sales = () => {
     }
   }, [sales, filterSalesByDate, loading]);
 
-  // Recalculate stats and charts when filtered sales change
   useEffect(() => {
     calculateStats();
   }, [filteredSales, calculateStats]);
@@ -277,7 +234,7 @@ const Sales = () => {
       ...prev,
       [field]: value
     }));
-    setQuickFilter(''); // Clear quick filter when manually setting dates
+    setQuickFilter('');
   };
 
   const exportSalesData = () => {
@@ -293,7 +250,7 @@ const Sales = () => {
         return [
           saleDate.toLocaleDateString('en-NZ'),
           saleDate.toLocaleTimeString('en-NZ'),
-          `"${getProductName(sale.productId).replace(/"/g, '""')}"`, // Escape quotes in product names
+          `"${getProductName(sale.productId).replace(/"/g, '""')}"`,
           sale.slot,
           sale.price,
           sale.paymentMethod || 'cash'
@@ -310,100 +267,27 @@ const Sales = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-NZ', {
-      style: 'currency',
-      currency: 'NZD'
-    }).format(amount);
-  };
-
-  const getProductName = (productId) => {
-    const product = products.find(p => p.id === productId);
-    return product?.name || 'Unknown Product';
-  };
-
   const calculateDailyAverage = (total, startDate, endDate) => {
     if (!startDate || !endDate || total === 0) return 0;
-    
-    // Calculate actual days in the date range
+
     const start = new Date(startDate);
     const end = new Date(endDate);
     const timeDiff = end.getTime() - start.getTime();
-    const days = Math.max(1, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1); // +1 to include both start and end date
-    
+    const days = Math.max(1, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1);
+
     return total / days;
   };
 
-  // Get filtered top products for the current period
-  const getFilteredTopProducts = () => {
-    if (filteredSales.length === 0) return [];
-
-    const productStats = {};
-    
-    filteredSales.forEach(sale => {
-      if (sale.productId) {
-        if (!productStats[sale.productId]) {
-          productStats[sale.productId] = {
-            productId: sale.productId,
-            count: 0,
-            revenue: 0
-          };
-        }
-        productStats[sale.productId].count += 1;
-        productStats[sale.productId].revenue += sale.price || 0;
-      }
-    });
-
-    return Object.values(productStats)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-  };
-
-  // Calculate product totals for the current filtered period
-  const getProductTotals = useCallback(() => {
-    const productTotals = {};
-    
-    filteredSales.forEach(sale => {
-      if (sale.productId) {
-        if (!productTotals[sale.productId]) {
-          productTotals[sale.productId] = {
-            totalSales: 0,
-            totalRevenue: 0
-          };
-        }
-        productTotals[sale.productId].totalSales += 1;
-        productTotals[sale.productId].totalRevenue += sale.price || 0;
-      }
-    });
-    
-    return productTotals;
-  }, [filteredSales]);
-
-  const filteredTopProducts = getFilteredTopProducts();
-  const productTotals = getProductTotals();
-
-  // Get the total unique products that have sales in the filtered period
-  const getUniqueProductCount = () => {
-    const uniqueProducts = new Set();
-    filteredSales.forEach(sale => {
-      if (sale.productId) {
-        uniqueProducts.add(sale.productId);
-      }
-    });
-    return uniqueProducts.size;
-  };
-
-  // Generate dynamic header for Top Products
   const getTopProductsHeader = () => {
-    const uniqueProductCount = getUniqueProductCount();
-    
+    const uniqueProductCount = rankedProductData.length;
+
     if (uniqueProductCount >= 5) {
       return `Top 5 Products (${quickFilter || 'Custom Period'})`;
     } else {
       return `Top Products (${quickFilter || 'Custom Period'})`;
     }
   };
-
+  
   if (loading) {
     return <LoadingSpinner text="Loading sales data..." />;
   }
@@ -415,8 +299,8 @@ const Sales = () => {
           <h1>Sales Analytics</h1>
           <p>Track your vending machine sales performance and trends</p>
         </div>
-        <button 
-          className="btn btn-primary" 
+        <button
+          className="btn btn-primary"
           onClick={exportSalesData}
           disabled={filteredSales.length === 0}
         >
@@ -425,15 +309,12 @@ const Sales = () => {
         </button>
       </div>
 
-      {/* Enhanced Date Range Filter */}
       <div className="sales-filters">
         <div className="filter-section">
           <h3 className="filter-section-title">
             <Filter size={16} />
             Time Period
           </h3>
-          
-          {/* Quick Filter Buttons */}
           <div className="quick-filters">
             {[
               { key: 'today', label: 'Today' },
@@ -451,8 +332,6 @@ const Sales = () => {
               </button>
             ))}
           </div>
-
-          {/* Custom Date Range */}
           <div className="date-range">
             <div className="date-input-group">
               <label htmlFor="startDate" className="date-label">
@@ -484,7 +363,6 @@ const Sales = () => {
         </div>
       </div>
 
-      {/* Enhanced Stats Overview */}
       <div className="sales-stats">
         <div className="stat-card">
           <div className="stat-icon sales-icon">
@@ -545,13 +423,24 @@ const Sales = () => {
         </div>
       </div>
 
-      {/* Enhanced Sales Table - Full Width */}
+      <div className="chart-card" style={{ marginBottom: '32px' }}>
+        <div className="chart-header">
+          <h3>Product Performance</h3>
+          <div className="chart-summary">
+            {rankedProductData.length > 0 ? `All ${rankedProductData.length} products ranked by sales` : 'No product data for this period'}
+          </div>
+        </div>
+        <div className="chart-body">
+            <CustomBarChart data={rankedProductData} formatCurrency={formatCurrency} />
+        </div>
+      </div>
+
       <div className="sales-table-container" style={{ marginBottom: '32px' }}>
         <div className="card">
           <div className="card-header">
-            <h3>Product Sales</h3>
+            <h3>Sales Transactions</h3>
             <div className="table-info">
-              Showing {getSalesToDisplay().length} of {filteredSales.length} sales
+              Showing {getSalesToDisplay().length} of {filteredSales.length} transactions
               {searchTerm && (
                 <span style={{ color: '#667eea', marginLeft: '8px' }}>
                   • Filtered by "{searchTerm}"
@@ -560,49 +449,22 @@ const Sales = () => {
             </div>
           </div>
           
-          {/* Search Bar */}
-          <div style={{ 
-            padding: '16px 20px', 
-            borderBottom: '1px solid #e2e8f0',
-            background: '#f7fafc'
-          }}>
-            <div style={{ 
-              position: 'relative', 
-              maxWidth: '400px'
-            }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', background: '#f7fafc' }}>
+            <div style={{ position: 'relative', maxWidth: '400px' }}>
               <div style={{ position: 'relative' }}>
                 <input
                   type="text"
-                  placeholder="Search by product, slot, date (today, yesterday, Jan 15, 2024), payment..."
+                  placeholder="Search by product, slot, date, payment..."
                   value={searchTerm}
                   onChange={handleSearchChange}
                   className="form-input"
-                  style={{ 
-                    paddingLeft: '12px',
-                    paddingRight: searchTerm ? '40px' : '12px',
-                    fontSize: '14px'
-                  }}
+                  style={{ paddingLeft: '12px', paddingRight: searchTerm ? '40px' : '12px', fontSize: '14px' }}
                 />
                 {searchTerm && (
                   <button
                     type="button"
                     onClick={clearSearch}
-                    style={{
-                      position: 'absolute',
-                      right: '12px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      color: '#718096',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      borderRadius: '4px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'color 0.2s ease'
-                    }}
+                    style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#718096', cursor: 'pointer', padding: '4px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s ease' }}
                     onMouseEnter={(e) => e.target.style.color = '#4a5568'}
                     onMouseLeave={(e) => e.target.style.color = '#718096'}
                     title="Clear search"
@@ -612,11 +474,7 @@ const Sales = () => {
                 )}
               </div>
               {searchTerm && (
-                <div style={{ 
-                  fontSize: '12px', 
-                  color: '#718096', 
-                  marginTop: '4px'
-                }}>
+                <div style={{ fontSize: '12px', color: '#718096', marginTop: '4px' }}>
                   {searchResults.length > 0 
                     ? `Found ${searchResults.length} result${searchResults.length !== 1 ? 's' : ''}`
                     : 'No results found'
@@ -635,89 +493,43 @@ const Sales = () => {
                   <th>Slot</th>
                   <th>Price</th>
                   <th>Payment</th>
-                  <th>Product Sales</th>
-                  <th>Product Revenue</th>
                 </tr>
               </thead>
               <tbody>
-                {getSalesToDisplay().map(sale => {
-                  const productTotal = productTotals[sale.productId] || { totalSales: 0, totalRevenue: 0 };
-                  
-                  return (
+                {getSalesToDisplay().map(sale => (
                     <tr key={sale.id}>
                       <td className="table-timestamp">
                         <div className="table-date">
-                          {new Date(sale.timestamp?.seconds * 1000).toLocaleDateString('en-NZ', { 
-                            month: 'short', 
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
+                          {new Date(sale.timestamp?.seconds * 1000).toLocaleDateString('en-NZ', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </div>
                         <div className="table-time">
-                          {new Date(sale.timestamp?.seconds * 1000).toLocaleTimeString('en-NZ', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })}
+                          {new Date(sale.timestamp?.seconds * 1000).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </td>
                       <td>
                         <div className="table-product-name">{getProductName(sale.productId)}</div>
                       </td>
                       <td>
-                        <span className="table-slot-badge">
-                          {sale.slot}
-                        </span>
+                        <span className="table-slot-badge">{sale.slot}</span>
                       </td>
-                      <td className="table-price">
-                        {formatCurrency(sale.price)}
-                      </td>
+                      <td className="table-price">{formatCurrency(sale.price)}</td>
                       <td>
-                        <span className="payment-method">
-                          {sale.paymentMethod || 'cash'}
-                        </span>
-                      </td>
-                      <td>
-                        <div style={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: '4px',
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          color: '#667eea'
-                        }}>
-                          <span>{productTotal.totalSales}</span>
-                          <span style={{ 
-                            fontSize: '11px', 
-                            color: '#718096',
-                            fontWeight: 'normal'
-                          }}>
-                            {productTotal.totalSales === 1 ? 'sale' : 'sales'}
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <div style={{ 
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          color: '#38a169'
-                        }}>
-                          {formatCurrency(productTotal.totalRevenue)}
-                        </div>
+                        <span className="payment-method">{sale.paymentMethod || 'cash'}</span>
                       </td>
                     </tr>
-                  );
-                })}
+                  )
+                )}
                 {getSalesToDisplay().length === 0 && (
                   <tr>
-                    <td colSpan="7" className="no-data">
+                    <td colSpan="5" className="no-data">
                       <div className="no-data-content">
                         <div className="no-data-icon">📊</div>
                         <div className="no-data-title">
-                          {searchTerm ? 'No matching sales found' : 'No sales found'}
+                          {searchTerm ? 'No matching transactions found' : 'No transactions found'}
                         </div>
                         <div className="no-data-subtitle">
                           {searchTerm 
-                            ? `No sales match "${searchTerm}" in the selected period`
+                            ? `No transactions match "${searchTerm}" in the selected period`
                             : 'Try adjusting your date range'
                           }
                         </div>
@@ -731,23 +543,22 @@ const Sales = () => {
         </div>
       </div>
 
-      {/* Top Products - Moved Below Sales Table */}
       <div className="top-products-container" style={{ marginBottom: '32px' }}>
         <div className="card">
           <div className="card-header">
             <h3>{getTopProductsHeader()}</h3>
           </div>
           <div className="card-body">
-            {filteredTopProducts.length > 0 ? (
+            {rankedProductData.length > 0 ? (
               <div className="top-products-list">
-                {filteredTopProducts.map((product, index) => (
+                {rankedProductData.slice(0, 5).map((product, index) => (
                   <div key={product.productId} className="top-product-item">
                     <div className="product-rank">
                       {index + 1}
                     </div>
                     <div className="product-details">
                       <div className="product-name">
-                        {products.find(p => p.id === product.productId)?.name || 'Unknown Product'}
+                        {getProductName(product.productId)}
                       </div>
                       <div className="product-sales">
                         {product.count} sales • {formatCurrency(product.revenue)} revenue
