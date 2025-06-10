@@ -28,6 +28,70 @@
   transform: none;
 }
 
+/* Export Button Dropdown */
+.export-btn-group {
+  position: relative;
+  display: inline-block;
+}
+
+.export-btn-group .btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.export-dropdown {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: calc(100% + 8px);
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border: 1px solid #e2e8f0;
+  z-index: 50;
+  width: 180px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: fadeInDropdown 0.2s ease-out;
+}
+
+.export-dropdown button {
+  background: none;
+  border: none;
+  padding: 12px 16px;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2d3748;
+  transition: background-color 0.2s ease;
+}
+
+.export-dropdown button:hover {
+  background-color: #f7fafc;
+}
+
+.export-dropdown button:not(:last-child) {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+@keyframes fadeInDropdown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
 /* Enhanced Filters */
 .sales-filters {
   margin-bottom: 32px;

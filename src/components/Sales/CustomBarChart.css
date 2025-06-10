@@ -63,12 +63,13 @@
   display: flex;
   align-items: center;
   position: relative;
-  transition: filter 0.2s ease;
   border-radius: 0 4px 4px 0;
+  /* Updated for animations */
+  transition: width 0.5s cubic-bezier(0.25, 1, 0.5, 1), filter 0.2s ease;
 }
 
 .bar:hover {
-    filter: brightness(1.1);
+    filter: brightness(1.15);
 }
 
 .sales-bar {
@@ -126,9 +127,9 @@
   border-radius: 3px;
 }
 
-/* Custom Tooltip */
+/* Updated Custom Tooltip */
 .custom-tooltip {
-    position: fixed; /* Use fixed to overlay everything */
+    position: fixed; 
     background-color: #1a202c;
     color: white;
     padding: 10px 15px;
@@ -136,7 +137,10 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     font-size: 13px;
     z-index: 1000;
-    pointer-events: none; /* Make sure tooltip doesn't interfere with mouse events */
+    pointer-events: none;
+    /* Added transitions for smooth movement and appearance */
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    will-change: transform; /* Performance optimization */
 }
 
 .tooltip-title {

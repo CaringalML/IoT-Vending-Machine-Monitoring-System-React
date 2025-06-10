@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import './CustomBarChart.css';
 
 const CustomBarChart = ({ data, formatCurrency }) => {
   const [tooltip, setTooltip] = useState(null);
+  const [animate, setAnimate] = useState(false);
 
   // Calculate the maximum value for scaling the bars.
   const maxValue = useMemo(() => {
@@ -12,14 +13,48 @@ const CustomBarChart = ({ data, formatCurrency }) => {
     return Math.max(maxRevenue, maxCount) * 1.1;
   }, [data]);
 
+  useEffect(() => {
+    // This effect triggers the bar animations.
+    // It resets the animation when data changes and then enables it.
+    setAnimate(false);
+    if (data && data.length > 0) {
+      const timer = setTimeout(() => setAnimate(true), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [data]);
+
   const handleMouseOver = (e, item) => {
     const rect = e.target.getBoundingClientRect();
+    const tooltipHeightEstimate = 90; // Estimated height of the tooltip
+    const tooltipWidthEstimate = 180; // Estimated width of the tooltip
+
+    // Decide vertical placement (above or below the bar)
+    const spaceAbove = rect.top;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const isAbove = spaceAbove > tooltipHeightEstimate || spaceAbove > spaceBelow;
+    
+    const top = isAbove ? rect.top : rect.bottom;
+    const transformY = isAbove ? 'translateY(-100%) translateY(-10px)' : 'translateY(10px)';
+
+    // Decide horizontal placement and prevent viewport overflow
+    let left = rect.left + rect.width / 2;
+    let transformX = 'translateX(-50%)';
+
+    if (left - (tooltipWidthEstimate / 2) < 10) { // Check left overflow
+      left = 10;
+      transformX = 'translateX(0)';
+    } else if (left + (tooltipWidthEstimate / 2) > window.innerWidth - 10) { // Check right overflow
+      left = window.innerWidth - 10;
+      transformX = 'translateX(-100%)';
+    }
+
     setTooltip({
       productName: item.productName,
       salesCount: item.count,
       revenue: item.revenue,
-      top: rect.top + window.scrollY,
-      left: rect.left + window.scrollX + rect.width / 2,
+      top,
+      left,
+      transform: `${transformX} ${transformY}`,
     });
   };
 
@@ -60,42 +95,39 @@ const CustomBarChart = ({ data, formatCurrency }) => {
         <div className="x-axis-title">Total Value (Sales & Revenue)</div>
       </div>
 
-      {/* The scrollable area now contains only the bars */}
       <div className="custom-chart-scroll-area">
         {data.map((item, index) => {
-        const salesWidth = (item.count / maxValue) * 100;
-        const revenueWidth = (item.revenue / maxValue) * 100;
+          const salesWidth = (item.count / maxValue) * 100;
+          const revenueWidth = (item.revenue / maxValue) * 100;
 
-        return (
+          return (
             <div className="chart-row" key={index}>
-            <div className="product-label">{item.productName}</div>
-            <div className="bars-container">
+              <div className="product-label" title={item.productName}>{item.productName}</div>
+              <div className="bars-container">
                 <div 
-                    className="bar sales-bar" 
-                    style={{ width: `${salesWidth}%` }}
-                    onMouseOver={(e) => handleMouseOver(e, item)}
-                    onMouseLeave={handleMouseLeave}
+                  className="bar sales-bar" 
+                  style={{ width: animate ? `${salesWidth}%` : '0%' }}
+                  onMouseOver={(e) => handleMouseOver(e, item)}
+                  onMouseLeave={handleMouseLeave}
                 >
-                <span className="bar-annotation">{item.count}</span>
+                  <span className="bar-annotation">{item.count}</span>
                 </div>
                 <div 
-                    className="bar revenue-bar" 
-                    style={{ width: `${revenueWidth}%` }}
-                    onMouseOver={(e) => handleMouseOver(e, item)}
-                    onMouseLeave={handleMouseLeave}
+                  className="bar revenue-bar" 
+                  style={{ width: animate ? `${revenueWidth}%` : '0%' }}
+                  onMouseOver={(e) => handleMouseOver(e, item)}
+                  onMouseLeave={handleMouseLeave}
                 >
-                <span className="bar-annotation">{formatCurrency(item.revenue)}</span>
+                  <span className="bar-annotation">{formatCurrency(item.revenue)}</span>
                 </div>
+              </div>
             </div>
-            </div>
-        );
+          );
         })}
       </div>
 
-      {/* The x-axis is now outside the scroll area, so it's always visible */}
       {renderXAxis()}
       
-      {/* The legend also remains outside the scroll area */}
       <div className="custom-chart-legend">
         <div className="legend-item">
           <div className="legend-color-box sales-bar"></div>
@@ -113,7 +145,7 @@ const CustomBarChart = ({ data, formatCurrency }) => {
           style={{
             top: `${tooltip.top}px`,
             left: `${tooltip.left}px`,
-            transform: 'translate(-50%, -100%) translateY(-10px)',
+            transform: tooltip.transform,
           }}
         >
           <div className="tooltip-title">{tooltip.productName}</div>

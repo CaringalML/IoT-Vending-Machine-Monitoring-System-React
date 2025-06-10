@@ -1,0 +1,223 @@
+/* Container and Header */
+.forecast-chart-container {
+  font-family: system-ui, sans-serif;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e2e8f0;
+  padding: 20px 24px;
+}
+
+.forecast-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.forecast-chart-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a202c;
+}
+
+.forecast-chart-title-group h4 {
+  margin: 0;
+}
+
+/* Legend */
+.forecast-chart-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: #4a5568;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-color-box {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.legend-color-box.actual { background-color: #667eea; }
+.legend-color-box.forecast { background-color: #38a169; }
+.legend-color-box.trend { 
+  height: 2px;
+  background-color: #f56565;
+  width: 14px;
+}
+
+/* Main Chart Area */
+.forecast-chart-main {
+  display: flex;
+}
+
+.y-axis-labels {
+  position: relative;
+  width: 70px; /* Space for labels */
+  height: 250px; /* Same as SVG height */
+  flex-shrink: 0;
+}
+
+.chart-area {
+  flex-grow: 1;
+  position: relative;
+}
+
+.x-axis-labels {
+  position: relative;
+  height: 30px; /* Space for labels */
+  margin-top: 5px;
+}
+
+.axis-label {
+  position: absolute;
+  font-size: 11px;
+  color: #718096;
+}
+
+.y-label {
+  right: 10px;
+  transform: translateY(-50%);
+}
+
+.x-label {
+  bottom: 0;
+  transform: translateX(-50%);
+}
+
+/* SVG Styling */
+.forecast-chart-svg {
+  overflow: visible;
+}
+
+.grid-line {
+  stroke: #e2e8f0;
+  stroke-width: 1;
+  stroke-dasharray: 2, 3;
+}
+
+.line {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: draw-line 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.line.actual { stroke: #667eea; }
+.line.forecast { 
+  stroke: #38a169; 
+  stroke-dasharray: 6, 6;
+  animation-delay: 0.5s;
+}
+.line.trend { 
+  stroke: #f56565;
+  stroke-width: 1.5;
+  stroke-dasharray: 3, 4;
+  opacity: 0.8;
+}
+
+.confidence-band {
+  fill: rgba(245, 101, 101, 0.1);
+  stroke: none;
+  animation: fade-in 1s ease forwards;
+}
+
+.data-point-hover {
+  fill: transparent;
+  stroke: none;
+}
+.data-point-active {
+  stroke-width: 2;
+  stroke: white;
+  transition: all 0.2s ease;
+}
+.data-point-active.actual { fill: #667eea; }
+.data-point-active.forecast { fill: #38a169; }
+
+
+/* No Data State */
+.forecast-chart-no-data {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 350px;
+  text-align: center;
+  color: #718096;
+  background: #f7fafc;
+  border-radius: 8px;
+}
+
+.no-data-icon {
+  color: #a0aec0;
+  margin-bottom: 16px;
+}
+
+.no-data-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #4a5568;
+  margin: 0 0 4px 0;
+}
+
+.no-data-subtitle {
+  font-size: 13px;
+  max-width: 80%;
+  margin: 0;
+}
+
+/* Re-using tooltip from previous component for consistency */
+.custom-tooltip {
+    position: fixed; 
+    background-color: #1a202c;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    font-size: 12px;
+    z-index: 1000;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    border-bottom: 3px solid; /* For active color accent */
+}
+
+.tooltip-title {
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 6px;
+    color: #edf2f7;
+}
+
+.tooltip-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+}
+.tooltip-row span:first-child {
+    color: #a0aec0;
+}
+
+
+/* Animations */
+@keyframes draw-line {
+  from { stroke-dasharray: 1000; stroke-dashoffset: 1000; }
+  to { stroke-dasharray: 1000; stroke-dashoffset: 0; }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+

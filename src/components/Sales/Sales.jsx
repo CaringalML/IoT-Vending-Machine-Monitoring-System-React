@@ -1,11 +1,15 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Download, TrendingUp, DollarSign, Calendar, Filter } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Download, TrendingUp, DollarSign, Calendar, Filter, ChevronDown, FileText, FileSpreadsheet } from 'lucide-react';
 import {
   subscribeToSales,
   subscribeToProducts
 } from '../../services/firestore';
 import LoadingSpinner from '../Common/LoadingSpinner';
 import CustomBarChart from './CustomBarChart'; 
+import ChartForecast from './ChartForecast';
+import PDFExport from './PDFExport';
+import CSVExport from './CSVExport';
+import ExcelExport from './ExcelExport';
 import './Sales.css'; 
 
 const Sales = () => {
@@ -26,6 +30,20 @@ const Sales = () => {
   const [quickFilter, setQuickFilter] = useState('30days');
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
+  const exportBtnRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+        if (exportBtnRef.current && !exportBtnRef.current.contains(event.target)) {
+            setIsExportDropdownOpen(false);
+        }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     applyQuickFilter('30days');
@@ -160,7 +178,7 @@ const Sales = () => {
     });
 
     setSearchResults(results);
-  }, [filteredSales, products, getProductName]);
+  }, [filteredSales, products]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -195,7 +213,6 @@ const Sales = () => {
       }))
       .sort((a, b) => b.count - a.count);
   }, [filteredSales, products, getProductName]);
-
 
   const getSalesToDisplay = () => {
     return searchTerm.trim() ? searchResults : filteredSales;
@@ -237,34 +254,38 @@ const Sales = () => {
     setQuickFilter('');
   };
 
-  const exportSalesData = () => {
-    if (filteredSales.length === 0) {
-      alert('No sales data to export for the selected date range.');
-      return;
-    }
+  const exportAsCsv = () => {
+    CSVExport.exportSalesCSV({
+      salesData: filteredSales,
+      dateRange: dateRange,
+      getProductName: getProductName,
+      stats: salesStats
+    });
+    setIsExportDropdownOpen(false);
+  };
 
-    const csvContent = [
-      ['Date', 'Time', 'Product', 'Slot', 'Price', 'Payment Method'].join(','),
-      ...filteredSales.map(sale => {
-        const saleDate = new Date(sale.timestamp?.seconds * 1000);
-        return [
-          saleDate.toLocaleDateString('en-NZ'),
-          saleDate.toLocaleTimeString('en-NZ'),
-          `"${getProductName(sale.productId).replace(/"/g, '""')}"`,
-          sale.slot,
-          sale.price,
-          sale.paymentMethod || 'cash'
-        ].join(',');
-      })
-    ].join('\n');
+  const exportAsPdf = () => {
+    PDFExport.exportSalesPDF({
+      salesData: filteredSales,
+      stats: salesStats,
+      dateRange: dateRange,
+      formatCurrency: formatCurrency,
+      getProductName: getProductName,
+      title: 'Sales Report'
+    });
+    setIsExportDropdownOpen(false);
+  };
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `sales-report-${dateRange.startDate}-to-${dateRange.endDate}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+  const exportAsExcel = () => {
+    ExcelExport.exportSalesExcel({
+      salesData: filteredSales,
+      stats: salesStats,
+      dateRange: dateRange,
+      formatCurrency: formatCurrency,
+      getProductName: getProductName,
+      productData: rankedProductData
+    });
+    setIsExportDropdownOpen(false);
   };
 
   const calculateDailyAverage = (total, startDate, endDate) => {
@@ -299,14 +320,24 @@ const Sales = () => {
           <h1>Sales Analytics</h1>
           <p>Track your vending machine sales performance and trends</p>
         </div>
-        <button
-          className="btn btn-primary"
-          onClick={exportSalesData}
-          disabled={filteredSales.length === 0}
-        >
-          <Download size={16} />
-          Export Data
-        </button>
+        <div className="export-btn-group" ref={exportBtnRef}>
+          <button
+            className="btn btn-primary"
+            onClick={() => setIsExportDropdownOpen(prev => !prev)}
+            disabled={filteredSales.length === 0}
+          >
+            <Download size={16} />
+            <span>Export Data</span>
+            <ChevronDown size={16} style={{ marginLeft: '4px', transition: 'transform 0.2s', transform: isExportDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}/>
+          </button>
+          {isExportDropdownOpen && (
+            <div className="export-dropdown">
+              <button onClick={exportAsCsv}><FileText size={14} /> Export as .csv</button>
+              <button onClick={exportAsPdf}><FileText size={14} /> Export as .pdf</button>
+              <button onClick={exportAsExcel}><FileSpreadsheet size={14} /> Export as .xlsx</button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="sales-filters">
@@ -422,19 +453,7 @@ const Sales = () => {
           </div>
         </div>
       </div>
-
-      <div className="chart-card" style={{ marginBottom: '32px' }}>
-        <div className="chart-header">
-          <h3>Product Performance</h3>
-          <div className="chart-summary">
-            {rankedProductData.length > 0 ? `All ${rankedProductData.length} products ranked by sales` : 'No product data for this period'}
-          </div>
-        </div>
-        <div className="chart-body">
-            <CustomBarChart data={rankedProductData} formatCurrency={formatCurrency} />
-        </div>
-      </div>
-
+      
       <div className="sales-table-container" style={{ marginBottom: '32px' }}>
         <div className="card">
           <div className="card-header">
@@ -576,6 +595,22 @@ const Sales = () => {
             )}
           </div>
         </div>
+      </div>
+
+      <div className="chart-card" style={{ marginBottom: '32px' }}>
+        <div className="chart-header">
+          <h3>Product Performance</h3>
+          <div className="chart-summary">
+            {rankedProductData.length > 0 ? `All ${rankedProductData.length} products ranked by sales` : 'No product data for this period'}
+          </div>
+        </div>
+        <div className="chart-body">
+            <CustomBarChart data={rankedProductData} formatCurrency={formatCurrency} />
+        </div>
+      </div>
+
+      <div style={{ marginBottom: '32px' }}>
+          <ChartForecast data={filteredSales} formatCurrency={formatCurrency} />
       </div>
     </div>
   );
