@@ -2,12 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { logoutUser } from '../../services/auth';
 import { useAuth } from '../../context/AuthContext';
-import { Bell, User, LogOut, Settings } from 'lucide-react';
+import { Bell, User, LogOut, Settings, Menu, X } from 'lucide-react';
 import NotificationDropdown from '../Notifications/NotificationDropdown';
 import NotificationSettings from '../Notifications/NotificationSettings';
 import notificationService from '../../services/NotificationService';
 
-const Header = () => {
+const Header = ({ onToggleSidebar, isSidebarOpen }) => {
   const { user } = useAuth();
   const location = useLocation();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -31,6 +31,24 @@ const Header = () => {
         return 'Sales Analytics';
       case '/notifications':
         return 'All Notifications';
+      default:
+        return 'Dashboard';
+    }
+  };
+
+  // Get short page title for mobile
+  const getShortPageTitle = () => {
+    switch (location.pathname) {
+      case '/dashboard':
+        return 'Dashboard';
+      case '/inventory':
+        return 'Inventory';
+      case '/products':
+        return 'Products';
+      case '/sales':
+        return 'Sales';
+      case '/notifications':
+        return 'Notifications';
       default:
         return 'Dashboard';
     }
@@ -112,7 +130,19 @@ const Header = () => {
     <header className="header">
       <div className="header-content">
         <div className="header-left">
-          <h1 className="page-title">{getPageTitle()}</h1>
+          {/* Mobile menu button */}
+          <button 
+            className="mobile-menu-btn"
+            onClick={onToggleSidebar}
+            aria-label="Toggle navigation menu"
+          >
+            {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+          
+          <div className="page-title-container">
+            <h1 className="page-title desktop-title">{getPageTitle()}</h1>
+            <h1 className="page-title mobile-title">{getShortPageTitle()}</h1>
+          </div>
         </div>
 
         <div className="header-right">
@@ -122,10 +152,13 @@ const Header = () => {
               className="notification-btn"
               onClick={handleNotificationClick}
               title="Notifications"
+              aria-label={`Notifications ${notificationCount > 0 ? `(${notificationCount} unread)` : ''}`}
             >
               <Bell size={20} />
               {notificationCount > 0 && (
-                <span className="notification-badge">{notificationCount}</span>
+                <span className="notification-badge" aria-hidden="true">
+                  {notificationCount > 99 ? '99+' : notificationCount}
+                </span>
               )}
             </button>
 
@@ -143,6 +176,8 @@ const Header = () => {
               className="user-menu-btn"
               onClick={handleUserMenuClick}
               title="User menu"
+              aria-label="User menu"
+              aria-expanded={showUserMenu}
             >
               <div className="user-avatar">
                 <User size={18} />
@@ -153,7 +188,7 @@ const Header = () => {
             </button>
 
             {showUserMenu && (
-              <div className="user-menu">
+              <div className="user-menu" role="menu">
                 <div className="user-menu-header">
                   <div className="user-info">
                     <p className="user-email">{user?.email}</p>
@@ -167,6 +202,7 @@ const Header = () => {
                     setShowUserMenu(false);
                     setShowNotificationSettings(true);
                   }}
+                  role="menuitem"
                 >
                   <Settings size={16} />
                   Settings
@@ -174,6 +210,7 @@ const Header = () => {
                 <button 
                   className="user-menu-item logout"
                   onClick={handleLogout}
+                  role="menuitem"
                 >
                   <LogOut size={16} />
                   Logout
