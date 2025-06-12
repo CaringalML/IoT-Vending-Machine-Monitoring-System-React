@@ -460,6 +460,29 @@
   }
 }
 
+/* Small phones (up to 375px) */
+@media (max-width: 375px) {
+  .stat-card {
+    height: 85px;
+    padding: 14px;
+    gap: 10px;
+  }
+  
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+  
+  .stat-content h3 {
+    font-size: 18px;
+  }
+  
+  .stat-content p {
+    font-size: 11px;
+  }
+}
+
 /* Very small screens (320px and down) */
 @media (max-width: 320px) {
   .dashboard {
@@ -467,20 +490,19 @@
   }
   
   .stats-grid {
-    gap: 8px;
-    grid-template-columns: 1fr;
+    gap: 10px;
   }
   
   .stat-card {
     padding: 12px;
-    gap: 10px;
-    min-height: 75px;
-    aspect-ratio: 2 / 1;
+    gap: 8px;
+    height: 80px;
   }
   
   .stat-icon {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
   }
   
   .stat-content h3 {
