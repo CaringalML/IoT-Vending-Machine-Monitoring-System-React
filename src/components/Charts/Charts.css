@@ -1,8 +1,22 @@
-/* Chart container styles */
+/* Chart container styles - Mobile First Approach */
 .chart-container {
   width: 100%;
-  height: 300px;
-  padding: 20px;
+  height: 250px;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.chart-scrollable-container {
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  position: relative;
+}
+
+.chart-inner-container {
+  height: 100%;
+  min-width: 100%;
 }
 
 .chart-no-data {
@@ -11,8 +25,10 @@
   justify-content: center;
   height: 100%;
   color: #718096;
-  font-size: 14px;
+  font-size: clamp(12px, 2vw, 14px);
   font-style: italic;
+  text-align: center;
+  padding: 20px;
 }
 
 /* Recharts custom styles */
@@ -21,13 +37,13 @@
 }
 
 .recharts-cartesian-axis-tick-value {
-  font-size: 12px;
+  font-size: clamp(10px, 1.5vw, 12px);
   fill: #718096;
 }
 
 .recharts-legend-item-text {
   color: #4a5568 !important;
-  font-size: 12px;
+  font-size: clamp(10px, 1.5vw, 12px);
 }
 
 .recharts-tooltip-wrapper {
@@ -48,19 +64,28 @@
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 12px;
+  padding: clamp(8px, 2vw, 12px);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-width: 250px;
+  font-size: clamp(12px, 2vw, 14px);
 }
 
 .custom-tooltip .label {
   font-weight: 500;
   color: #2d3748;
   margin-bottom: 4px;
+  word-wrap: break-word;
 }
 
 .custom-tooltip .value {
   color: #4a5568;
-  font-size: 14px;
+  font-size: clamp(12px, 2vw, 14px);
+}
+
+.custom-tooltip .intro {
+  color: #4a5568;
+  font-size: clamp(12px, 2vw, 14px);
+  margin: 0;
 }
 
 /* Loading state */
@@ -68,13 +93,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 300px;
+  height: 100%;
   color: #718096;
+  font-size: clamp(12px, 2vw, 14px);
 }
 
 .chart-loading-spinner {
-  width: 24px;
-  height: 24px;
+  width: clamp(20px, 4vw, 24px);
+  height: clamp(20px, 4vw, 24px);
   border: 2px solid #e2e8f0;
   border-top: 2px solid #667eea;
   border-radius: 50%;
@@ -93,9 +119,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 300px;
+  height: 100%;
   color: #e53e3e;
   text-align: center;
+  padding: 20px;
 }
 
 .chart-error-icon {
@@ -103,12 +130,12 @@
 }
 
 .chart-error-message {
-  font-size: 14px;
+  font-size: clamp(12px, 2vw, 14px);
   font-weight: 500;
 }
 
 .chart-error-details {
-  font-size: 12px;
+  font-size: clamp(10px, 1.8vw, 12px);
   color: #718096;
   margin-top: 4px;
 }
@@ -116,9 +143,23 @@
 /* Enhanced Chart Styles */
 .chart-enhanced-container {
   width: 100%;
-  height: 300px;
-  padding: 20px;
+  height: 250px;
+  padding: 16px;
   position: relative;
+  overflow: hidden;
+}
+
+.chart-enhanced-scrollable {
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  position: relative;
+}
+
+.chart-enhanced-inner {
+  height: 100%;
+  min-width: 100%;
 }
 
 .chart-enhanced-no-data {
@@ -128,23 +169,27 @@
   justify-content: center;
   height: 100%;
   color: #718096;
-  font-size: 14px;
+  font-size: clamp(12px, 2vw, 14px);
+  text-align: center;
+  padding: 20px;
 }
 
 .chart-enhanced-no-data-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
+  font-size: clamp(32px, 6vw, 48px);
+  margin-bottom: clamp(8px, 2vw, 16px);
   opacity: 0.5;
 }
 
 .chart-enhanced-no-data-title {
   font-weight: 500;
   margin-bottom: 4px;
+  font-size: clamp(12px, 2vw, 14px);
 }
 
 .chart-enhanced-no-data-subtitle {
-  font-size: 12px;
+  font-size: clamp(10px, 1.8vw, 12px);
   opacity: 0.8;
+  line-height: 1.4;
 }
 
 /* Enhanced Tooltip Styles */
@@ -152,46 +197,50 @@
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 12px;
+  padding: clamp(8px, 2vw, 12px);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  min-width: 200px;
+  min-width: clamp(150px, 30vw, 200px);
+  max-width: 300px;
 }
 
 .chart-enhanced-tooltip-label {
   font-weight: 600;
   color: #2d3748;
   margin-bottom: 8px;
-  font-size: 14px;
+  font-size: clamp(12px, 2vw, 14px);
+  word-wrap: break-word;
 }
 
 .chart-enhanced-tooltip-value {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .chart-enhanced-tooltip-color-indicator {
   width: 12px;
   height: 12px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .chart-enhanced-tooltip-text {
   color: #4a5568;
-  font-size: 14px;
+  font-size: clamp(12px, 2vw, 14px);
   font-weight: 500;
 }
 
 .chart-enhanced-tooltip-badge {
   color: #667eea;
-  font-size: 12px;
+  font-size: clamp(10px, 1.8vw, 12px);
   margin-top: 4px;
   font-weight: 500;
 }
 
 .chart-enhanced-tooltip-warning {
   color: #ed8936;
-  font-size: 12px;
+  font-size: clamp(10px, 1.8vw, 12px);
   margin-top: 4px;
   font-weight: 500;
 }
@@ -199,14 +248,15 @@
 /* Growth Indicator */
 .chart-growth-indicator {
   position: absolute;
-  top: 30px;
-  right: 40px;
-  padding: 4px 8px;
+  top: clamp(20px, 4vw, 30px);
+  right: clamp(20px, 4vw, 40px);
+  padding: clamp(3px, 1vw, 4px) clamp(6px, 1.5vw, 8px);
   border-radius: 12px;
-  font-size: 11px;
+  font-size: clamp(9px, 1.5vw, 11px);
   font-weight: 600;
   border-width: 1px;
   border-style: solid;
+  white-space: nowrap;
 }
 
 .chart-growth-indicator.positive {
@@ -223,7 +273,7 @@
 
 /* Chart Reference Line Label */
 .chart-reference-label {
-  font-size: 11px;
+  font-size: clamp(9px, 1.5vw, 11px);
   font-weight: 500;
 }
 
@@ -236,61 +286,168 @@
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 
-/* Chart Gradient Definitions */
-.chart-sales-gradient {
-  /* Applied via defs in chart components */
+/* Custom Scrollbars */
+.chart-scrollable-container::-webkit-scrollbar,
+.chart-enhanced-scrollable::-webkit-scrollbar {
+  height: 6px;
 }
 
-.chart-revenue-gradient {
-  /* Applied via defs in chart components */
+.chart-scrollable-container::-webkit-scrollbar-track,
+.chart-enhanced-scrollable::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
 }
 
-/* Enhanced Chart Container for Mobile */
-@media (max-width: 768px) {
+.chart-scrollable-container::-webkit-scrollbar-thumb,
+.chart-enhanced-scrollable::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.chart-scrollable-container::-webkit-scrollbar-thumb:hover,
+.chart-enhanced-scrollable::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Inventory chart specific scrollbar */
+.inventory-chart-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.inventory-chart-container::-webkit-scrollbar-track {
+  background: #f7fafc;
+  border-radius: 4px;
+}
+
+.inventory-chart-container::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 4px;
+}
+
+.inventory-chart-container::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* Chart Data Point Indicators */
+.chart-data-count {
+  position: absolute;
+  bottom: 10px;
+  right: 15px;
+  font-size: clamp(9px, 1.5vw, 10px);
+  color: #a0aec0;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+}
+
+/* Responsive Breakpoints */
+
+/* Small phones (480px and up) */
+@media (min-width: 480px) {
   .chart-container,
   .chart-enhanced-container {
-    padding: 16px;
-    height: 250px;
-  }
-  
-  .recharts-cartesian-axis-tick-value {
-    font-size: 10px;
+    height: 280px;
+    padding: 18px;
   }
   
   .custom-tooltip,
   .chart-enhanced-tooltip {
-    padding: 8px;
-    font-size: 12px;
-    min-width: 150px;
-  }
-
-  .chart-enhanced-tooltip-label {
-    font-size: 12px;
-    margin-bottom: 6px;
-  }
-
-  .chart-enhanced-tooltip-text {
-    font-size: 12px;
-  }
-
-  .chart-enhanced-no-data-icon {
-    font-size: 36px;
-    margin-bottom: 12px;
-  }
-
-  .chart-enhanced-no-data {
-    font-size: 12px;
-  }
-
-  .chart-growth-indicator {
-    top: 20px;
-    right: 25px;
-    font-size: 10px;
-    padding: 3px 6px;
+    padding: 10px;
   }
 }
 
-@media (max-width: 480px) {
+/* Tablets (768px and up) */
+@media (min-width: 768px) {
+  .chart-container,
+  .chart-enhanced-container {
+    height: 300px;
+    padding: 20px;
+  }
+  
+  .recharts-cartesian-axis-tick-value {
+    font-size: 12px;
+  }
+  
+  .custom-tooltip,
+  .chart-enhanced-tooltip {
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  .chart-enhanced-tooltip-label {
+    font-size: 14px;
+  }
+
+  .chart-enhanced-tooltip-text {
+    font-size: 14px;
+  }
+
+  .chart-enhanced-no-data {
+    font-size: 14px;
+  }
+
+  .chart-enhanced-no-data-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+
+  .chart-growth-indicator {
+    top: 30px;
+    right: 40px;
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+}
+
+/* Desktop (1024px and up) */
+@media (min-width: 1024px) {
+  .chart-container,
+  .chart-enhanced-container {
+    height: 320px;
+  }
+  
+  .chart-growth-indicator {
+    position: absolute;
+    top: 30px;
+    right: 40px;
+  }
+}
+
+/* Large screens (1200px and up) */
+@media (min-width: 1200px) {
+  .chart-container,
+  .chart-enhanced-container {
+    height: 350px;
+  }
+}
+
+/* Landscape orientation for small devices */
+@media (max-height: 500px) and (orientation: landscape) {
+  .chart-container,
+  .chart-enhanced-container {
+    height: 200px;
+    padding: 12px;
+  }
+  
+  .chart-enhanced-no-data-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+  
+  .chart-growth-indicator {
+    position: relative;
+    top: auto;
+    right: auto;
+    margin: 4px auto 0;
+    display: block;
+    text-align: center;
+    width: fit-content;
+  }
+}
+
+/* Very small screens optimization */
+@media (max-width: 320px) {
   .chart-container,
   .chart-enhanced-container {
     padding: 12px;
@@ -300,14 +457,6 @@
   .chart-enhanced-tooltip {
     min-width: 120px;
     padding: 6px;
-  }
-
-  .chart-enhanced-tooltip-label {
-    font-size: 11px;
-  }
-
-  .chart-enhanced-tooltip-text {
-    font-size: 11px;
   }
 
   .chart-growth-indicator {
@@ -321,19 +470,10 @@
   }
 }
 
-/* Responsive chart container */
-@media (max-width: 768px) {
-  .chart-container {
-    padding: 16px;
-    height: 250px;
-  }
-  
-  .recharts-cartesian-axis-tick-value {
-    font-size: 10px;
-  }
-  
-  .custom-tooltip {
-    padding: 8px;
-    font-size: 12px;
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .custom-tooltip,
+  .chart-enhanced-tooltip {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
 }
