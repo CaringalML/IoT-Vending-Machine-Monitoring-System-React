@@ -472,13 +472,23 @@
   }
   
   .stat-card {
-    padding: 14px;
+    padding: 12px;
     gap: 10px;
+    min-height: 75px;
+    aspect-ratio: 2 / 1;
   }
   
   .stat-icon {
-    width: 35px;
-    height: 35px;
+    width: 40px;
+    height: 40px;
+  }
+  
+  .stat-content h3 {
+    font-size: 16px;
+  }
+  
+  .stat-content p {
+    font-size: 10px;
   }
   
   .dashboard-bottom {

@@ -14,8 +14,7 @@ import RevenueChart from '../Charts/RevenueChart';
 import { 
   subscribeToSales, 
   subscribeToInventory, 
-  subscribeToProducts,
-  getDailySales // This function is now fixed in firestore.js
+  subscribeToProducts
 } from '../../services/firestore';
 import './Dashboard.css';
 
@@ -34,11 +33,12 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true); // State for loading charts
 
   // Memoize the data loading function to make it stable
-  const loadDailySalesData = useCallback(async () => {
+  const loadDailySalesData = useCallback(() => {
     setIsLoading(true);
     try {
-      // This now correctly fetches sales from the last 30 days
-      const allSales = await getDailySales(30); 
+      console.log("Loading daily sales data...");
+      // Use the same sales data that's already loaded from subscription
+      console.log("Using sales data from subscription:", sales);
       
       // Initialize a map with the last 30 days to ensure all days are present
       const salesMap = new Map();
@@ -55,17 +55,44 @@ const Dashboard = () => {
         });
       }
 
-      // Populate the map with actual sales data
-      allSales.forEach(sale => {
-        if (sale.timestamp?.seconds) {
-          const saleDate = new Date(sale.timestamp.seconds * 1000);
+      // Populate the map with actual sales data from the subscription
+      sales.forEach(sale => {
+        console.log("Processing sale:", sale);
+        let saleDate = null;
+        
+        // Handle Firestore Timestamp objects (most common from your seeder)
+        if (sale.timestamp && typeof sale.timestamp === 'object') {
+          if (sale.timestamp.seconds) {
+            // Firestore Timestamp with seconds property
+            saleDate = new Date(sale.timestamp.seconds * 1000);
+          } else if (sale.timestamp.toDate && typeof sale.timestamp.toDate === 'function') {
+            // Firestore Timestamp object with toDate() method
+            saleDate = sale.timestamp.toDate();
+          } else if (sale.timestamp._seconds) {
+            // Alternative Firestore Timestamp format
+            saleDate = new Date(sale.timestamp._seconds * 1000);
+          }
+        } else if (typeof sale.timestamp === 'string') {
+          // String timestamp
+          saleDate = new Date(sale.timestamp);
+        } else if (sale.timestamp instanceof Date) {
+          // Already a Date object
+          saleDate = sale.timestamp;
+        }
+        
+        if (saleDate && !isNaN(saleDate.getTime())) {
           const formattedSaleDate = format(saleDate, 'yyyy-MM-dd');
           
           if (salesMap.has(formattedSaleDate)) {
             const dayData = salesMap.get(formattedSaleDate);
             dayData.sales += 1;
             dayData.revenue += sale.price || 0;
+            console.log(`Updated ${formattedSaleDate}:`, dayData);
+          } else {
+            console.log(`Date ${formattedSaleDate} not in range (last 30 days)`);
           }
+        } else {
+          console.warn('Sale with invalid timestamp:', sale);
         }
       });
       
@@ -73,19 +100,27 @@ const Dashboard = () => {
       const chartData = Array.from(salesMap.values());
       
       console.log("Final aggregated chart data:", chartData);
+      console.log("Chart data summary:", {
+        totalDays: chartData.length,
+        daysWithSales: chartData.filter(d => d.sales > 0).length,
+        totalSales: chartData.reduce((sum, d) => sum + d.sales, 0),
+        totalRevenue: chartData.reduce((sum, d) => sum + d.revenue, 0)
+      });
+      
       setDailySalesData(chartData);
 
     } catch (error) {
       console.error('Error in loadDailySalesData:', error);
+      // Set empty data on error to prevent infinite loading
+      setDailySalesData([]);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [sales]); // Now depends on sales array
 
   useEffect(() => {
-    loadDailySalesData();
-
     const unsubscribeSales = subscribeToSales((salesData) => {
+      console.log("Sales subscription update:", salesData);
       setSales(salesData);
       const sortedSales = [...salesData].sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
       setRecentSales(sortedSales.slice(0, 5));
@@ -106,18 +141,32 @@ const Dashboard = () => {
       unsubscribeInventory();
       unsubscribeProducts();
     };
-  }, [loadDailySalesData]);
+  }, []);
+
+  // Load chart data whenever sales data changes
+  useEffect(() => {
+    if (sales.length > 0) {
+      loadDailySalesData();
+    } else {
+      // If no sales, set empty chart data
+      setDailySalesData([]);
+      setIsLoading(false);
+    }
+  }, [sales, loadDailySalesData]);
 
   useEffect(() => {
     const totalRevenue = sales.reduce((sum, sale) => sum + (sale.price || 0), 0);
     const lowStockItems = inventory.filter(item => item.quantity <= (item.lowStockThreshold || 5)).length;
     
-    setStats({
+    const newStats = {
       totalRevenue,
       totalSales: sales.length,
       lowStockItems,
       activeProducts: Object.values(products).filter(p => p.active).length,
-    });
+    };
+    
+    console.log("Updated stats:", newStats);
+    setStats(newStats);
   }, [sales, inventory, products]);
 
   // --- Helper Functions ---
@@ -127,19 +176,43 @@ const Dashboard = () => {
   };
 
   const formatSaleTime = (timestamp) => {
-    if (!timestamp?.seconds) return 'N/A';
+    if (!timestamp) return 'N/A';
+    
+    let saleDate = null;
+    
     try {
-      const saleDate = new Date(timestamp.seconds * 1000);
+      // Handle Firestore Timestamp objects
+      if (typeof timestamp === 'object') {
+        if (timestamp.seconds) {
+          // Firestore Timestamp with seconds property
+          saleDate = new Date(timestamp.seconds * 1000);
+        } else if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+          // Firestore Timestamp object with toDate() method
+          saleDate = timestamp.toDate();
+        } else if (timestamp._seconds) {
+          // Alternative Firestore Timestamp format
+          saleDate = new Date(timestamp._seconds * 1000);
+        }
+      } else if (typeof timestamp === 'string') {
+        // String timestamp
+        saleDate = new Date(timestamp);
+      } else if (timestamp instanceof Date) {
+        // Already a Date object
+        saleDate = timestamp;
+      }
+      
+      if (!saleDate || isNaN(saleDate.getTime())) {
+        return 'Invalid Date';
+      }
+
       const now = new Date();
       const diffDays = Math.floor((startOfDay(now) - startOfDay(saleDate)) / (1000 * 60 * 60 * 24));
-
-      if (isNaN(saleDate.getTime())) return 'Invalid Date';
 
       if (diffDays === 0) return `Today at ${format(saleDate, 'p')}`;
       if (diffDays === 1) return `Yesterday at ${format(saleDate, 'p')}`;
       return `${format(saleDate, 'MMM d')} at ${format(saleDate, 'p')}`;
     } catch (error) {
-      console.error('Error formatting sale time:', error);
+      console.error('Error formatting sale time:', error, timestamp);
       return 'Invalid Date';
     }
   };
@@ -150,8 +223,17 @@ const Dashboard = () => {
   
   const activeInventory = inventory.filter(item => products[item.productId]);
 
-  const hasSalesData = !isLoading && dailySalesData.some(d => d.sales > 0);
-  const hasRevenueData = !isLoading && dailySalesData.some(d => d.revenue > 0);
+  // Improved data validation for charts
+  const hasSalesData = !isLoading && dailySalesData.length > 0 && dailySalesData.some(d => d.sales > 0);
+  const hasRevenueData = !isLoading && dailySalesData.length > 0 && dailySalesData.some(d => d.revenue > 0);
+
+  console.log("Chart data validation:", {
+    isLoading,
+    dailySalesDataLength: dailySalesData.length,
+    hasSalesData,
+    hasRevenueData,
+    statsData: stats
+  });
 
   return (
     <div className="dashboard">
@@ -235,24 +317,57 @@ const Dashboard = () => {
 
       <div className="charts-grid">
         <div className="chart-card">
-          <div className="chart-header"><h3>Sales Trend (Last 30 Days)</h3></div>
-          {isLoading ? <p className='loading-text'>Loading Chart Data...</p> : 
-           hasSalesData ? <SalesChart data={dailySalesData} /> : 
-           <div className='no-data-placeholder'>
-             <p>No product sales data</p>
-             <span>No sales in selected period</span>
-           </div>
-          }
+          <div className="chart-header">
+            <h3>Sales Trend (Last 30 Days)</h3>
+            {!isLoading && (
+              <span style={{ fontSize: '12px', color: '#718096' }}>
+                {dailySalesData.filter(d => d.sales > 0).length} days with sales
+              </span>
+            )}
+          </div>
+          {isLoading ? (
+            <div className="chart-loading">
+              <div className="chart-loading-spinner"></div>
+              <span>Loading Chart Data...</span>
+            </div>
+          ) : hasSalesData ? (
+            <SalesChart data={dailySalesData} />
+          ) : (
+            <div className="chart-enhanced-no-data">
+              <div className="chart-enhanced-no-data-icon">📈</div>
+              <div className="chart-enhanced-no-data-title">No sales data in last 30 days</div>
+              <div className="chart-enhanced-no-data-subtitle">
+                Sales trends will appear here once transactions are recorded
+              </div>
+            </div>
+          )}
         </div>
+        
         <div className="chart-card">
-          <div className="chart-header"><h3>Revenue Overview (Last 30 Days)</h3></div>
-          {isLoading ? <p className='loading-text'>Loading Chart Data...</p> : 
-           hasRevenueData ? <RevenueChart data={dailySalesData} /> :
-           <div className='no-data-placeholder'>
-             <p>No revenue data</p>
-             <span>No sales in selected period</span>
-           </div>
-          }
+          <div className="chart-header">
+            <h3>Revenue Overview (Last 30 Days)</h3>
+            {!isLoading && (
+              <span style={{ fontSize: '12px', color: '#718096' }}>
+                {dailySalesData.filter(d => d.revenue > 0).length} days with revenue
+              </span>
+            )}
+          </div>
+          {isLoading ? (
+            <div className="chart-loading">
+              <div className="chart-loading-spinner"></div>
+              <span>Loading Chart Data...</span>
+            </div>
+          ) : hasRevenueData ? (
+            <RevenueChart data={dailySalesData} />
+          ) : (
+            <div className="chart-enhanced-no-data">
+              <div className="chart-enhanced-no-data-icon">💰</div>
+              <div className="chart-enhanced-no-data-title">No revenue data in last 30 days</div>
+              <div className="chart-enhanced-no-data-subtitle">
+                Revenue trends will appear here once sales are recorded
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
