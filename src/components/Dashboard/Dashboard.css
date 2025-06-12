@@ -32,15 +32,17 @@
 
 .stat-card {
   background: white;
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: 16px;
+  padding: 16px;
   display: flex;
-  align-items: center;
-  gap: 16px;
+  flex-direction: column; /* Stack items vertically */
+  align-items: center; /* Center items horizontally */
+  justify-content: center; /* Center items vertically */
+  gap: 8px; /* Space between icon and text */
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   border: 1px solid #e2e8f0;
   transition: all 0.2s ease;
-  min-height: 80px;
+  min-height: 150px; /* Taller card to fit new layout */
 }
 
 .stat-card:hover {
@@ -49,9 +51,9 @@
 }
 
 .stat-icon {
-  width: 50px;
-  height: 50px;
-  border-radius: 12px;
+  width: 64px; /* Larger icon container */
+  height: 64px; /* Larger icon container */
+  border-radius: 16px; /* Adjusted for new size */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -76,12 +78,11 @@
 }
 
 .stat-content {
-  flex: 1;
-  min-width: 0;
+  text-align: center; /* Center the text */
 }
 
 .stat-content h3 {
-  font-size: clamp(20px, 3vw, 24px);
+  font-size: clamp(22px, 3vw, 28px); /* Larger font for the number */
   font-weight: 700;
   color: #1a202c;
   margin-bottom: 4px;
@@ -463,23 +464,23 @@
 /* Small phones (up to 375px) */
 @media (max-width: 375px) {
   .stat-card {
-    height: 85px;
-    padding: 14px;
-    gap: 10px;
+    min-height: 140px;
+    padding: 12px;
+    gap: 4px;
   }
   
   .stat-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
   }
   
   .stat-content h3 {
-    font-size: 18px;
+    font-size: 20px;
   }
   
   .stat-content p {
-    font-size: 11px;
+    font-size: 12px;
   }
 }
 
@@ -494,23 +495,22 @@
   }
   
   .stat-card {
-    padding: 12px;
-    gap: 8px;
-    height: 80px;
+    min-height: 130px;
+    gap: 4px;
   }
   
   .stat-icon {
-    width: 36px;
-    height: 36px;
+    width: 48px;
+    height: 48px;
     border-radius: 9px;
   }
   
   .stat-content h3 {
-    font-size: 16px;
+    font-size: 18px;
   }
   
   .stat-content p {
-    font-size: 10px;
+    font-size: 11px;
   }
   
   .dashboard-bottom {
@@ -542,6 +542,25 @@
   
   .stats-grid {
     margin-bottom: 24px;
+    grid-template-columns: repeat(4, 1fr); /* Show 4 cards in landscape */
+  }
+
+  .stat-card {
+    min-height: 120px; /* Adjust height for landscape */
+    gap: 4px;
+  }
+
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .stat-content h3 {
+    font-size: 16px;
+  }
+
+  .stat-content p {
+    font-size: 10px;
   }
   
   .dashboard-bottom {
