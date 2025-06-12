@@ -460,96 +460,57 @@
   }
 }
 
-/* Mobile-specific overrides with higher specificity */
-@media screen and (max-width: 768px) {
-  .stats-grid {
-    grid-template-rows: 90px 90px !important;
-    gap: 12px !important;
-  }
-  
-  .stat-card {
-    height: 90px !important;
-    min-height: 90px !important;
-    max-height: 90px !important;
-    padding: 16px !important;
-  }
-  
-  .stat-icon {
-    width: 44px !important;
-    height: 44px !important;
-  }
-  
-  .stat-content h3 {
-    font-size: 20px !important;
-    line-height: 1.1 !important;
-  }
-  
-  .stat-content p {
-    font-size: 12px !important;
-    line-height: 1.2 !important;
-  }
-}
-
 /* Small phones (up to 375px) */
-@media screen and (max-width: 375px) {
-  .stats-grid {
-    grid-template-rows: 85px 85px !important;
-  }
-  
+@media (max-width: 375px) {
   .stat-card {
-    height: 85px !important;
-    min-height: 85px !important;
-    max-height: 85px !important;
-    padding: 14px !important;
-    gap: 10px !important;
+    height: 85px;
+    padding: 14px;
+    gap: 10px;
   }
   
   .stat-icon {
-    width: 40px !important;
-    height: 40px !important;
-    border-radius: 10px !important;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
   }
   
   .stat-content h3 {
-    font-size: 18px !important;
+    font-size: 18px;
   }
   
   .stat-content p {
-    font-size: 11px !important;
+    font-size: 11px;
   }
 }
 
 /* Very small screens (320px and down) */
-@media screen and (max-width: 320px) {
+@media (max-width: 320px) {
   .dashboard {
-    padding: 12px !important;
+    padding: 12px;
   }
   
   .stats-grid {
-    gap: 10px !important;
-    grid-template-rows: 80px 80px !important;
+    gap: 10px;
   }
   
   .stat-card {
-    padding: 12px !important;
-    gap: 8px !important;
-    height: 80px !important;
-    min-height: 80px !important;
-    max-height: 80px !important;
+    padding: 12px;
+    gap: 8px;
+    height: 80px;
   }
   
   .stat-icon {
-    width: 36px !important;
-    height: 36px !important;
-    border-radius: 9px !important;
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
   }
   
   .stat-content h3 {
-    font-size: 16px !important;
+    font-size: 16px;
   }
   
   .stat-content p {
-    font-size: 10px !important;
+    font-size: 10px;
   }
   
   .dashboard-bottom {
