@@ -460,12 +460,35 @@
   }
 }
 
-/* Small phones (up to 375px) */
+/* Mobile responsiveness - consistent text positioning */
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-rows: 90px 90px;
+    gap: 12px;
+  }
+  
+  .stat-card {
+    height: 90px;
+    padding: 16px;
+    align-items: center; /* Keep icons and text vertically centered */
+  }
+  
+  .stat-content {
+    justify-content: center; /* Center text vertically within its container */
+  }
+}
+
+/* Small phones */
 @media (max-width: 375px) {
+  .stats-grid {
+    grid-template-rows: 85px 85px;
+  }
+  
   .stat-card {
     height: 85px;
     padding: 14px;
     gap: 10px;
+    align-items: center;
   }
   
   .stat-icon {
@@ -474,16 +497,23 @@
     border-radius: 10px;
   }
   
+  .stat-content {
+    gap: 1px;
+    justify-content: center;
+  }
+  
   .stat-content h3 {
     font-size: 18px;
+    line-height: 1.2;
   }
   
   .stat-content p {
     font-size: 11px;
+    line-height: 1.3;
   }
 }
 
-/* Very small screens (320px and down) */
+/* Very small screens */
 @media (max-width: 320px) {
   .dashboard {
     padding: 12px;
@@ -491,12 +521,14 @@
   
   .stats-grid {
     gap: 10px;
+    grid-template-rows: 80px 80px;
   }
   
   .stat-card {
     padding: 12px;
     gap: 8px;
     height: 80px;
+    align-items: center;
   }
   
   .stat-icon {
@@ -505,32 +537,19 @@
     border-radius: 9px;
   }
   
+  .stat-content {
+    gap: 1px;
+    justify-content: center;
+  }
+  
   .stat-content h3 {
     font-size: 16px;
+    line-height: 1.2;
   }
   
   .stat-content p {
     font-size: 10px;
-  }
-  
-  .dashboard-bottom {
-    gap: 12px;
-  }
-  
-  .charts-grid {
-    gap: 12px;
-  }
-  
-  .card-header {
-    padding: 10px 14px;
-  }
-  
-  .card-body {
-    padding: 14px;
-  }
-  
-  .inventory-status .card-body {
-    padding: 10px 14px;
+    line-height: 1.3;
   }
 }
 
