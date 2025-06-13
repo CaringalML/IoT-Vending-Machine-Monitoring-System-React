@@ -228,6 +228,7 @@
   min-width: 100px;
   border: none;
   cursor: pointer;
+  text-align: center;
 }
 
 .export-modal-btn-secondary {
@@ -262,7 +263,15 @@
 .export-button-content {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  width: 100%;
+  text-align: center;
+}
+
+.export-loading-content span,
+.export-button-content span {
+  white-space: nowrap;
 }
 
 .export-loading-spinner {
@@ -272,6 +281,7 @@
   border-top: 2px solid white;
   border-radius: 50%;
   animation: export-spin 1s linear infinite;
+  flex-shrink: 0;
 }
 
 @keyframes export-spin {
