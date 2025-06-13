@@ -1,15 +1,14 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Download, TrendingUp, DollarSign, Calendar, Filter, ChevronDown, FileText, FileSpreadsheet } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Download, TrendingUp, DollarSign, Calendar, Filter, Search, X, FileText, FileSpreadsheet, FileImage } from 'lucide-react';
 import {
   subscribeToSales,
   subscribeToProducts
 } from '../../services/firestore';
 import LoadingSpinner from '../Common/LoadingSpinner';
+import Modal from '../Common/Modal';
 import CustomBarChart from './CustomBarChart'; 
 import ChartForecast from './ChartForecast';
-import PDFExport from './PDFExport';
-import CSVExport from './CSVExport';
-import ExcelExport from './ExcelExport';
+import { CSVExport, ExcelExport, PDFExport } from './exports';
 import './Sales.css'; 
 
 const Sales = () => {
@@ -30,20 +29,20 @@ const Sales = () => {
   const [quickFilter, setQuickFilter] = useState('30days');
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
-  const exportBtnRef = useRef(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-        if (exportBtnRef.current && !exportBtnRef.current.contains(event.target)) {
-            setIsExportDropdownOpen(false);
-        }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
+  
+  // Export modal states
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportFormat, setExportFormat] = useState('csv');
+  const [exportOptions, setExportOptions] = useState({
+    includeProductDetails: true,
+    includeTimestamps: true,
+    includePaymentMethods: true,
+    includeSummaryStats: true,
+    groupByProduct: false,
+    groupByDate: false
+  });
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportPreview, setExportPreview] = useState(null);
 
   useEffect(() => {
     applyQuickFilter('30days');
@@ -218,6 +217,139 @@ const Sales = () => {
     return searchTerm.trim() ? searchResults : filteredSales;
   };
 
+  // Export functionality
+  const generateExportPreview = useCallback(() => {
+    if (!filteredSales.length) return null;
+
+    const formats = {
+      csv: {
+        format: 'CSV',
+        description: 'Excel, Sheets compatible',
+        features: [
+          'Universal spreadsheet compatibility',
+          'Lightweight file format',
+          'Easy to import and manipulate',
+          'Compatible with Excel, Google Sheets'
+        ]
+      },
+      excel: {
+        format: 'Excel (.xlsx)',
+        description: '.xlsx format',
+        features: [
+          'Formatted headers with styling',
+          'Multiple worksheets',
+          'Advanced formulas and charts',
+          'Currency and date formatting',
+          'Summary statistics sheet'
+        ]
+      },
+      pdf: {
+        format: 'PDF',
+        description: 'Print-ready report',
+        features: [
+          'Professional formatting',
+          'Print-optimized layout',
+          'Executive summary',
+          'Charts and visualizations',
+          'Company branding'
+        ]
+      }
+    };
+
+    const baseColumns = ['Transaction ID', 'Date', 'Time', 'Product Name', 'Slot', 'Price'];
+    let columns = [...baseColumns];
+
+    if (exportOptions.includeProductDetails) {
+      columns.push('Product ID', 'Category', 'SKU');
+    }
+    if (exportOptions.includePaymentMethods) {
+      columns.push('Payment Method');
+    }
+    if (exportOptions.includeTimestamps) {
+      columns.push('Timestamp', 'Day of Week', 'Hour');
+    }
+
+    return {
+      ...formats[exportFormat],
+      itemCount: filteredSales.length,
+      columns,
+      estimatedSize: `${(filteredSales.length * 0.1).toFixed(1)} KB`,
+      dateRange: `${dateRange.startDate} to ${dateRange.endDate}`,
+      searchFilter: searchTerm ? `Filtered by "${searchTerm}"` : null
+    };
+  }, [filteredSales, exportFormat, exportOptions, dateRange, searchTerm]);
+
+  useEffect(() => {
+    if (showExportModal) {
+      setExportPreview(generateExportPreview());
+    }
+  }, [showExportModal, generateExportPreview]);
+
+  const handleExportSales = () => {
+    setShowExportModal(true);
+  };
+
+  const performExport = async () => {
+    if (!filteredSales.length) {
+      alert('No sales data to export.');
+      return;
+    }
+
+    setExportLoading(true);
+    
+    try {
+      const exportData = getSalesToDisplay();
+
+      switch (exportFormat) {
+        case 'csv':
+          CSVExport.exportSalesCSV({
+            salesData: exportData,
+            dateRange: dateRange,
+            getProductName: getProductName,
+            stats: salesStats,
+            options: exportOptions
+          });
+          break;
+          
+        case 'excel':
+          ExcelExport.exportSalesExcel({
+            salesData: exportData,
+            stats: salesStats,
+            dateRange: dateRange,
+            formatCurrency: formatCurrency,
+            getProductName: getProductName,
+            productData: rankedProductData,
+            options: exportOptions
+          });
+          break;
+          
+        case 'pdf':
+          PDFExport.exportSalesPDF({
+            salesData: exportData,
+            stats: salesStats,
+            dateRange: dateRange,
+            formatCurrency: formatCurrency,
+            getProductName: getProductName,
+            title: `Sales Report${searchTerm ? ` - Search: ${searchTerm}` : ''}`,
+            options: exportOptions
+          });
+          break;
+          
+        default:
+          throw new Error(`Unsupported export format: ${exportFormat}`);
+      }
+
+      setShowExportModal(false);
+      console.log(`${exportFormat.toUpperCase()} export completed successfully`);
+      
+    } catch (error) {
+      console.error(`Export error (${exportFormat}):`, error);
+      alert(`Failed to export ${exportFormat.toUpperCase()}: ${error.message}`);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (sales.length > 0) {
       filterSalesByDate();
@@ -254,40 +386,6 @@ const Sales = () => {
     setQuickFilter('');
   };
 
-  const exportAsCsv = () => {
-    CSVExport.exportSalesCSV({
-      salesData: filteredSales,
-      dateRange: dateRange,
-      getProductName: getProductName,
-      stats: salesStats
-    });
-    setIsExportDropdownOpen(false);
-  };
-
-  const exportAsPdf = () => {
-    PDFExport.exportSalesPDF({
-      salesData: filteredSales,
-      stats: salesStats,
-      dateRange: dateRange,
-      formatCurrency: formatCurrency,
-      getProductName: getProductName,
-      title: 'Sales Report'
-    });
-    setIsExportDropdownOpen(false);
-  };
-
-  const exportAsExcel = () => {
-    ExcelExport.exportSalesExcel({
-      salesData: filteredSales,
-      stats: salesStats,
-      dateRange: dateRange,
-      formatCurrency: formatCurrency,
-      getProductName: getProductName,
-      productData: rankedProductData
-    });
-    setIsExportDropdownOpen(false);
-  };
-
   const calculateDailyAverage = (total, startDate, endDate) => {
     if (!startDate || !endDate || total === 0) return 0;
 
@@ -320,24 +418,14 @@ const Sales = () => {
           <h1>Sales Analytics</h1>
           <p>Track your vending machine sales performance and trends</p>
         </div>
-        <div className="export-btn-group" ref={exportBtnRef}>
-          <button
-            className="btn btn-primary"
-            onClick={() => setIsExportDropdownOpen(prev => !prev)}
-            disabled={filteredSales.length === 0}
-          >
-            <Download size={16} />
-            <span>Export Data</span>
-            <ChevronDown size={16} style={{ marginLeft: '4px', transition: 'transform 0.2s', transform: isExportDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}/>
-          </button>
-          {isExportDropdownOpen && (
-            <div className="export-dropdown">
-              <button onClick={exportAsCsv}><FileText size={14} /> Export as .csv</button>
-              <button onClick={exportAsPdf}><FileText size={14} /> Export as .pdf</button>
-              <button onClick={exportAsExcel}><FileSpreadsheet size={14} /> Export as .xlsx</button>
-            </div>
-          )}
-        </div>
+        <button
+          className="btn btn-primary"
+          onClick={handleExportSales}
+          disabled={filteredSales.length === 0}
+        >
+          <Download size={16} />
+          Export Data
+        </button>
       </div>
 
       <div className="sales-filters">
@@ -471,13 +559,14 @@ const Sales = () => {
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', background: '#f7fafc' }}>
             <div style={{ position: 'relative', maxWidth: '400px' }}>
               <div style={{ position: 'relative' }}>
+                <Search size={20} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#718096', pointerEvents: 'none' }} />
                 <input
                   type="text"
                   placeholder="Search by product, slot, date, payment..."
                   value={searchTerm}
                   onChange={handleSearchChange}
                   className="form-input"
-                  style={{ paddingLeft: '12px', paddingRight: searchTerm ? '40px' : '12px', fontSize: '14px' }}
+                  style={{ paddingLeft: '40px', paddingRight: searchTerm ? '40px' : '12px', fontSize: '14px' }}
                 />
                 {searchTerm && (
                   <button
@@ -488,12 +577,12 @@ const Sales = () => {
                     onMouseLeave={(e) => e.target.style.color = '#718096'}
                     title="Clear search"
                   >
-                    ×
+                    <X size={16} />
                   </button>
                 )}
               </div>
               {searchTerm && (
-                <div style={{ fontSize: '12px', color: '#718096', marginTop: '4px' }}>
+                <div style={{ fontSize: '12px', color: '#718096', marginTop: '4px', paddingLeft: '40px' }}>
                   {searchResults.length > 0 
                     ? `Found ${searchResults.length} result${searchResults.length !== 1 ? 's' : ''}`
                     : 'No results found'
@@ -612,6 +701,236 @@ const Sales = () => {
       <div style={{ marginBottom: '32px' }}>
           <ChartForecast data={filteredSales} formatCurrency={formatCurrency} />
       </div>
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <Modal
+          title="Export Sales Data"
+          onClose={() => setShowExportModal(false)}
+          size="medium"
+        >
+          <div className="export-modal-content">
+            <div className="export-info">
+              <h4 className="export-summary-title">Export Summary</h4>
+              <p className="export-summary-text">
+                Exporting <strong>{filteredSales.length} sales transactions</strong> from 
+                <strong> {quickFilter ? quickFilter.charAt(0).toUpperCase() + quickFilter.slice(1) : 'Custom Period'}</strong>
+                {searchTerm && <span> matching "<strong>{searchTerm}</strong>"</span>}
+              </p>
+            </div>
+
+            {/* File Format Selection */}
+            <div className="form-group">
+              <label className="form-label">Export Format</label>
+              <div className="export-format-options">
+                <label className={`export-format-option ${exportFormat === 'csv' ? 'active' : ''}`}>
+                  <input
+                    type="radio"
+                    name="exportFormat"
+                    value="csv"
+                    checked={exportFormat === 'csv'}
+                    onChange={(e) => setExportFormat(e.target.value)}
+                    className="export-format-radio"
+                  />
+                  <div className="export-format-content">
+                    <FileText size={24} className={`export-format-icon ${exportFormat === 'csv' ? 'active' : ''}`} />
+                    <span className="export-format-name">CSV</span>
+                    <span className="export-format-description">Excel, Sheets</span>
+                  </div>
+                </label>
+
+                <label className={`export-format-option ${exportFormat === 'excel' ? 'active' : ''}`}>
+                  <input
+                    type="radio"
+                    name="exportFormat"
+                    value="excel"
+                    checked={exportFormat === 'excel'}
+                    onChange={(e) => setExportFormat(e.target.value)}
+                    className="export-format-radio"
+                  />
+                  <div className="export-format-content">
+                    <FileSpreadsheet size={24} className={`export-format-icon ${exportFormat === 'excel' ? 'active' : ''}`} />
+                    <span className="export-format-name">Excel</span>
+                    <span className="export-format-description">.xlsx format</span>
+                  </div>
+                </label>
+
+                <label className={`export-format-option ${exportFormat === 'pdf' ? 'active' : ''}`}>
+                  <input
+                    type="radio"
+                    name="exportFormat"
+                    value="pdf"
+                    checked={exportFormat === 'pdf'}
+                    onChange={(e) => setExportFormat(e.target.value)}
+                    className="export-format-radio"
+                  />
+                  <div className="export-format-content">
+                    <FileImage size={24} className={`export-format-icon ${exportFormat === 'pdf' ? 'active' : ''}`} />
+                    <span className="export-format-name">PDF</span>
+                    <span className="export-format-description">Print-ready</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Export Options */}
+            <div className="form-group">
+              <label className="form-label">Export Options</label>
+              <div className="export-options">
+                <label className="export-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={exportOptions.includeProductDetails}
+                    onChange={(e) => setExportOptions(prev => ({ 
+                      ...prev, 
+                      includeProductDetails: e.target.checked 
+                    }))}
+                    className="export-checkbox-input"
+                  />
+                  <span className="export-checkbox-checkmark"></span>
+                  <span className="export-checkbox-text">Include product details (ID, category, SKU)</span>
+                </label>
+
+                <label className="export-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={exportOptions.includeTimestamps}
+                    onChange={(e) => setExportOptions(prev => ({ 
+                      ...prev, 
+                      includeTimestamps: e.target.checked 
+                    }))}
+                    className="export-checkbox-input"
+                  />
+                  <span className="export-checkbox-checkmark"></span>
+                  <span className="export-checkbox-text">Include detailed timestamps (day of week, hour)</span>
+                </label>
+
+                <label className="export-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={exportOptions.includePaymentMethods}
+                    onChange={(e) => setExportOptions(prev => ({ 
+                      ...prev, 
+                      includePaymentMethods: e.target.checked 
+                    }))}
+                    className="export-checkbox-input"
+                  />
+                  <span className="export-checkbox-checkmark"></span>
+                  <span className="export-checkbox-text">Include payment method details</span>
+                </label>
+
+                <label className="export-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={exportOptions.includeSummaryStats}
+                    onChange={(e) => setExportOptions(prev => ({ 
+                      ...prev, 
+                      includeSummaryStats: e.target.checked 
+                    }))}
+                    className="export-checkbox-input"
+                  />
+                  <span className="export-checkbox-checkmark"></span>
+                  <span className="export-checkbox-text">Include summary statistics</span>
+                </label>
+
+                <label className="export-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={exportOptions.groupByProduct}
+                    onChange={(e) => setExportOptions(prev => ({ 
+                      ...prev, 
+                      groupByProduct: e.target.checked,
+                      groupByDate: e.target.checked ? false : prev.groupByDate 
+                    }))}
+                    className="export-checkbox-input"
+                  />
+                  <span className="export-checkbox-checkmark"></span>
+                  <span className="export-checkbox-text">Group transactions by product</span>
+                </label>
+
+                <label className="export-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={exportOptions.groupByDate}
+                    onChange={(e) => setExportOptions(prev => ({ 
+                      ...prev, 
+                      groupByDate: e.target.checked,
+                      groupByProduct: e.target.checked ? false : prev.groupByProduct 
+                    }))}
+                    className="export-checkbox-input"
+                  />
+                  <span className="export-checkbox-checkmark"></span>
+                  <span className="export-checkbox-text">Group transactions by date</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Preview */}
+            {exportPreview && (
+              <div className="export-preview">
+                <h4 className="export-preview-title">Export Preview</h4>
+                <div className="export-preview-details">
+                  <div className="export-preview-item">
+                    <span className="export-preview-label">Format:</span>
+                    <span className="export-preview-value">{exportPreview.format}</span>
+                  </div>
+                  <div className="export-preview-item">
+                    <span className="export-preview-label">Items:</span>
+                    <span className="export-preview-value">{exportPreview.itemCount} transactions</span>
+                  </div>
+                  <div className="export-preview-item">
+                    <span className="export-preview-label">Columns:</span>
+                    <span className="export-preview-value">{exportPreview.columns.length} data fields</span>
+                  </div>
+                  <div className="export-preview-item">
+                    <span className="export-preview-label">Period:</span>
+                    <span className="export-preview-value">{exportPreview.dateRange}</span>
+                  </div>
+                  {exportPreview.searchFilter && (
+                    <div className="export-preview-item">
+                      <span className="export-preview-label">Filter:</span>
+                      <span className="export-preview-value">{exportPreview.searchFilter}</span>
+                    </div>
+                  )}
+                  <div className="export-preview-item">
+                    <span className="export-preview-label">Features:</span>
+                    <span className="export-preview-value">{exportPreview.features.slice(0, 2).join(', ')}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="export-modal-actions">
+              <button
+                type="button"
+                className="btn btn-secondary export-modal-btn-secondary"
+                onClick={() => setShowExportModal(false)}
+                disabled={exportLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary export-modal-btn-primary"
+                onClick={performExport}
+                disabled={filteredSales.length === 0 || exportLoading}
+              >
+                {exportLoading ? (
+                  <div className="export-loading-content">
+                    <div className="export-loading-spinner"></div>
+                    <span>Exporting...</span>
+                  </div>
+                ) : (
+                  <div className="export-button-content">
+                    <Download size={16} />
+                    <span>Export {exportFormat.toUpperCase()}</span>
+                  </div>
+                )}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };
