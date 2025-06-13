@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Package, AlertTriangle, RefreshCw, Trash2, Archive, Download, Upload, Zap, Search, X, FileText, FileSpreadsheet, FileImage } from 'lucide-react';
-import * as XLSX from 'xlsx';
 import { 
   subscribeToInventory, 
   subscribeToProducts,
@@ -13,8 +12,10 @@ import {
 import Modal from '../Common/Modal';
 import LoadingSpinner from '../Common/LoadingSpinner';
 import DeleteConfirmation from '../Common/DeleteConfirmation';
-import { formatCurrency, downloadCSV } from '../../utils/helpers';
+import { formatCurrency } from '../../utils/helpers';
+import { createExportManager } from './exports/ExportUtils';
 import './Inventory.css';
+import './ExportModal.css';
 
 const Inventory = () => {
   const [inventory, setInventory] = useState([]);
@@ -43,6 +44,9 @@ const Inventory = () => {
     groupByCategory: false,
     includeStockHistory: false
   });
+  const [exportManager, setExportManager] = useState(null);
+  const [exportPreview, setExportPreview] = useState(null);
+  const [exportLoading, setExportLoading] = useState(false);
 
   // Enhanced statistics
   const [stats, setStats] = useState({
@@ -68,6 +72,14 @@ const Inventory = () => {
     };
   }, []);
 
+  // Initialize export manager when data is available
+  useEffect(() => {
+    if (inventory.length > 0 && products.length > 0) {
+      const manager = createExportManager(inventory, products, stats);
+      setExportManager(manager);
+    }
+  }, [inventory, products, stats]);
+
   // Helper function for checking if item is deleted product
   const isDeletedProduct = useCallback((item) => {
     return !item.productId && item.deletedProductName;
@@ -79,9 +91,8 @@ const Inventory = () => {
     return Math.round((quantity / maxCapacity) * 100);
   }, []);
 
-  // Helper function for getting product info (moved here to fix useCallback dependencies)
+  // Helper function for getting product info
   const getProductInfo = useCallback((productId, inventoryItem = null) => {
-    // If it's a deleted product, use the stored deleted product info
     if (inventoryItem && isDeletedProduct(inventoryItem)) {
       return {
         name: inventoryItem.deletedProductName || 'Deleted Product',
@@ -90,7 +101,6 @@ const Inventory = () => {
       };
     }
     
-    // Otherwise, find the product in the current products array
     return products.find(p => p.id === productId) || { 
       name: 'Unknown Product', 
       price: 0 
@@ -113,14 +123,12 @@ const Inventory = () => {
 
     const deletedItems = hasProductItems.filter(isDeletedProduct);
 
-    // Calculate total inventory value
     const totalValue = hasProductItems.reduce((sum, item) => {
       if (isDeletedProduct(item)) return sum;
       const product = getProductInfo(item.productId, item);
       return sum + (item.quantity * (product.price || 0));
     }, 0);
 
-    // Calculate average stock percentage
     const activeItems = hasProductItems.filter(item => !isDeletedProduct(item));
     const averageStock = activeItems.length > 0 
       ? activeItems.reduce((sum, item) => {
@@ -158,13 +166,12 @@ const Inventory = () => {
 
       const product = getProductInfo(item.productId, item);
       
-      // Search in multiple fields
       const searchFields = [
-        item.slot,                           // Slot number (A1, B2, etc.)
-        product.name,                        // Product name
-        product.sku,                         // Product SKU
-        isDeleted ? 'deleted' : 'active',    // Status
-        isDeleted ? item.deletedProductName : '', // Deleted product name
+        item.slot,
+        product.name,
+        product.sku,
+        isDeleted ? 'deleted' : 'active',
+        isDeleted ? item.deletedProductName : '',
       ].filter(Boolean).map(field => field.toString().toLowerCase());
 
       return searchFields.some(field => field.includes(searchLower));
@@ -173,7 +180,6 @@ const Inventory = () => {
     setSearchResults(results);
   }, [inventory, getProductInfo, isDeletedProduct]);
 
-  // Debounced search effect
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       performSearch(searchTerm);
@@ -190,7 +196,6 @@ const Inventory = () => {
       const isDeleted = isDeletedProduct(item);
       const hasProduct = item.productId || isDeleted;
       
-      // Only show items that have a product or are deleted products
       if (!hasProduct) return false;
       
       switch (filter) {
@@ -210,6 +215,14 @@ const Inventory = () => {
     
     setFilteredItems(filtered);
   }, [inventory, filter, searchTerm, searchResults, isDeletedProduct, getStockPercentage]);
+
+  // Update export preview when format or options change
+  useEffect(() => {
+    if (exportManager && showExportModal) {
+      const preview = exportManager.getExportPreview(exportFormat, filteredItems, exportOptions);
+      setExportPreview(preview);
+    }
+  }, [exportManager, exportFormat, exportOptions, filteredItems, showExportModal]);
 
   // Additional helper functions
   const getStockStatus = (quantity, maxCapacity, threshold = 5) => {
@@ -436,346 +449,43 @@ const Inventory = () => {
     }
   };
 
+  // Export functionality using the new export modules
   const handleExportInventory = () => {
     setShowExportModal(true);
   };
 
-  const generateExportData = () => {
-    let dataToExport = [...filteredItems];
-
-    // Filter out deleted products if not included
-    if (!exportOptions.includeDeletedProducts) {
-      dataToExport = dataToExport.filter(item => !isDeletedProduct(item));
+  const performExport = async () => {
+    if (!exportManager) {
+      alert('Export manager not initialized. Please try again.');
+      return;
     }
 
-    // Group by category if requested
-    if (exportOptions.groupByCategory) {
-      dataToExport.sort((a, b) => {
-        const productA = getProductInfo(a.productId, a);
-        const productB = getProductInfo(b.productId, b);
-        const categoryA = productA.category || 'other';
-        const categoryB = productB.category || 'other';
-        return categoryA.localeCompare(categoryB);
-      });
-    }
-
-    // Transform data for export
-    const exportData = dataToExport.map((item, index) => {
-      const product = getProductInfo(item.productId, item);
-      const isDeleted = isDeletedProduct(item);
-      
-      const baseData = {
-        '#': index + 1,
-        'Slot': item.slot,
-        'Product Name': product.name,
-        'Category': product.category || 'Other',
-        'SKU': product.sku || 'N/A',
-        'Current Stock': item.quantity,
-        'Max Capacity': item.maxCapacity || 20,
-        'Stock %': isDeleted ? 'N/A' : `${getStockPercentage(item.quantity, item.maxCapacity || 20)}%`,
-        'Status': isDeleted ? 'Deleted Product' : getStockStatusLabel(item.quantity, item.maxCapacity || 20),
-        'Unit Price': product.price ? `$${product.price.toFixed(2)}` : '$0.00',
-        'Total Value': `$${(item.quantity * (product.price || 0)).toFixed(2)}`,
-        'Low Stock Threshold': item.lowStockThreshold || 5,
-        'Last Refilled': item.lastRefilled ? (() => {
-          const date = new Date(item.lastRefilled.seconds * 1000);
-          const dateStr = date.toLocaleDateString('en-NZ', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-          });
-          const timeStr = date.toLocaleTimeString('en-NZ', {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-          });
-          return `${dateStr} at ${timeStr}`;
-        })() : 'Never',
-        'Product Active': isDeleted ? 'No' : (product.active ? 'Yes' : 'No'),
+    setExportLoading(true);
+    try {
+      const metadata = {
+        filter,
+        searchTerm
       };
 
-      // Add additional fields based on options
-      if (exportOptions.includeImages && product.image) {
-        baseData['Image URL'] = product.image;
+      const result = await exportManager.exportData(
+        exportFormat, 
+        filteredItems, 
+        exportOptions, 
+        metadata
+      );
+
+      if (result.success) {
+        setShowExportModal(false);
+        // Optional: Show success message
+        console.log('Export successful:', result.message);
+      } else {
+        alert(`Export failed: ${result.error}`);
       }
-
-      if (isDeleted) {
-        baseData['Deleted Date'] = item.deletedAt ? (() => {
-          const date = new Date(item.deletedAt.seconds * 1000);
-          const dateStr = date.toLocaleDateString('en-NZ', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-          });
-          const timeStr = date.toLocaleTimeString('en-NZ', {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-          });
-          return `${dateStr} at ${timeStr}`;
-        })() : 'Unknown';
-      }
-
-      return baseData;
-    });
-
-    return exportData;
-  };
-
-  const performExport = async () => {
-    const exportData = generateExportData();
-    const fileName = `inventory-${filter}${searchTerm ? '-search' : ''}-${new Date().toISOString().split('T')[0]}`;
-
-    try {
-      if (exportFormat === 'csv') {
-        downloadCSV(exportData, `${fileName}.csv`);
-      } else if (exportFormat === 'excel') {
-        await downloadExcel(exportData, `${fileName}.xlsx`);
-      } else if (exportFormat === 'pdf') {
-        await downloadPDF(exportData, `${fileName}.pdf`);
-      }
-      
-      setShowExportModal(false);
     } catch (error) {
       console.error('Export error:', error);
-      alert('Error exporting data. Please try again.');
-    }
-  };
-
-  const downloadExcel = async (data, filename) => {
-    try {
-      // Check if XLSX is available
-      if (typeof XLSX === 'undefined') {
-        throw new Error('XLSX library not found');
-      }
-
-      // Create a new workbook
-      const workbook = XLSX.utils.book_new();
-      
-      // Convert data to worksheet
-      const worksheet = XLSX.utils.json_to_sheet(data);
-      
-      // Calculate column widths based on content
-      const colWidths = [];
-      const headers = Object.keys(data[0] || {});
-      
-      headers.forEach((header, index) => {
-        const maxLength = Math.max(
-          header.length,
-          ...data.map(row => String(row[header] || '').length)
-        );
-        colWidths[index] = { width: Math.min(Math.max(maxLength + 2, 10), 50) };
-      });
-      
-      worksheet['!cols'] = colWidths;
-      
-      // Add some styling to headers
-      const range = XLSX.utils.decode_range(worksheet['!ref']);
-      for (let col = range.s.c; col <= range.e.c; col++) {
-        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
-        if (!worksheet[cellAddress]) continue;
-        worksheet[cellAddress].s = {
-          font: { bold: true },
-          fill: { fgColor: { rgb: "EEEEEE" } }
-        };
-      }
-      
-      // Add the worksheet to workbook
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventory');
-      
-      // Create Excel file and download
-      XLSX.writeFile(workbook, filename);
-      console.log('Excel file downloaded successfully:', filename);
-    } catch (error) {
-      console.error('Excel export error:', error);
-      alert(`Excel export failed: ${error.message}. Falling back to CSV.`);
-      downloadCSV(data, filename.replace('.xlsx', '.csv'));
-    }
-  };
-
-  const downloadPDF = async (data, filename) => {
-    try {
-      // Calculate total value for summary
-      const totalValue = data.reduce((sum, item) => {
-        const value = parseFloat(item['Total Value'].replace('$', ''));
-        return sum + value;
-      }, 0);
-
-      // Create HTML content for PDF
-const htmlContent = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Inventory Report</title>
-  <style>
-    body { font-family: 'Open Sans', sans-serif; margin: 20px; background-color: #ffffff; color: #333; }
-    .pdf-container { max-width: 1000px; margin: auto; padding: 20px; }
-    .pdf-header { text-align: center; border-bottom: 4px solid #4f46e5; padding-bottom: 20px; margin-bottom: 30px; }
-    .pdf-header h1 { font-size: 32px; color: #4f46e5; margin: 0; }
-    .pdf-header p { font-size: 14px; color: #555; margin: 4px 0; }
-    .pdf-summary { background: #f3f4f6; padding: 20px; border-radius: 10px; margin-bottom: 30px; }
-    .pdf-summary h3 { margin-top: 0; color: #4f46e5; font-size: 20px; }
-    .pdf-summary-stats { display: flex; gap: 20px; justify-content: space-around; flex-wrap: wrap; }
-    .pdf-stat-item { background: white; padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); flex: 1 1 150px; }
-    .pdf-stat-value { font-size: 22px; font-weight: bold; color: #4f46e5; }
-    .pdf-stat-label { font-size: 12px; color: #666; }
-    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px; }
-    th { background: #4f46e5; color: white; padding: 8px; text-align: left; }
-    td { border: 1px solid #ddd; padding: 6px; }
-    tr:nth-child(even) { background: #f9fafb; }
-    .status-good { color: #38a169; font-weight: bold; }
-    .status-medium { color: #ed8936; font-weight: bold; }
-    .status-low, .status-out { color: #e53e3e; font-weight: bold; }
-    .status-deleted { color: #718096; font-weight: bold; }
-    .pdf-footer { text-align: center; font-size: 10px; color: #666; border-top: 1px solid #ddd; padding-top: 10px; margin-top: 30px; }
-    @media print {
-      * {
-        print-color-adjust: exact !important; /* Updated CSS property */
-        -webkit-print-color-adjust: exact !important; /* Webkit fallback */
-      }
-      body { margin: 0; }
-      .pdf-container { max-width: none; margin: 0; padding: 10px; }
-    }
-  </style>
-</head>
-<body>
-  <div class="pdf-container">
-    <div class="pdf-header">
-      <h1>📦 Inventory Report</h1>
-      <p><strong>Generated:</strong> ${new Date().toLocaleString('en-NZ')}</p>
-      <p><strong>Filter:</strong> ${filter.charAt(0).toUpperCase() + filter.slice(1)}${searchTerm ? ` | Search: "${searchTerm}"` : ''}</p>
-    </div>
-
-    <div class="pdf-summary">
-      <h3>📊 Summary</h3>
-      <div class="pdf-summary-stats">
-        <div class="pdf-stat-item">
-          <div class="pdf-stat-value">${data.length}</div>
-          <div class="pdf-stat-label">Total Items</div>
-        </div>
-        <div class="pdf-stat-item">
-          <div class="pdf-stat-value">${totalValue.toFixed(2)}</div>
-          <div class="pdf-stat-label">Total Value</div>
-        </div>
-        <div class="pdf-stat-item">
-          <div class="pdf-stat-value">${stats.low}</div>
-          <div class="pdf-stat-label">Low Stock</div>
-        </div>
-        <div class="pdf-stat-item">
-          <div class="pdf-stat-value">${stats.out}</div>
-          <div class="pdf-stat-label">Out of Stock</div>
-        </div>
-      </div>
-    </div>
-
-    <table>
-      <thead>
-        <tr>${Object.keys(data[0] || {}).map(header => `<th>${header}</th>`).join('')}</tr>
-      </thead>
-      <tbody>
-        ${data.map(row => {
-          const statusClass = row.Status?.toLowerCase().includes('good') ? 'status-good' :
-                             row.Status?.toLowerCase().includes('medium') ? 'status-medium' :
-                             row.Status?.toLowerCase().includes('low') ? 'status-low' :
-                             row.Status?.toLowerCase().includes('out') ? 'status-out' :
-                             row.Status?.toLowerCase().includes('deleted') ? 'status-deleted' : '';
-          return `<tr>${Object.entries(row).map(([key, value]) =>
-            `<td class="${key === 'Status' ? statusClass : ''}">${value || ''}</td>`
-          ).join('')}</tr>`;
-        }).join('')}
-      </tbody>
-    </table>
-
-    <div class="pdf-footer">
-      <p><strong>🏪 Vending Machine Admin System</strong> - Inventory Management Report</p>
-      <p>Generated on ${new Date().toLocaleDateString('en-NZ')}</p>
-    </div>
-  </div>
-</body>
-</html>`;
-
-      // Create a blob with the HTML content
-      const blob = new Blob([htmlContent], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      
-      // Create a temporary iframe to load the content
-      const iframe = document.createElement('iframe');
-      iframe.style.position = 'absolute';
-      iframe.style.left = '-9999px';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      document.body.appendChild(iframe);
-      
-      // Load the HTML content
-      iframe.src = url;
-      
-      // Wait for the iframe to load, then trigger print
-      iframe.onload = () => {
-        setTimeout(() => {
-          try {
-            // Try to access the iframe's window and trigger print
-            const iframeWindow = iframe.contentWindow;
-            
-            // Set up the print settings to save as PDF
-            if (iframeWindow) {
-              // Focus the iframe window
-              iframeWindow.focus();
-              
-              // Trigger print dialog (user can choose "Save as PDF")
-              iframeWindow.print();
-              
-              // Clean up after a delay
-              setTimeout(() => {
-                document.body.removeChild(iframe);
-                URL.revokeObjectURL(url);
-              }, 1000);
-            }
-          } catch (error) {
-            console.error('Print error:', error);
-            // Fallback: open in new window
-            const newWindow = window.open(url, '_blank');
-            if (newWindow) {
-              newWindow.addEventListener('load', () => {
-                setTimeout(() => {
-                  newWindow.print();
-                  newWindow.close();
-                }, 500);
-              });
-            }
-            
-            // Clean up
-            setTimeout(() => {
-              if (iframe.parentNode) {
-                document.body.removeChild(iframe);
-              }
-              URL.revokeObjectURL(url);
-            }, 2000);
-          }
-        }, 500);
-      };
-      
-      // Fallback if iframe fails to load
-      iframe.onerror = () => {
-        console.log('Iframe failed, falling back to new window');
-        const newWindow = window.open('', '_blank');
-        if (newWindow) {
-          newWindow.document.write(htmlContent);
-          newWindow.document.close();
-          setTimeout(() => {
-            newWindow.print();
-          }, 500);
-        }
-        
-        // Clean up
-        if (iframe.parentNode) {
-          document.body.removeChild(iframe);
-        }
-        URL.revokeObjectURL(url);
-      };
-      
-    } catch (error) {
-      console.error('PDF export error:', error);
-      alert('Error generating PDF. Please try again or use a different format.');
+      alert('Export failed. Please try again.');
+    } finally {
+      setExportLoading(false);
     }
   };
 
@@ -871,15 +581,7 @@ const htmlContent = `<!DOCTYPE html>
       </div>
 
       {/* Advanced Actions */}
-      <div className="advanced-actions" style={{ 
-        margin: '24px 0', 
-        padding: '16px', 
-        background: '#f7fafc', 
-        borderRadius: '12px',
-        display: 'flex',
-        gap: '12px',
-        flexWrap: 'wrap'
-      }}>
+      <div className="advanced-actions">
         <button 
           className="btn btn-secondary"
           onClick={handleCleanupOrphaned}
@@ -918,58 +620,23 @@ const htmlContent = `<!DOCTYPE html>
       </div>
 
       {/* Search and Filters */}
-      <div className="search-and-filters" style={{ marginBottom: '24px' }}>
+      <div className="search-and-filters">
         {/* Search Input */}
-        <div className="search-container" style={{ 
-          position: 'relative', 
-          marginBottom: '16px',
-          maxWidth: '400px'
-        }}>
-          <div className="search-input-wrapper" style={{ position: 'relative' }}>
-            <Search 
-              size={20} 
-              style={{ 
-                position: 'absolute', 
-                left: '12px', 
-                top: '50%', 
-                transform: 'translateY(-50%)',
-                color: '#718096',
-                pointerEvents: 'none'
-              }} 
-            />
+        <div className="search-container">
+          <div className="search-input-wrapper">
+            <Search size={20} className="search-icon" />
             <input
               type="text"
               placeholder="Search by slot, product name, SKU..."
               value={searchTerm}
               onChange={handleSearchChange}
-              className="form-input"
-              style={{ 
-                paddingLeft: '40px',
-                paddingRight: searchTerm ? '40px' : '12px'
-              }}
+              className="form-input search-input"
             />
             {searchTerm && (
               <button
                 type="button"
                 onClick={clearSearch}
-                style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  color: '#718096',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  borderRadius: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'color 0.2s ease'
-                }}
-                onMouseEnter={(e) => e.target.style.color = '#4a5568'}
-                onMouseLeave={(e) => e.target.style.color = '#718096'}
+                className="search-clear-btn"
                 title="Clear search"
               >
                 <X size={16} />
@@ -977,12 +644,7 @@ const htmlContent = `<!DOCTYPE html>
             )}
           </div>
           {searchTerm && (
-            <div className="search-info" style={{ 
-              fontSize: '12px', 
-              color: '#718096', 
-              marginTop: '4px',
-              paddingLeft: '40px'
-            }}>
+            <div className="search-info">
               {searchResults.length > 0 
                 ? `Found ${searchResults.length} result${searchResults.length !== 1 ? 's' : ''}`
                 : 'No results found'
@@ -1179,9 +841,8 @@ const htmlContent = `<!DOCTYPE html>
           </p>
           {searchTerm && (
             <button 
-              className="btn btn-secondary" 
+              className="btn btn-secondary clear-search-btn" 
               onClick={clearSearch}
-              style={{ marginTop: '16px' }}
             >
               Clear Search
             </button>
@@ -1248,16 +909,11 @@ const htmlContent = `<!DOCTYPE html>
                 placeholder="Enter quantity"
               />
               {refillError && (
-                <div className="form-error" style={{ 
-                  color: '#e53e3e', 
-                  fontSize: '12px', 
-                  marginTop: '4px',
-                  fontWeight: '500'
-                }}>
+                <div className="refill-error">
                   {refillError}
                 </div>
               )}
-              <small className="form-help" style={{ display: 'block', marginTop: '4px' }}>
+              <small className="refill-help">
                 Maximum capacity: {selectedSlot?.maxCapacity || 20} items
               </small>
             </div>
@@ -1299,16 +955,11 @@ const htmlContent = `<!DOCTYPE html>
           size="large"
         >
           <div className="bulk-update-content">
-            <p style={{ marginBottom: '20px', color: '#718096' }}>
+            <p className="bulk-description">
               Update quantities for multiple slots at once. Only changed values will be updated.
             </p>
             
-            <div className="bulk-update-list" style={{ 
-              maxHeight: '400px', 
-              overflowY: 'auto',
-              border: '1px solid #e2e8f0',
-              borderRadius: '8px'
-            }}>
+            <div className="bulk-update-list">
               <table className="table">
                 <thead>
                   <tr>
@@ -1335,10 +986,9 @@ const htmlContent = `<!DOCTYPE html>
                             type="number"
                             value={update.quantity}
                             onChange={(e) => updateBulkQuantity(update.slotId, e.target.value)}
-                            className="form-input"
+                            className="form-input bulk-quantity-input"
                             min="0"
                             max={item?.maxCapacity || 20}
-                            style={{ width: '80px' }}
                           />
                         </td>
                       </tr>
@@ -1348,15 +998,8 @@ const htmlContent = `<!DOCTYPE html>
               </table>
             </div>
 
-            <div className="bulk-actions" style={{ 
-              display: 'flex', 
-              gap: '12px', 
-              justifyContent: 'space-between',
-              marginTop: '20px',
-              paddingTop: '20px',
-              borderTop: '1px solid #e2e8f0'
-            }}>
-              <div style={{ display: 'flex', gap: '12px' }}>
+            <div className="bulk-actions">
+              <div className="bulk-action-buttons">
                 <button
                   type="button"
                   className="btn btn-secondary"
@@ -1385,7 +1028,7 @@ const htmlContent = `<!DOCTYPE html>
                 </button>
               </div>
               
-              <div style={{ display: 'flex', gap: '12px' }}>
+              <div className="bulk-modal-actions">
                 <button
                   type="button"
                   className="btn btn-secondary"
@@ -1402,15 +1045,7 @@ const htmlContent = `<!DOCTYPE html>
                 >
                   {processingBulk ? (
                     <div className="btn-loading-content">
-                      <div className="spinner small" style={{ 
-                        width: '16px', 
-                        height: '16px', 
-                        border: '2px solid rgba(255,255,255,0.3)', 
-                        borderTop: '2px solid white',
-                        borderRadius: '50%',
-                        animation: 'spin 1s linear infinite',
-                        marginRight: '8px'
-                      }}></div>
+                      <div className="bulk-spinner"></div>
                       <span>Updating...</span>
                     </div>
                   ) : (
@@ -1431,14 +1066,9 @@ const htmlContent = `<!DOCTYPE html>
           size="medium"
         >
           <div className="export-modal-content">
-            <div className="export-info" style={{ 
-              background: '#f7fafc', 
-              padding: '16px', 
-              borderRadius: '8px', 
-              marginBottom: '24px' 
-            }}>
-              <h4 style={{ margin: '0 0 8px 0', color: '#2d3748' }}>Export Summary</h4>
-              <p style={{ margin: '0', color: '#4a5568', fontSize: '14px' }}>
+            <div className="export-info">
+              <h4 className="export-summary-title">Export Summary</h4>
+              <p className="export-summary-text">
                 Exporting <strong>{filteredItems.length} items</strong> from 
                 <strong> {filter.charAt(0).toUpperCase() + filter.slice(1)}</strong> filter
                 {searchTerm && <span> matching "<strong>{searchTerm}</strong>"</span>}
@@ -1448,87 +1078,53 @@ const htmlContent = `<!DOCTYPE html>
             {/* File Format Selection */}
             <div className="form-group">
               <label className="form-label">Export Format</label>
-              <div className="format-options" style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(3, 1fr)', 
-                gap: '12px' 
-              }}>
-                <label className={`format-option ${exportFormat === 'csv' ? 'active' : ''}`} style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  padding: '16px',
-                  border: `2px solid ${exportFormat === 'csv' ? '#667eea' : '#e2e8f0'}`,
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  background: exportFormat === 'csv' ? '#f7fafc' : 'white'
-                }}>
+              <div className="export-format-options">
+                <label className={`export-format-option ${exportFormat === 'csv' ? 'active' : ''}`}>
                   <input
                     type="radio"
                     name="exportFormat"
                     value="csv"
                     checked={exportFormat === 'csv'}
                     onChange={(e) => setExportFormat(e.target.value)}
-                    style={{ display: 'none' }}
+                    className="export-format-radio"
                   />
-                  <FileText size={24} color={exportFormat === 'csv' ? '#667eea' : '#718096'} />
-                  <span style={{ marginTop: '8px', fontWeight: '500', fontSize: '14px' }}>CSV</span>
-                  <span style={{ fontSize: '12px', color: '#718096', textAlign: 'center' }}>
-                    Excel, Sheets
-                  </span>
+                  <div className="export-format-content">
+                    <FileText size={24} className={`export-format-icon ${exportFormat === 'csv' ? 'active' : ''}`} />
+                    <span className="export-format-name">CSV</span>
+                    <span className="export-format-description">Excel, Sheets</span>
+                  </div>
                 </label>
 
-                <label className={`format-option ${exportFormat === 'excel' ? 'active' : ''}`} style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  padding: '16px',
-                  border: `2px solid ${exportFormat === 'excel' ? '#667eea' : '#e2e8f0'}`,
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  background: exportFormat === 'excel' ? '#f7fafc' : 'white'
-                }}>
+                <label className={`export-format-option ${exportFormat === 'excel' ? 'active' : ''}`}>
                   <input
                     type="radio"
                     name="exportFormat"
                     value="excel"
                     checked={exportFormat === 'excel'}
                     onChange={(e) => setExportFormat(e.target.value)}
-                    style={{ display: 'none' }}
+                    className="export-format-radio"
                   />
-                  <FileSpreadsheet size={24} color={exportFormat === 'excel' ? '#667eea' : '#718096'} />
-                  <span style={{ marginTop: '8px', fontWeight: '500', fontSize: '14px' }}>Excel</span>
-                  <span style={{ fontSize: '12px', color: '#718096', textAlign: 'center' }}>
-                    .xlsx format
-                  </span>
+                  <div className="export-format-content">
+                    <FileSpreadsheet size={24} className={`export-format-icon ${exportFormat === 'excel' ? 'active' : ''}`} />
+                    <span className="export-format-name">Excel</span>
+                    <span className="export-format-description">.xlsx format</span>
+                  </div>
                 </label>
 
-                <label className={`format-option ${exportFormat === 'pdf' ? 'active' : ''}`} style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  padding: '16px',
-                  border: `2px solid ${exportFormat === 'pdf' ? '#667eea' : '#e2e8f0'}`,
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  background: exportFormat === 'pdf' ? '#f7fafc' : 'white'
-                }}>
+                <label className={`export-format-option ${exportFormat === 'pdf' ? 'active' : ''}`}>
                   <input
                     type="radio"
                     name="exportFormat"
                     value="pdf"
                     checked={exportFormat === 'pdf'}
                     onChange={(e) => setExportFormat(e.target.value)}
-                    style={{ display: 'none' }}
+                    className="export-format-radio"
                   />
-                  <FileImage size={24} color={exportFormat === 'pdf' ? '#667eea' : '#718096'} />
-                  <span style={{ marginTop: '8px', fontWeight: '500', fontSize: '14px' }}>PDF</span>
-                  <span style={{ fontSize: '12px', color: '#718096', textAlign: 'center' }}>
-                    Print-ready
-                  </span>
+                  <div className="export-format-content">
+                    <FileImage size={24} className={`export-format-icon ${exportFormat === 'pdf' ? 'active' : ''}`} />
+                    <span className="export-format-name">PDF</span>
+                    <span className="export-format-description">Print-ready</span>
+                  </div>
                 </label>
               </div>
             </div>
@@ -1536,8 +1132,8 @@ const htmlContent = `<!DOCTYPE html>
             {/* Export Options */}
             <div className="form-group">
               <label className="form-label">Export Options</label>
-              <div className="export-options" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <label className="checkbox-label">
+              <div className="export-options">
+                <label className="export-checkbox-label">
                   <input
                     type="checkbox"
                     checked={exportOptions.includeDeletedProducts}
@@ -1545,12 +1141,13 @@ const htmlContent = `<!DOCTYPE html>
                       ...prev, 
                       includeDeletedProducts: e.target.checked 
                     }))}
+                    className="export-checkbox-input"
                   />
-                  <span className="checkmark"></span>
-                  Include deleted/old products
+                  <span className="export-checkbox-checkmark"></span>
+                  <span className="export-checkbox-text">Include deleted/old products</span>
                 </label>
 
-                <label className="checkbox-label">
+                <label className="export-checkbox-label">
                   <input
                     type="checkbox"
                     checked={exportOptions.groupByCategory}
@@ -1558,12 +1155,13 @@ const htmlContent = `<!DOCTYPE html>
                       ...prev, 
                       groupByCategory: e.target.checked 
                     }))}
+                    className="export-checkbox-input"
                   />
-                  <span className="checkmark"></span>
-                  Group by product category
+                  <span className="export-checkbox-checkmark"></span>
+                  <span className="export-checkbox-text">Group by product category</span>
                 </label>
 
-                <label className="checkbox-label">
+                <label className="export-checkbox-label">
                   <input
                     type="checkbox"
                     checked={exportOptions.includeImages}
@@ -1571,49 +1169,69 @@ const htmlContent = `<!DOCTYPE html>
                       ...prev, 
                       includeImages: e.target.checked 
                     }))}
+                    className="export-checkbox-input"
                   />
-                  <span className="checkmark"></span>
-                  Include product image URLs
+                  <span className="export-checkbox-checkmark"></span>
+                  <span className="export-checkbox-text">Include product image URLs</span>
                 </label>
               </div>
             </div>
 
             {/* Preview */}
-            <div className="export-preview" style={{
-              background: '#f7fafc',
-              padding: '16px',
-              borderRadius: '8px',
-              marginTop: '20px'
-            }}>
-              <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#2d3748' }}>
-                Export Preview
-              </h4>
-              <div style={{ fontSize: '12px', color: '#718096' }}>
-                <p>• <strong>Format:</strong> {exportFormat.toUpperCase()}</p>
-                <p>• <strong>Items:</strong> {filteredItems.length} inventory items</p>
-                <p>• <strong>Columns:</strong> Slot, Product, Stock, Value, Status, Timestamps</p>
-                {exportOptions.groupByCategory && <p>• <strong>Grouped by:</strong> Product categories</p>}
-                {exportOptions.includeImages && <p>• <strong>Includes:</strong> Product image URLs</p>}
-                {!exportOptions.includeDeletedProducts && <p>• <strong>Excludes:</strong> Deleted products</p>}
+            {exportPreview && (
+              <div className="export-preview">
+                <h4 className="export-preview-title">Export Preview</h4>
+                <div className="export-preview-details">
+                  <div className="export-preview-item">
+                    <span className="export-preview-label">Format:</span>
+                    <span className="export-preview-value">{exportPreview.format}</span>
+                  </div>
+                  <div className="export-preview-item">
+                    <span className="export-preview-label">Items:</span>
+                    <span className="export-preview-value">{exportPreview.itemCount} inventory items</span>
+                  </div>
+                  {exportPreview.columns && (
+                    <div className="export-preview-item">
+                      <span className="export-preview-label">Columns:</span>
+                      <span className="export-preview-value">{exportPreview.columns.length} data fields</span>
+                    </div>
+                  )}
+                  {exportPreview.features && exportPreview.features.length > 0 && (
+                    <div className="export-preview-item">
+                      <span className="export-preview-label">Features:</span>
+                      <span className="export-preview-value">{exportPreview.features.slice(0, 3).join(', ')}</span>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
-            <div className="modal-actions">
+            <div className="export-modal-actions">
               <button
                 type="button"
-                className="btn btn-secondary"
+                className="btn btn-secondary export-modal-btn-secondary"
                 onClick={() => setShowExportModal(false)}
+                disabled={exportLoading}
               >
                 Cancel
               </button>
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn btn-primary export-modal-btn-primary"
                 onClick={performExport}
-                disabled={filteredItems.length === 0}
+                disabled={filteredItems.length === 0 || exportLoading}
               >
-                <Download size={16} />
-                Export {exportFormat.toUpperCase()}
+                {exportLoading ? (
+                  <div className="export-loading-content">
+                    <div className="export-loading-spinner"></div>
+                    <span>Exporting...</span>
+                  </div>
+                ) : (
+                  <div className="export-button-content">
+                    <Download size={16} />
+                    <span>Export {exportFormat.toUpperCase()}</span>
+                  </div>
+                )}
               </button>
             </div>
           </div>
