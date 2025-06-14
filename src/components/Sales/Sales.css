@@ -28,12 +28,6 @@
   transform: none;
 }
 
-/* New Wrapper for Scrolling Chart */
-.scrolling-chart-wrapper {
-  overflow-x: auto;
-  margin-bottom: 32px;
-}
-
 /* Export Button Dropdown */
 .export-btn-group {
   position: relative;
@@ -691,15 +685,15 @@
   }
   
   /* FIX: Refined, more subtle scrollbar for the forecast chart on mobile */
-  .scrolling-chart-wrapper::-webkit-scrollbar {
+  .forecast-chart-scroll-wrapper::-webkit-scrollbar {
     height: 5px; /* A thin, but usable height for touch */
   }
 
-  .scrolling-chart-wrapper::-webkit-scrollbar-track {
+  .forecast-chart-scroll-wrapper::-webkit-scrollbar-track {
     background: none; /* Make the track invisible */
   }
 
-  .scrolling-chart-wrapper::-webkit-scrollbar-thumb {
+  .forecast-chart-scroll-wrapper::-webkit-scrollbar-thumb {
     background-color: #d6d6d6; /* A light grey, less intrusive color */
     border-radius: 10px; /* Fully rounded ends */
   }
@@ -852,7 +846,7 @@
 .table-container::-webkit-scrollbar,
 .top-products-list::-webkit-scrollbar,
 .chart-body::-webkit-scrollbar,
-.scrolling-chart-wrapper::-webkit-scrollbar {
+.forecast-chart-scroll-wrapper::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
@@ -860,7 +854,7 @@
 .table-container::-webkit-scrollbar-track,
 .top-products-list::-webkit-scrollbar-track,
 .chart-body::-webkit-scrollbar-track,
-.scrolling-chart-wrapper::-webkit-scrollbar-track {
+.forecast-chart-scroll-wrapper::-webkit-scrollbar-track {
   background: #f1f1f1;
   border-radius: 4px;
 }
@@ -868,7 +862,7 @@
 .table-container::-webkit-scrollbar-thumb,
 .top-products-list::-webkit-scrollbar-thumb,
 .chart-body::-webkit-scrollbar-thumb,
-.scrolling-chart-wrapper::-webkit-scrollbar-thumb {
+.forecast-chart-scroll-wrapper::-webkit-scrollbar-thumb {
   background: #c1c1c1;
   border-radius: 4px;
 }
@@ -876,7 +870,7 @@
 .table-container::-webkit-scrollbar-thumb:hover,
 .top-products-list::-webkit-scrollbar-thumb:hover,
 .chart-body::-webkit-scrollbar-thumb:hover,
-.scrolling-chart-wrapper::-webkit-scrollbar-thumb:hover {
+.forecast-chart-scroll-wrapper::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
 }
 

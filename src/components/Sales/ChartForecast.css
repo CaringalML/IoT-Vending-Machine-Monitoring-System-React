@@ -7,6 +7,7 @@
   border: 1px solid #e2e8f0;
   padding: 24px;
   position: relative;
+  margin-bottom: 32px;
 }
 
 .forecast-chart-header {
@@ -448,6 +449,19 @@
   .x-label {
     font-size: 10px;
     padding: 1px 4px;
+  }
+
+  .forecast-chart-scroll-wrapper::-webkit-scrollbar {
+    height: 5px;
+  }
+
+  .forecast-chart-scroll-wrapper::-webkit-scrollbar-track {
+    background: none;
+  }
+
+  .forecast-chart-scroll-wrapper::-webkit-scrollbar-thumb {
+    background-color: #d6d6d6;
+    border-radius: 10px;
   }
 }
 

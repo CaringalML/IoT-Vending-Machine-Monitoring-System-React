@@ -286,7 +286,6 @@ const Sales = () => {
     return {
       ...formats[exportFormat],
       itemCount: filteredSales.length,
-      columns,
       estimatedSize: `${(filteredSales.length * 0.1).toFixed(1)} KB`,
       dateRange: `${dateRange.startDate} to ${dateRange.endDate}`,
       searchFilter: searchTerm ? `Filtered by "${searchTerm}"` : null
@@ -723,9 +722,7 @@ const Sales = () => {
         </div>
       </div>
 
-      <div className="scrolling-chart-wrapper">
-          <ChartForecast data={filteredSales} formatCurrency={formatCurrency} />
-      </div>
+      <ChartForecast data={filteredSales} formatCurrency={formatCurrency} />
 
       {/* Enhanced Responsive Export Modal */}
       {showExportModal && (
