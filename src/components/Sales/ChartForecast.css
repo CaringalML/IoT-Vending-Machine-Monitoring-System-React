@@ -114,26 +114,26 @@
 }
 
 .chart-area {
-  flex-grow: 1;
   position: relative;
   padding-left: 20px;
-  padding-right: 40px;
+  padding-right: 20px;
   background: white;
   border-radius: 8px;
-  /* Dynamic width based on data length */
-  width: fit-content;
+  /* Let the width be determined by the SVG content */
+  width: auto;
+  flex-shrink: 0;
 }
 
 /* Smart chart area sizing */
 .chart-area.fit-content {
-  min-width: auto;
   width: 100%;
+  flex-grow: 1;
 }
 
 .chart-area.scrollable {
-  /* Remove fixed min-width and let it be dynamic */
-  width: fit-content;
-  min-width: 0;
+  /* Width matches the SVG width exactly */
+  width: auto;
+  flex-shrink: 0;
 }
 
 .x-axis-labels {

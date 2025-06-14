@@ -206,7 +206,10 @@ const ChartForecast = ({ data, formatCurrency }) => {
               <div key={y} className="axis-label y-label" style={{ top: `${y}px` }}>{label}</div>
             ))}
           </div>
-          <div className={`chart-area ${needsScrolling ? 'scrollable' : 'fit-content'}`}>
+          <div 
+            className={`chart-area ${needsScrolling ? 'scrollable' : 'fit-content'}`}
+            style={needsScrolling ? { width: `${chartWidth + 40}px` } : {}}
+          >
             <svg
               width={chartWidth}
               height="250"
