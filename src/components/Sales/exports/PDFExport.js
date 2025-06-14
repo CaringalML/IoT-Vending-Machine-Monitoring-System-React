@@ -308,7 +308,7 @@ class PDFExport {
           ${isMobile ? this.getMobileScripts() : ''}
         </head>
         <body>
-          
+          ${isMobile ? this.getMobileHeader() : ''}
           ${this.generateHTML({
             title,
             startDateFormatted,
@@ -327,10 +327,46 @@ class PDFExport {
   }
 
   /**
+   * Get mobile-specific header with print button
+   */
+  static getMobileHeader() {
+    return `
+      <div class="mobile-header">
+        <button onclick="window.print()" class="mobile-print-btn">
+          📄 Print / Save as PDF
+        </button>
+        <button onclick="window.close()" class="mobile-close-btn">
+          ✕ Close
+        </button>
+      </div>
+    `;
+  }
+
+  /**
    * Get mobile-specific scripts
    */
   static getMobileScripts() {
-    return ``;
+    return `
+      <script>
+        // Mobile-specific functionality
+        document.addEventListener('DOMContentLoaded', function() {
+          // Auto-hide mobile header when printing
+          window.addEventListener('beforeprint', function() {
+            const mobileHeader = document.querySelector('.mobile-header');
+            if (mobileHeader) {
+              mobileHeader.style.display = 'none';
+            }
+          });
+          
+          window.addEventListener('afterprint', function() {
+            const mobileHeader = document.querySelector('.mobile-header');
+            if (mobileHeader) {
+              mobileHeader.style.display = 'flex';
+            }
+          });
+        });
+      </script>
+    `;
   }
 
   /**
@@ -433,6 +469,41 @@ class PDFExport {
         color: #333;
         padding: ${isMobile ? '0' : '15px'};
         background: white;
+      }
+
+      .mobile-header {
+        display: ${isMobile ? 'flex' : 'none'};
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background: #667eea;
+        color: white;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        gap: 12px;
+      }
+
+      .mobile-print-btn, .mobile-close-btn {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s ease;
+        flex: 1;
+        max-width: 150px;
+      }
+
+      .mobile-print-btn:hover, .mobile-close-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+
+      .mobile-print-btn:active, .mobile-close-btn:active {
+        background: rgba(255, 255, 255, 0.4);
       }
 
       .content-wrapper {
@@ -728,6 +799,10 @@ class PDFExport {
       
       /* Print-specific styles */
       @media print {
+        .mobile-header {
+          display: none !important;
+        }
+
         body { 
           padding: 10px;
           font-size: 9px;
@@ -1168,7 +1243,7 @@ class PDFExport {
           ${isMobile ? this.getMobileScripts() : ''}
         </head>
         <body>
-          
+          ${isMobile ? this.getMobileHeader() : ''}
           <div class="content-wrapper">
             <div class="header">
               <h1>${title}</h1>
