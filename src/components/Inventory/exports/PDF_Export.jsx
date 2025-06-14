@@ -376,106 +376,51 @@ export class PDFExport {
   }
 
   /**
-   * Create and trigger PDF download
+   * Create and trigger PDF download using a more reliable method
    */
   async export(filename) {
-    try {
-      const htmlContent = this.generateHTML();
-      
-      // Create blob with HTML content
-      const blob = new Blob([htmlContent], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      
-      // Create temporary iframe for printing
-      const iframe = document.createElement('iframe');
-      iframe.style.position = 'absolute';
-      iframe.style.left = '-9999px';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      document.body.appendChild(iframe);
-      
-      // Promise to handle iframe loading
-      return new Promise((resolve, reject) => {
-        const cleanup = () => {
-          setTimeout(() => {
-            if (iframe.parentNode) {
-              document.body.removeChild(iframe);
-            }
-            URL.revokeObjectURL(url);
-          }, 1000);
-        };
-
-        iframe.onload = () => {
-          setTimeout(() => {
-            try {
-              const iframeWindow = iframe.contentWindow;
-              
-              if (iframeWindow) {
-                iframeWindow.focus();
-                iframeWindow.print();
-                cleanup();
-                resolve({ 
-                  success: true, 
-                  message: 'PDF export initiated. Please save the file when prompted.' 
-                });
-              } else {
-                throw new Error('Could not access iframe window');
-              }
-            } catch (error) {
-              console.error('Print error:', error);
-              // Fallback: open in new window
-              const newWindow = window.open(url, '_blank');
-              if (newWindow) {
-                newWindow.addEventListener('load', () => {
-                  setTimeout(() => {
-                    newWindow.print();
-                    newWindow.close();
-                  }, 500);
-                });
-                cleanup();
-                resolve({ 
-                  success: true, 
-                  message: 'PDF opened in new window. Please save using browser print.' 
-                });
-              } else {
-                cleanup();
-                reject(new Error('Could not open print dialog'));
-              }
-            }
-          }, 500);
-        };
+    return new Promise((resolve, reject) => {
+      try {
+        const htmlContent = this.generateHTML();
         
-        iframe.onerror = () => {
-          console.log('Iframe failed, falling back to new window');
-          const newWindow = window.open('', '_blank');
-          if (newWindow) {
-            newWindow.document.write(htmlContent);
-            newWindow.document.close();
-            setTimeout(() => {
-              newWindow.print();
-            }, 500);
-            cleanup();
+        // Open a new window
+        const printWindow = window.open('', '_blank');
+        
+        if (!printWindow) {
+          throw new Error('Could not open a new window. Please check your popup blocker.');
+        }
+
+        // Write the HTML content to the new window
+        printWindow.document.open();
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        
+        // Wait for the content to load before printing
+        printWindow.onload = () => {
+          // Use a small timeout to ensure all styles are applied
+          setTimeout(() => {
+            printWindow.focus(); // Focus the window before printing
+            printWindow.print();
+            
+            // The close action might be blocked by the browser, but we try anyway.
+            // It will close after the user interacts with the print dialog.
+            setTimeout(() => printWindow.close(), 500);
+
             resolve({ 
               success: true, 
-              message: 'PDF opened in new window. Please save using browser print.' 
+              message: 'PDF export initiated. Please save the file from the print dialog.' 
             });
-          } else {
-            cleanup();
-            reject(new Error('Could not open new window for PDF export'));
-          }
+          }, 250);
         };
-        
-        // Load the HTML content
-        iframe.src = url;
-      });
-      
-    } catch (error) {
-      console.error('PDF export error:', error);
-      return { 
-        success: false, 
-        error: `PDF export failed: ${error.message}` 
-      };
-    }
+
+      } catch (error) {
+        console.error('PDF export error:', error);
+        reject({ 
+          success: false, 
+          error: `PDF export failed: ${error.message}` 
+        });
+      }
+    });
   }
 
   /**
