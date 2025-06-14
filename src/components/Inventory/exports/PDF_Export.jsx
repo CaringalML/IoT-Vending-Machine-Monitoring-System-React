@@ -1,6 +1,7 @@
 /**
- * PDF Export functionality for inventory data - REFACTORED
+ * PDF Export functionality for inventory data - REFACTORED & FIXED
  * Uses browser print functionality with a mobile-first approach, inspired by Sales PDF export.
+ * Sets the document title to the generated filename for correct saving.
  */
 export class PDFExport {
   constructor(data, options = {}, stats = {}) {
@@ -23,7 +24,8 @@ export class PDFExport {
   async export(filename) {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
 
-    const completeHTML = this.generateCompleteHTML(isMobile);
+    // Pass the generated filename to the HTML builder
+    const completeHTML = this.generateCompleteHTML(isMobile, filename);
 
     if (isMobile) {
       return this.exportMobilePDF(completeHTML, filename);
@@ -72,7 +74,8 @@ export class PDFExport {
         setTimeout(() => {
           printWindow.focus();
           printWindow.print();
-          setTimeout(() => printWindow.close(), 200);
+          // Keep the window open a bit longer to ensure the print dialog appears fully
+          setTimeout(() => printWindow.close(), 500);
         }, 500);
         return { success: true, message: 'PDF export initiated.' };
       } else {
@@ -117,8 +120,9 @@ export class PDFExport {
   /**
    * Builds the complete HTML document string for the report.
    * @param {boolean} isMobile - Flag indicating if the report is for a mobile device.
+   * @param {string} filename - The full filename to be used for the document title.
    */
-  generateCompleteHTML(isMobile = false) {
+  generateCompleteHTML(isMobile = false, filename = 'Inventory Report.pdf') {
     const exportData = this.transformData();
     const currentDate = new Date().toLocaleString('en-NZ');
     
@@ -128,7 +132,7 @@ export class PDFExport {
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${this.options.title}</title>
+        <title>${filename.replace('.pdf', '')}</title>
         <style>${this.generateStyles(isMobile)}</style>
         ${isMobile ? this.getMobileScripts() : ''}
       </head>

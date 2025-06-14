@@ -103,10 +103,11 @@ export class ExportManager {
   }
 
   /**
-   * Generate filename with timestamp and filters
+   * Generate filename with a detailed date and time stamp.
    */
   generateFilename(format, filter = 'all', searchTerm = '') {
-    const timestamp = new Date().toISOString().split('T')[0];
+    // Generates a clean timestamp string like '2025-06-14T22-05-30'
+    const timestamp = new Date().toISOString().replace(/:/g, '-').replace(/\..+/, '');
     const filterSuffix = filter !== 'all' ? `-${filter}` : '';
     const searchSuffix = searchTerm ? '-search' : '';
     
@@ -123,7 +124,7 @@ export class ExportManager {
     const transformedData = this.transformInventoryData(filteredItems, searchTerm, filter);
     
     // Generate filename
-    const filename = this.generateFilename(format, filter, searchTerm);
+    const filename = this.generateFilename(format, filter, searchTerm); //
     
     // Add metadata to options
     const exportOptions = {
@@ -136,14 +137,14 @@ export class ExportManager {
     try {
       switch (format.toLowerCase()) {
         case 'csv':
-          return await exportToCSV(transformedData, exportOptions, filename);
+          return await exportToCSV(transformedData, exportOptions, filename); //
           
         case 'excel':
         case 'xlsx':
-          return await exportToExcel(transformedData, exportOptions, filename);
+          return await exportToExcel(transformedData, exportOptions, filename); //
           
         case 'pdf':
-          return await exportToPDF(transformedData, exportOptions, this.stats, filename);
+          return await exportToPDF(transformedData, exportOptions, this.stats, filename); //
           
         default:
           throw new Error(`Unsupported export format: ${format}`);
@@ -165,14 +166,14 @@ export class ExportManager {
     
     switch (format.toLowerCase()) {
       case 'csv':
-        return getCSVPreview(transformedData, options);
+        return getCSVPreview(transformedData, options); //
         
       case 'excel':
       case 'xlsx':
-        return getExcelPreview(transformedData, options);
+        return getExcelPreview(transformedData, options); //
         
       case 'pdf':
-        return getPDFPreview(transformedData, options, this.stats);
+        return getPDFPreview(transformedData, options, this.stats); //
         
       default:
         return {
@@ -293,7 +294,7 @@ export const getQuickPreview = (format, inventory, products, stats, filteredItem
 export const generatePreviewHTML = (inventory, products, stats, filteredItems, options = {}) => {
   const manager = new ExportManager(inventory, products, stats);
   const transformedData = manager.transformInventoryData(filteredItems);
-  return generatePDFPreviewHTML(transformedData, options, stats);
+  return generatePDFPreviewHTML(transformedData, options, stats); //
 };
 
 export default ExportManager;
