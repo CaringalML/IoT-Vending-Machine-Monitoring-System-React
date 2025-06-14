@@ -103,7 +103,8 @@ class CSVExport {
       const baseRow = [
         sale.id || '',
         saleDate.toLocaleDateString('en-NZ'),
-        saleDate.toLocaleTimeString('en-NZ'),
+        // FIXED: Format time to show only hour and minute, matching the UI.
+        saleDate.toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' }),
         this.escapeCSVField(getProductName(sale.productId)),
         sale.slot || '',
         sale.price || 0
