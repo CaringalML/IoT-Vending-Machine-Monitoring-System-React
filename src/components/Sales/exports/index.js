@@ -59,7 +59,8 @@ export const getAvailableFormats = () => [
       'Print-optimized layout',
       'Executive summary',
       'Charts and visualizations',
-      'Company branding'
+      'Company branding',
+      'Mobile-compatible export'
     ]
   }
 ];
@@ -205,4 +206,141 @@ export const exportInventory = async (config) => {
     console.error(`Inventory export error (${format}):`, error);
     throw error;
   }
+};
+
+/**
+ * Mobile device detection utility
+ * @returns {boolean} True if mobile device detected
+ */
+export const isMobileDevice = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+         window.innerWidth <= 768;
+};
+
+/**
+ * Get export recommendations based on device and data size
+ * @param {Array} data - Data to export
+ * @param {boolean} mobile - Is mobile device
+ * @returns {Object} Export recommendations
+ */
+export const getExportRecommendations = (data, mobile = false) => {
+  const dataSize = data?.length || 0;
+  
+  if (mobile) {
+    if (dataSize > 1000) {
+      return {
+        recommended: 'csv',
+        reason: 'CSV format is most reliable on mobile for large datasets',
+        alternatives: ['pdf']
+      };
+    } else {
+      return {
+        recommended: 'pdf',
+        reason: 'PDF format works well on mobile for viewing and sharing',
+        alternatives: ['csv', 'excel']
+      };
+    }
+  } else {
+    if (dataSize > 5000) {
+      return {
+        recommended: 'csv',
+        reason: 'CSV format handles large datasets efficiently',
+        alternatives: ['excel']
+      };
+    } else {
+      return {
+        recommended: 'excel',
+        reason: 'Excel format provides rich formatting and multiple sheets',
+        alternatives: ['pdf', 'csv']
+      };
+    }
+  }
+};
+
+/**
+ * Format export statistics for display
+ * @param {Object} stats - Export statistics
+ * @returns {Object} Formatted statistics
+ */
+export const formatExportStats = (stats) => {
+  return {
+    ...stats,
+    formattedSize: formatFileSize(stats.sizeBytes || 0),
+    formattedDuration: formatDuration(stats.durationMs || 0),
+    successRate: stats.successful && stats.total ? 
+      ((stats.successful / stats.total) * 100).toFixed(1) + '%' : 'N/A'
+  };
+};
+
+/**
+ * Format file size for display
+ * @param {number} bytes - File size in bytes
+ * @returns {string} Formatted file size
+ */
+export const formatFileSize = (bytes) => {
+  if (bytes === 0) return '0 Bytes';
+  
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+/**
+ * Format duration for display
+ * @param {number} ms - Duration in milliseconds
+ * @returns {string} Formatted duration
+ */
+export const formatDuration = (ms) => {
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${(ms / 60000).toFixed(1)}m`;
+};
+
+/**
+ * Export configuration presets for common use cases
+ */
+export const EXPORT_PRESETS = {
+  BASIC: {
+    includeProductDetails: false,
+    includeTimestamps: false,
+    includePaymentMethods: true,
+    includeSummaryStats: false,
+    groupByProduct: false,
+    groupByDate: false
+  },
+  DETAILED: {
+    includeProductDetails: true,
+    includeTimestamps: true,
+    includePaymentMethods: true,
+    includeSummaryStats: true,
+    groupByProduct: false,
+    groupByDate: false
+  },
+  SUMMARY: {
+    includeProductDetails: false,
+    includeTimestamps: false,
+    includePaymentMethods: false,
+    includeSummaryStats: true,
+    groupByProduct: true,
+    groupByDate: false
+  },
+  ANALYSIS: {
+    includeProductDetails: true,
+    includeTimestamps: true,
+    includePaymentMethods: true,
+    includeSummaryStats: true,
+    groupByProduct: false,
+    groupByDate: true
+  }
+};
+
+/**
+ * Get preset configuration by name
+ * @param {string} presetName - Name of the preset
+ * @returns {Object} Export configuration
+ */
+export const getExportPreset = (presetName) => {
+  return EXPORT_PRESETS[presetName.toUpperCase()] || EXPORT_PRESETS.BASIC;
 };

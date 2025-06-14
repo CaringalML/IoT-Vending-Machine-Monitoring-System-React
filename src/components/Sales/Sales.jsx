@@ -8,6 +8,7 @@ import LoadingSpinner from '../Common/LoadingSpinner';
 import Modal from '../Common/Modal';
 import CustomBarChart from './CustomBarChart'; 
 import ChartForecast from './ChartForecast';
+// Fixed import - make sure all exports are imported correctly
 import { CSVExport, ExcelExport, PDFExport } from './exports';
 import './Sales.css'; 
 
@@ -337,6 +338,7 @@ const Sales = () => {
           break;
           
         case 'pdf':
+          // Fixed: Use the correct static method call
           PDFExport.exportSalesPDF({
             salesData: exportData,
             stats: salesStats,

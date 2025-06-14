@@ -7,9 +7,7 @@
 class PDFExport {
   /**
    * Export sales data as PDF with enhanced mobile support
-   * @param {Object}
-
-export default PDFExport; config - Export configuration
+   * @param {Object} config - Export configuration
    * @param {Array} config.salesData - Array of sales transactions
    * @param {Object} config.stats - Sales statistics object
    * @param {Object} config.dateRange - Date range object with startDate and endDate
@@ -1355,3 +1353,5 @@ export default PDFExport; config - Export configuration
     }
   }
 }
+
+export default PDFExport;
