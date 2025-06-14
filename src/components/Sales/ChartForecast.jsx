@@ -17,20 +17,20 @@ const ChartForecast = ({ data, formatCurrency }) => {
     confidencePath,
     chartPath,
     forecastPath,
-    noDataReason
+    noDataReason,
+    chartWidth,
+    needsScrolling
   } = useMemo(() => {
-    // Default values to prevent render errors
     const defaults = {
-        chartData: [], yAxisLabels: [], xAxisLabels: [],
-        trendLine: '', confidencePath: '', chartPath: '', forecastPath: '',
-        noDataReason: null
+      chartData: [], yAxisLabels: [], xAxisLabels: [],
+      trendLine: '', confidencePath: '', chartPath: '', forecastPath: '',
+      noDataReason: null
     };
 
     if (!data || data.length === 0) {
       return { ...defaults, noDataReason: 'No sales data available.' };
     }
 
-    // 1. Aggregate data by day
     const dailyData = data.reduce((acc, sale) => {
       if (!sale.timestamp?.seconds) return acc;
       const date = new Date(sale.timestamp.seconds * 1000).toISOString().split('T')[0];
@@ -39,18 +39,24 @@ const ChartForecast = ({ data, formatCurrency }) => {
     }, {});
 
     const sortedDays = Object.keys(dailyData).sort();
-    
+
     if (sortedDays.length < 5) {
-      return { ...defaults, noDataReason: `At least 5 days of data are needed for a reliable forecast. Only ${sortedDays.length} available.` };
+      return {
+        ...defaults,
+        noDataReason: `At least 5 days of data are needed for a reliable forecast. Only ${sortedDays.length} available.`
+      };
     }
-    
+
     const historicalPoints = sortedDays.map((date, index) => ({
       x: index,
       y: dailyData[date],
       date: new Date(date),
     }));
 
-    // 2. Linear Regression Calculation
+    const totalDataPoints = historicalPoints.length + 7;
+    if (totalDataPoints > 30);
+    if (totalDataPoints > 60);
+
     const n = historicalPoints.length;
     const { sumX, sumY, sumXY, sumX2 } = historicalPoints.reduce(
       (acc, p) => {
@@ -65,10 +71,9 @@ const ChartForecast = ({ data, formatCurrency }) => {
 
     const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
     const intercept = (sumY - slope * sumX) / n;
-    
+
     const predict = (x) => slope * x + intercept;
 
-    // 3. Generate Forecast Points
     const forecastDays = 7;
     const forecastPoints = [];
     for (let i = 0; i < forecastDays; i++) {
@@ -78,60 +83,71 @@ const ChartForecast = ({ data, formatCurrency }) => {
       newDate.setDate(lastDate.getDate() + i + 1);
       forecastPoints.push({ x, y: predict(x), date: newDate, isForecast: true });
     }
-    
+
     const allPoints = [...historicalPoints, ...forecastPoints];
-    
-    // Calculate Standard Error for confidence band
+
     const stdError = Math.sqrt(
       historicalPoints.reduce((sum, p) => sum + Math.pow(p.y - predict(p.x), 2), 0) / (n - 2)
     );
-    const confidenceMargin = 1.96 * stdError; // 95% confidence interval
+    const confidenceMargin = 1.96 * stdError;
 
-    // 4. Prepare data for rendering
     const allValues = allPoints.map(p => p.y);
     const minY = Math.min(...allValues) - confidenceMargin;
     const maxY = Math.max(...allValues) + confidenceMargin;
-    
+
     const chartHeight = 250;
-    const chartWidth = 600;
+    const containerWidth = 600;
+    const minPointWidth = 40;
+    const idealChartWidth = totalDataPoints * minPointWidth;
+
+    const needsScrolling = idealChartWidth > containerWidth;
+    const chartWidth = needsScrolling ? idealChartWidth : containerWidth;
 
     const toSvgX = (x) => (x / (n + forecastDays - 1)) * chartWidth;
     const toSvgY = (y) => chartHeight - ((y - minY) / (maxY - minY)) * chartHeight;
 
-    const finalChartPath = historicalPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${toSvgX(p.x)} ${toSvgY(p.y)}`).join(' ');
-    const finalForecastPath = forecastPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${toSvgX(p.x)} ${toSvgY(p.y)}`).join(' ');
-    
-    // Connect historical path to forecast path
+    const finalChartPath = historicalPoints.map((p, i) =>
+      `${i === 0 ? 'M' : 'L'} ${toSvgX(p.x)} ${toSvgY(p.y)}`
+    ).join(' ');
+
+    const finalForecastPath = forecastPoints.map((p, i) =>
+      `${i === 0 ? 'M' : 'L'} ${toSvgX(p.x)} ${toSvgY(p.y)}`
+    ).join(' ');
+
     const connectingPoint = `L ${toSvgX(forecastPoints[0].x)} ${toSvgY(forecastPoints[0].y)}`;
-    
     const finalTrendLine = `M ${toSvgX(0)} ${toSvgY(predict(0))} L ${toSvgX(n + forecastDays - 1)} ${toSvgY(predict(n + forecastDays - 1))}`;
 
     const confidenceBandPoints = allPoints.map((p) => ({
-        x: toSvgX(p.x),
-        y0: toSvgY(predict(p.x) - confidenceMargin),
-        y1: toSvgY(predict(p.x) + confidenceMargin),
+      x: toSvgX(p.x),
+      y0: toSvgY(predict(p.x) - confidenceMargin),
+      y1: toSvgY(predict(p.x) + confidenceMargin),
     }));
 
     const finalConfidencePath = `M ${confidenceBandPoints.map(p => `${p.x} ${p.y1}`).join(' L ')} L ${[...confidenceBandPoints].reverse().map(p => `${p.x} ${p.y0}`).join(' L ')} Z`;
-    
+
     const finalYAxisLabels = Array.from({ length: 5 }, (_, i) => {
-        const val = minY + (i / 4) * (maxY - minY);
-        return { y: toSvgY(val), label: formatCurrency(val) };
+      const val = minY + (i / 4) * (maxY - minY);
+      return { y: toSvgY(val), label: formatCurrency(val) };
     });
 
     const finalXAxisLabels = allPoints
-      .filter((_, i) => i % Math.ceil(allPoints.length / 6) === 0)
-      .map(p => ({ x: toSvgX(p.x), label: p.date.toLocaleDateString('en-NZ', { month: 'short', day: 'numeric' }) }));
+      .filter((_, i) => i % Math.ceil(allPoints.length / Math.min(8, allPoints.length)) === 0)
+      .map(p => ({
+        x: toSvgX(p.x),
+        label: p.date.toLocaleDateString('en-NZ', { month: 'short', day: 'numeric' })
+      }));
 
-    return { 
+    return {
       chartData: allPoints.map(p => ({ ...p, svgX: toSvgX(p.x), svgY: toSvgY(p.y) })),
-      chartPath: finalChartPath + connectingPoint, 
+      chartPath: finalChartPath + connectingPoint,
       forecastPath: finalForecastPath,
-      yAxisLabels: finalYAxisLabels, 
+      yAxisLabels: finalYAxisLabels,
       xAxisLabels: finalXAxisLabels,
       trendLine: finalTrendLine,
       confidencePath: finalConfidencePath,
-      noDataReason: null
+      noDataReason: null,
+      chartWidth,
+      needsScrolling
     };
   }, [data, formatCurrency]);
 
@@ -156,13 +172,15 @@ const ChartForecast = ({ data, formatCurrency }) => {
   const handleMouseLeave = () => {
     setTooltip(null);
   };
-  
+
   if (noDataReason) {
     return (
-      <div className="forecast-chart-no-data">
-        <AlertTriangle size={32} className="no-data-icon" />
-        <h4 className="no-data-title">Could Not Generate Forecast</h4>
-        <p className="no-data-subtitle">{noDataReason}</p>
+      <div className="forecast-chart-container">
+        <div className="forecast-chart-no-data">
+          <AlertTriangle size={32} className="no-data-icon" />
+          <h4 className="no-data-title">Could Not Generate Forecast</h4>
+          <p className="no-data-subtitle">{noDataReason}</p>
+        </div>
       </div>
     );
   }
@@ -180,61 +198,70 @@ const ChartForecast = ({ data, formatCurrency }) => {
           <div className="legend-item"><span className="legend-color-box trend"></span>Trend</div>
         </div>
       </div>
-      <div className="forecast-chart-main">
-        <div className="y-axis-labels">
-          {yAxisLabels.map(({ y, label }) => (
-            <div key={y} className="axis-label y-label" style={{ top: `${y}px` }}>{label}</div>
-          ))}
-        </div>
-        <div className="chart-area">
-          <svg 
-            width="100%" 
-            height="250" 
-            className="forecast-chart-svg"
-            onMouseMove={handleMouseMove}
-            onMouseLeave={handleMouseLeave}
-          >
-            {/* Grid Lines */}
-            {yAxisLabels.map(({ y }) => <line key={y} x1="0" x2="100%" y1={y} y2={y} className="grid-line" />)}
-            
-            {/* Confidence Band */}
-            <path d={confidencePath} className="confidence-band" />
 
-            {/* Trend Line */}
-            <path d={trendLine} className="line trend" />
-            
-            {/* Actual Data Line */}
-            <path d={chartPath} className="line actual" />
-            
-            {/* Forecast Data Line */}
-            <path d={forecastPath} className="line forecast" />
-            
-            {/* Data Points for Hover */}
-            {chartData.map(p => (
-              <circle key={p.x} cx={p.svgX} cy={p.svgY} r="6" className="data-point-hover" />
+      <div className="forecast-chart-scroll-wrapper">
+        <div className="forecast-chart-main">
+          <div className="y-axis-labels">
+            {yAxisLabels.map(({ y, label }) => (
+              <div key={y} className="axis-label y-label" style={{ top: `${y}px` }}>{label}</div>
             ))}
+          </div>
+          <div className={`chart-area ${needsScrolling ? 'scrollable' : 'fit-content'}`}>
+            <svg
+              width={chartWidth}
+              height="250"
+              className="forecast-chart-svg"
+              onMouseMove={handleMouseMove}
+              onMouseLeave={handleMouseLeave}
+            >
+              {yAxisLabels.map(({ y }) => (
+                <line key={y} x1="0" x2="100%" y1={y} y2={y} className="grid-line" />
+              ))}
 
-            {/* Active Tooltip Point */}
-            {tooltip && <circle cx={tooltip.svgX} cy={tooltip.svgY} r="4" className={`data-point-active ${tooltip.isForecast ? 'forecast' : 'actual'}`} />}
-          </svg>
-          <div className="x-axis-labels">
-            {xAxisLabels.map(({ x, label }) => (
-              <div key={label} className="axis-label x-label" style={{ left: `${x}px` }}>{label}</div>
-            ))}
+              <path d={confidencePath} className="confidence-band" />
+              <path d={trendLine} className="line trend" />
+              <path d={chartPath} className="line actual" />
+              <path d={forecastPath} className="line forecast" />
+
+              {chartData.map((p, index) => (
+                <circle key={index} cx={p.svgX} cy={p.svgY} r="6" className="data-point-hover" />
+              ))}
+
+              {tooltip && (
+                <circle
+                  cx={tooltip.svgX}
+                  cy={tooltip.svgY}
+                  r="4"
+                  className={`data-point-active ${tooltip.isForecast ? 'forecast' : 'actual'}`}
+                />
+              )}
+            </svg>
+            <div className="x-axis-labels">
+              {xAxisLabels.map(({ x, label }) => (
+                <div key={label} className="axis-label x-label" style={{ left: `${x}px` }}>{label}</div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
-       {tooltip && (
-        <div 
+
+      {tooltip && (
+        <div
           className="custom-tooltip"
-          style={{ 
-            top: `${tooltip.top}px`, 
+          style={{
+            top: `${tooltip.top}px`,
             left: `${tooltip.left}px`,
             transform: 'translate(-50%, -100%) translateY(-5px)',
             borderColor: tooltip.isForecast ? '#38a169' : '#667eea'
           }}
         >
-          <div className="tooltip-title">{tooltip.date.toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'short' })}</div>
+          <div className="tooltip-title">
+            {tooltip.date.toLocaleDateString('en-NZ', {
+              weekday: 'short',
+              day: 'numeric',
+              month: 'short'
+            })}
+          </div>
           <div className="tooltip-row">
             <span>{tooltip.isForecast ? 'Forecasted:' : 'Revenue:'}</span>
             <span>{formatCurrency(tooltip.y)}</span>

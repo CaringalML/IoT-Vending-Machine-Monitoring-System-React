@@ -44,6 +44,19 @@ const Sales = () => {
   const [exportLoading, setExportLoading] = useState(false);
   const [exportPreview, setExportPreview] = useState(null);
 
+  // Responsive state
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   useEffect(() => {
     applyQuickFilter('30days');
     const unsubscribeSales = subscribeToSales(setSales);
@@ -424,7 +437,7 @@ const Sales = () => {
           disabled={filteredSales.length === 0}
         >
           <Download size={16} />
-          Export Data
+          {isMobile ? 'Export' : 'Export Data'}
         </button>
       </div>
 
@@ -438,9 +451,9 @@ const Sales = () => {
             {[
               { key: 'today', label: 'Today' },
               { key: 'yesterday', label: 'Yesterday' },
-              { key: 'week', label: 'Last 7 Days' },
-              { key: '30days', label: 'Last 30 Days' },
-              { key: '90days', label: 'Last 90 Days' }
+              { key: 'week', label: isMobile ? '7 Days' : 'Last 7 Days' },
+              { key: '30days', label: isMobile ? '30 Days' : 'Last 30 Days' },
+              { key: '90days', label: isMobile ? '90 Days' : 'Last 90 Days' }
             ].map(filter => (
               <button
                 key={filter.key}
@@ -519,7 +532,7 @@ const Sales = () => {
           </div>
           <div className="stat-content">
             <h3>{formatCurrency(salesStats.averageTransaction)}</h3>
-            <p>Avg Transaction</p>
+            <p>{isMobile ? 'Avg Sale' : 'Avg Transaction'}</p>
             <small className="stat-secondary">
               Per sale value
             </small>
@@ -547,22 +560,25 @@ const Sales = () => {
           <div className="card-header">
             <h3>Sales Transactions</h3>
             <div className="table-info">
-              Showing {getSalesToDisplay().length} of {filteredSales.length} transactions
+              {isMobile ? 
+                `${getSalesToDisplay().length} of ${filteredSales.length}` :
+                `Showing ${getSalesToDisplay().length} of ${filteredSales.length} transactions`
+              }
               {searchTerm && (
                 <span style={{ color: '#667eea', marginLeft: '8px' }}>
-                  • Filtered by "{searchTerm}"
+                  • {isMobile ? `"${searchTerm}"` : `Filtered by "${searchTerm}"`}
                 </span>
               )}
             </div>
           </div>
           
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', background: '#f7fafc' }}>
-            <div style={{ position: 'relative', maxWidth: '400px' }}>
+          <div style={{ padding: isMobile ? '12px 16px' : '16px 20px', borderBottom: '1px solid #e2e8f0', background: '#f7fafc' }}>
+            <div style={{ position: 'relative', maxWidth: isMobile ? 'none' : '400px' }}>
               <div style={{ position: 'relative' }}>
                 <Search size={20} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#718096', pointerEvents: 'none' }} />
                 <input
                   type="text"
-                  placeholder="Search by product, slot, date, payment..."
+                  placeholder={isMobile ? "Search transactions..." : "Search by product, slot, date, payment..."}
                   value={searchTerm}
                   onChange={handleSearchChange}
                   className="form-input"
@@ -600,7 +616,7 @@ const Sales = () => {
                   <th>Product</th>
                   <th>Slot</th>
                   <th>Price</th>
-                  <th>Payment</th>
+                  <th>{isMobile ? 'Pay' : 'Payment'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -608,7 +624,11 @@ const Sales = () => {
                     <tr key={sale.id}>
                       <td className="table-timestamp">
                         <div className="table-date">
-                          {new Date(sale.timestamp?.seconds * 1000).toLocaleDateString('en-NZ', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          {new Date(sale.timestamp?.seconds * 1000).toLocaleDateString('en-NZ', { 
+                            month: 'short', 
+                            day: 'numeric', 
+                            year: isMobile ? '2-digit' : 'numeric' 
+                          })}
                         </div>
                         <div className="table-time">
                           {new Date(sale.timestamp?.seconds * 1000).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' })}
@@ -654,7 +674,7 @@ const Sales = () => {
       <div className="top-products-container" style={{ marginBottom: '32px' }}>
         <div className="card">
           <div className="card-header">
-            <h3>{getTopProductsHeader()}</h3>
+            <h3>{isMobile ? 'Top Products' : getTopProductsHeader()}</h3>
           </div>
           <div className="card-body">
             {rankedProductData.length > 0 ? (
@@ -690,7 +710,10 @@ const Sales = () => {
         <div className="chart-header">
           <h3>Product Performance</h3>
           <div className="chart-summary">
-            {rankedProductData.length > 0 ? `All ${rankedProductData.length} products ranked by sales` : 'No product data for this period'}
+            {rankedProductData.length > 0 ? 
+              (isMobile ? `${rankedProductData.length} products` : `All ${rankedProductData.length} products ranked by sales`) : 
+              'No product data for this period'
+            }
           </div>
         </div>
         <div className="chart-body">
@@ -698,16 +721,16 @@ const Sales = () => {
         </div>
       </div>
 
-      <div style={{ marginBottom: '32px' }}>
+      <div className="scrolling-chart-wrapper">
           <ChartForecast data={filteredSales} formatCurrency={formatCurrency} />
       </div>
 
-      {/* Export Modal */}
+      {/* Enhanced Responsive Export Modal */}
       {showExportModal && (
         <Modal
           title="Export Sales Data"
           onClose={() => setShowExportModal(false)}
-          size="medium"
+          size={isMobile ? "full" : "medium"}
         >
           <div className="export-modal-content">
             <div className="export-info">
@@ -733,7 +756,7 @@ const Sales = () => {
                     className="export-format-radio"
                   />
                   <div className="export-format-content">
-                    <FileText size={24} className={`export-format-icon ${exportFormat === 'csv' ? 'active' : ''}`} />
+                    <FileText size={isMobile ? 20 : 24} className={`export-format-icon ${exportFormat === 'csv' ? 'active' : ''}`} />
                     <span className="export-format-name">CSV</span>
                     <span className="export-format-description">Excel, Sheets</span>
                   </div>
@@ -749,7 +772,7 @@ const Sales = () => {
                     className="export-format-radio"
                   />
                   <div className="export-format-content">
-                    <FileSpreadsheet size={24} className={`export-format-icon ${exportFormat === 'excel' ? 'active' : ''}`} />
+                    <FileSpreadsheet size={isMobile ? 20 : 24} className={`export-format-icon ${exportFormat === 'excel' ? 'active' : ''}`} />
                     <span className="export-format-name">Excel</span>
                     <span className="export-format-description">.xlsx format</span>
                   </div>
@@ -765,7 +788,7 @@ const Sales = () => {
                     className="export-format-radio"
                   />
                   <div className="export-format-content">
-                    <FileImage size={24} className={`export-format-icon ${exportFormat === 'pdf' ? 'active' : ''}`} />
+                    <FileImage size={isMobile ? 20 : 24} className={`export-format-icon ${exportFormat === 'pdf' ? 'active' : ''}`} />
                     <span className="export-format-name">PDF</span>
                     <span className="export-format-description">Print-ready</span>
                   </div>
@@ -788,7 +811,9 @@ const Sales = () => {
                     className="export-checkbox-input"
                   />
                   <span className="export-checkbox-checkmark"></span>
-                  <span className="export-checkbox-text">Include product details (ID, category, SKU)</span>
+                  <span className="export-checkbox-text">
+                    {isMobile ? 'Product details (ID, category, SKU)' : 'Include product details (ID, category, SKU)'}
+                  </span>
                 </label>
 
                 <label className="export-checkbox-label">
@@ -802,7 +827,9 @@ const Sales = () => {
                     className="export-checkbox-input"
                   />
                   <span className="export-checkbox-checkmark"></span>
-                  <span className="export-checkbox-text">Include detailed timestamps (day of week, hour)</span>
+                  <span className="export-checkbox-text">
+                    {isMobile ? 'Detailed timestamps' : 'Include detailed timestamps (day of week, hour)'}
+                  </span>
                 </label>
 
                 <label className="export-checkbox-label">
@@ -816,7 +843,9 @@ const Sales = () => {
                     className="export-checkbox-input"
                   />
                   <span className="export-checkbox-checkmark"></span>
-                  <span className="export-checkbox-text">Include payment method details</span>
+                  <span className="export-checkbox-text">
+                    {isMobile ? 'Payment method details' : 'Include payment method details'}
+                  </span>
                 </label>
 
                 <label className="export-checkbox-label">
@@ -830,7 +859,9 @@ const Sales = () => {
                     className="export-checkbox-input"
                   />
                   <span className="export-checkbox-checkmark"></span>
-                  <span className="export-checkbox-text">Include summary statistics</span>
+                  <span className="export-checkbox-text">
+                    {isMobile ? 'Summary statistics' : 'Include summary statistics'}
+                  </span>
                 </label>
 
                 <label className="export-checkbox-label">
@@ -845,7 +876,9 @@ const Sales = () => {
                     className="export-checkbox-input"
                   />
                   <span className="export-checkbox-checkmark"></span>
-                  <span className="export-checkbox-text">Group transactions by product</span>
+                  <span className="export-checkbox-text">
+                    {isMobile ? 'Group by product' : 'Group transactions by product'}
+                  </span>
                 </label>
 
                 <label className="export-checkbox-label">
@@ -860,13 +893,15 @@ const Sales = () => {
                     className="export-checkbox-input"
                   />
                   <span className="export-checkbox-checkmark"></span>
-                  <span className="export-checkbox-text">Group transactions by date</span>
+                  <span className="export-checkbox-text">
+                    {isMobile ? 'Group by date' : 'Group transactions by date'}
+                  </span>
                 </label>
               </div>
             </div>
 
             {/* Preview */}
-            {exportPreview && (
+            {exportPreview && !isMobile && (
               <div className="export-preview">
                 <h4 className="export-preview-title">Export Preview</h4>
                 <div className="export-preview-details">
@@ -918,12 +953,12 @@ const Sales = () => {
                 {exportLoading ? (
                   <div className="export-loading-content">
                     <div className="export-loading-spinner"></div>
-                    <span>Exporting...</span>
+                    <span>{isMobile ? 'Exporting...' : 'Exporting...'}</span>
                   </div>
                 ) : (
                   <div className="export-button-content">
                     <Download size={16} />
-                    <span>Export {exportFormat.toUpperCase()}</span>
+                    <span>{isMobile ? `Export ${exportFormat.toUpperCase()}` : `Export ${exportFormat.toUpperCase()}`}</span>
                   </div>
                 )}
               </button>
