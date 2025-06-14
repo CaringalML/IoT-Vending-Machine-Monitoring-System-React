@@ -229,6 +229,19 @@ export const addSale = async (saleData) => {
   return docRef.id;
 };
 
+// New function to delete a sale
+export const deleteSale = async (saleId) => {
+  try {
+    const saleRef = doc(db, 'sales', saleId);
+    await deleteDoc(saleRef);
+    console.log(`Sale ${saleId} deleted successfully`);
+    return true;
+  } catch (error) {
+    console.error('Error deleting sale:', error);
+    throw new Error(`Failed to delete sale: ${error.message}`);
+  }
+};
+
 // Real-time listeners
 export const subscribeToInventory = (callback) => {
   const q = query(collection(db, 'inventory'), orderBy('slot'));
@@ -1187,6 +1200,7 @@ export const FIRESTORE_FUNCTIONS = {
   sales: {
     get: getSales,
     add: addSale,
+    delete: deleteSale, // Added deleteSale function
     subscribe: subscribeToSales,
     getDaily: getDailySales,
     getTopProducts: getTopProducts,

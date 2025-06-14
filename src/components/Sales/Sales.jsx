@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Download, TrendingUp, DollarSign, Calendar, Filter, Search, X, FileText, FileSpreadsheet, FileImage } from 'lucide-react';
+import { Download, TrendingUp, DollarSign, Calendar, Filter, Search, X, FileText, FileSpreadsheet, FileImage, Trash2, Info } from 'lucide-react';
 import {
   subscribeToSales,
-  subscribeToProducts
+  subscribeToProducts,
+  deleteSale  // Add this import
 } from '../../services/firestore';
 import LoadingSpinner from '../Common/LoadingSpinner';
 import Modal from '../Common/Modal';
+import DeleteConfirmation from '../Common/DeleteConfirmation';  // Add this import
 import CustomBarChart from './CustomBarChart'; 
 import ChartForecast from './ChartForecast';
 // Fixed import - make sure all exports are imported correctly
@@ -27,9 +29,16 @@ const Sales = () => {
     averageTransaction: 0,
     topProduct: null
   });
-  const [quickFilter, setQuickFilter] = useState('30days');
+  const [quickFilter, setQuickFilter] = useState('all'); // Changed default to 'all'
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  
+  // Debug info state
+  const [dataInfo, setDataInfo] = useState({
+    totalSalesInDB: 0,
+    dateRange: { oldest: null, newest: null },
+    filteredCount: 0
+  });
   
   // Export modal states
   const [showExportModal, setShowExportModal] = useState(false);
@@ -45,6 +54,10 @@ const Sales = () => {
   const [exportLoading, setExportLoading] = useState(false);
   const [exportPreview, setExportPreview] = useState(null);
 
+  // Delete confirmation states
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [saleToDelete, setSaleToDelete] = useState(null);
+
   // Responsive state
   const [isMobile, setIsMobile] = useState(false);
 
@@ -59,7 +72,7 @@ const Sales = () => {
   }, []);
 
   useEffect(() => {
-    applyQuickFilter('30days');
+    applyQuickFilter('all'); // Start with all data
     const unsubscribeSales = subscribeToSales(setSales);
     const unsubscribeProducts = subscribeToProducts(setProducts);
 
@@ -93,8 +106,15 @@ const Sales = () => {
       case '90days':
         startDate.setDate(startDate.getDate() - 90);
         break;
+      case 'all':
+        // Show all data - set very wide date range
+        startDate.setFullYear(2020, 0, 1); // Start from 2020
+        endDate.setFullYear(2030, 11, 31); // End at 2030
+        break;
       default:
-        startDate.setDate(startDate.getDate() - 30);
+        // Default to all data
+        startDate.setFullYear(2020, 0, 1);
+        endDate.setFullYear(2030, 11, 31);
     }
 
     setDateRange({
@@ -104,32 +124,106 @@ const Sales = () => {
     setQuickFilter(filterType);
   };
 
-  const filterSalesByDate = useCallback(() => {
-    if (!dateRange.startDate || !dateRange.endDate || sales.length === 0) {
-      setFilteredSales([]);
+  // Calculate data info for debugging
+  const calculateDataInfo = useCallback(() => {
+    if (sales.length === 0) {
+      setDataInfo({
+        totalSalesInDB: 0,
+        dateRange: { oldest: null, newest: null },
+        filteredCount: 0
+      });
       return;
     }
 
+    // Find oldest and newest dates
+    const dates = sales
+      .map(sale => sale.timestamp?.seconds ? new Date(sale.timestamp.seconds * 1000) : null)
+      .filter(Boolean)
+      .sort((a, b) => a - b);
+
+    const oldest = dates[0];
+    const newest = dates[dates.length - 1];
+
+    setDataInfo({
+      totalSalesInDB: sales.length,
+      dateRange: { 
+        oldest: oldest ? oldest.toLocaleDateString('en-NZ') : null, 
+        newest: newest ? newest.toLocaleDateString('en-NZ') : null 
+      },
+      filteredCount: filteredSales.length
+    });
+  }, [sales, filteredSales]);
+
+  // FIXED: Direct filtering function that recalculates everything
+  const filterAndCalculateAll = useCallback(() => {
+    console.log('🔄 Starting filterAndCalculateAll');
+    console.log('📊 Total sales in database:', sales.length);
+    console.log('📅 Filter range:', dateRange.startDate, 'to', dateRange.endDate);
+    console.log('🔍 Quick filter:', quickFilter);
+    
+    if (!dateRange.startDate || !dateRange.endDate) {
+      console.log('❌ No date range set');
+      setFilteredSales([]);
+      setSalesStats({
+        totalSales: 0,
+        totalRevenue: 0,
+        averageTransaction: 0,
+        topProduct: null
+      });
+      return;
+    }
+
+    if (sales.length === 0) {
+      console.log('❌ No sales data');
+      setFilteredSales([]);
+      setSalesStats({
+        totalSales: 0,
+        totalRevenue: 0,
+        averageTransaction: 0,
+        topProduct: null
+      });
+      return;
+    }
+
+    // Filter sales by date range
     const startDate = new Date(dateRange.startDate);
     const endDate = new Date(dateRange.endDate);
     endDate.setHours(23, 59, 59, 999);
 
+    console.log('📅 Filtering between:', startDate.toISOString(), 'and', endDate.toISOString());
+
     const filtered = sales.filter(sale => {
-      if (!sale.timestamp?.seconds) return false;
+      if (!sale.timestamp?.seconds) {
+        console.log('⚠️ Sale without timestamp:', sale.id);
+        return false;
+      }
       const saleDate = new Date(sale.timestamp.seconds * 1000);
-      return saleDate >= startDate && saleDate <= endDate;
+      const inRange = saleDate >= startDate && saleDate <= endDate;
+      
+      if (!inRange) {
+        console.log('🚫 Sale outside range:', sale.id, 'date:', saleDate.toISOString());
+      }
+      
+      return inRange;
     });
 
-    setFilteredSales(filtered);
-  }, [dateRange.startDate, dateRange.endDate, sales]);
+    console.log('📊 Filtered sales count:', filtered.length);
+    console.log('📊 Sample filtered sales:', filtered.slice(0, 3).map(s => ({
+      id: s.id,
+      date: new Date(s.timestamp.seconds * 1000).toISOString(),
+      product: s.productId,
+      price: s.price
+    })));
 
-  const calculateStats = useCallback(() => {
-    const totalSales = filteredSales.length;
-    const totalRevenue = filteredSales.reduce((sum, sale) => sum + (sale.price || 0), 0);
+    setFilteredSales(filtered);
+
+    // Calculate stats immediately
+    const totalSales = filtered.length;
+    const totalRevenue = filtered.reduce((sum, sale) => sum + (sale.price || 0), 0);
     const averageTransaction = totalSales > 0 ? totalRevenue / totalSales : 0;
 
     const productCounts = {};
-    filteredSales.forEach(sale => {
+    filtered.forEach(sale => {
       if (sale.productId) {
         productCounts[sale.productId] = (productCounts[sale.productId] || 0) + 1;
       }
@@ -143,13 +237,20 @@ const Sales = () => {
       topProduct = products.find(p => p.id === topProductId);
     }
 
-    setSalesStats({
+    const newStats = {
       totalSales,
       totalRevenue,
       averageTransaction,
       topProduct
-    });
-  }, [filteredSales, products]);
+    };
+
+    console.log('📈 New stats calculated:', newStats);
+    setSalesStats(newStats);
+
+    if (sales.length > 0) {
+      setLoading(false);
+    }
+  }, [dateRange.startDate, dateRange.endDate, sales, products, quickFilter]);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-NZ', {
@@ -201,7 +302,10 @@ const Sales = () => {
     return () => clearTimeout(timeoutId);
   }, [searchTerm, performSearch]);
   
+  // FIXED: Improved rankedProductData calculation with better dependency tracking
   const rankedProductData = useMemo(() => {
+    console.log('🏆 Recalculating ranked product data, filteredSales:', filteredSales.length);
+    
     if (filteredSales.length === 0 || products.length === 0) return [];
 
     const productStats = {};
@@ -218,17 +322,84 @@ const Sales = () => {
       }
     });
 
-    return Object.entries(productStats)
+    const ranked = Object.entries(productStats)
       .map(([productId, stats]) => ({
         productId,
         productName: getProductName(productId),
         ...stats,
       }))
       .sort((a, b) => b.count - a.count);
+
+    console.log('🏆 Ranked product data:', ranked);
+    return ranked;
   }, [filteredSales, products, getProductName]);
 
   const getSalesToDisplay = () => {
     return searchTerm.trim() ? searchResults : filteredSales;
+  };
+
+  // FIXED: Optimistic updates for immediate UI response
+  const handleDeleteClick = (sale) => {
+    setSaleToDelete(sale);
+    setShowDeleteConfirmation(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!saleToDelete) return;
+
+    try {
+      console.log('🗑️ Starting delete process for sale:', saleToDelete.id);
+      
+      // OPTIMISTIC UPDATE: Remove from local state immediately
+      console.log('⚡ Applying optimistic update');
+      setSales(currentSales => {
+        const updated = currentSales.filter(sale => sale.id !== saleToDelete.id);
+        console.log('⚡ Sales updated from', currentSales.length, 'to', updated.length);
+        return updated;
+      });
+      
+      // Close the modal immediately
+      setShowDeleteConfirmation(false);
+      setSaleToDelete(null);
+      
+      // Delete from Firebase (this will sync with real-time subscription)
+      await deleteSale(saleToDelete.id);
+      console.log('✅ Sale deleted from Firebase successfully');
+      
+    } catch (error) {
+      console.error('❌ Error deleting sale:', error);
+      
+      // ROLLBACK: If delete fails, add the sale back to local state
+      console.log('🔄 Rolling back optimistic update');
+      setSales(currentSales => {
+        const restored = [...currentSales, saleToDelete].sort((a, b) => 
+          (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0)
+        );
+        console.log('🔄 Sales restored to', restored.length);
+        return restored;
+      });
+      
+      throw error; // Let DeleteConfirmation handle the error display
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteConfirmation(false);
+    setSaleToDelete(null);
+  };
+
+  const getSaleDescription = (sale) => {
+    const product = products.find(p => p.id === sale.productId);
+    const saleDate = new Date(sale.timestamp?.seconds * 1000);
+    const formattedDate = saleDate.toLocaleDateString('en-NZ', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric',
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+    
+    return `${product?.name || 'Unknown Product'} - ${formatCurrency(sale.price)} - ${formattedDate}`;
   };
 
   // Export functionality
@@ -364,24 +535,12 @@ const Sales = () => {
     }
   };
 
+  // FIXED: Single effect that handles all data processing
   useEffect(() => {
-    if (sales.length > 0) {
-      filterSalesByDate();
-      setLoading(false);
-    } else if (sales.length === 0 && !loading) {
-      setFilteredSales([]);
-      setSalesStats({
-        totalSales: 0,
-        totalRevenue: 0,
-        averageTransaction: 0,
-        topProduct: null
-      });
-    }
-  }, [sales, filterSalesByDate, loading]);
-
-  useEffect(() => {
-    calculateStats();
-  }, [filteredSales, calculateStats]);
+    console.log('🔄 Data changed - triggering recalculation');
+    filterAndCalculateAll();
+    calculateDataInfo();
+  }, [filterAndCalculateAll, calculateDataInfo]);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -397,7 +556,7 @@ const Sales = () => {
       ...prev,
       [field]: value
     }));
-    setQuickFilter('');
+    setQuickFilter('custom');
   };
 
   const calculateDailyAverage = (total, startDate, endDate) => {
@@ -415,9 +574,9 @@ const Sales = () => {
     const uniqueProductCount = rankedProductData.length;
 
     if (uniqueProductCount >= 5) {
-      return `Top 5 Products (${quickFilter || 'Custom Period'})`;
+      return `Top 5 Products (${quickFilter === 'all' ? 'All Time' : quickFilter || 'Custom Period'})`;
     } else {
-      return `Top Products (${quickFilter || 'Custom Period'})`;
+      return `Top Products (${quickFilter === 'all' ? 'All Time' : quickFilter || 'Custom Period'})`;
     }
   };
   
@@ -442,6 +601,35 @@ const Sales = () => {
         </button>
       </div>
 
+      {/* Debug Info Panel */}
+      <div className="sales-debug-info" style={{ 
+        background: '#f0f9ff', 
+        border: '1px solid #0ea5e9', 
+        borderRadius: '8px', 
+        padding: '16px', 
+        marginBottom: '24px',
+        fontSize: '14px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', fontWeight: '600', color: '#0369a1' }}>
+          <Info size={16} />
+          Data Information
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)', gap: '12px', fontSize: '13px' }}>
+          <div>
+            <strong>Total in Database:</strong> {dataInfo.totalSalesInDB} sales
+          </div>
+          <div>
+            <strong>Currently Showing:</strong> {dataInfo.filteredCount} sales
+          </div>
+          <div>
+            <strong>Date Range in DB:</strong> {dataInfo.dateRange.oldest ? `${dataInfo.dateRange.oldest} to ${dataInfo.dateRange.newest}` : 'No data'}
+          </div>
+          <div>
+            <strong>Active Filter:</strong> {quickFilter === 'all' ? 'All Data' : quickFilter || 'Custom'}
+          </div>
+        </div>
+      </div>
+
       <div className="sales-filters">
         <div className="filter-section">
           <h3 className="filter-section-title">
@@ -450,6 +638,7 @@ const Sales = () => {
           </h3>
           <div className="quick-filters">
             {[
+              { key: 'all', label: 'All Data', color: '#10b981' },
               { key: 'today', label: 'Today' },
               { key: 'yesterday', label: 'Yesterday' },
               { key: 'week', label: isMobile ? '7 Days' : 'Last 7 Days' },
@@ -460,6 +649,14 @@ const Sales = () => {
                 key={filter.key}
                 className={`filter-btn ${quickFilter === filter.key ? 'active' : ''}`}
                 onClick={() => applyQuickFilter(filter.key)}
+                style={filter.key === 'all' && quickFilter === filter.key ? {
+                  background: '#10b981',
+                  borderColor: '#10b981',
+                  color: 'white'
+                } : filter.key === 'all' ? {
+                  borderColor: '#10b981',
+                  color: '#10b981'
+                } : {}}
               >
                 {filter.label}
               </button>
@@ -504,9 +701,14 @@ const Sales = () => {
           <div className="stat-content">
             <h3>{salesStats.totalSales}</h3>
             <p>Total Sales</p>
-            {salesStats.totalSales > 0 && (
+            {salesStats.totalSales > 0 && quickFilter !== 'all' && (
               <small className="stat-secondary">
                 {calculateDailyAverage(salesStats.totalSales, dateRange.startDate, dateRange.endDate).toFixed(1)} per day avg
+              </small>
+            )}
+            {quickFilter === 'all' && (
+              <small className="stat-secondary">
+                All time data
               </small>
             )}
           </div>
@@ -519,9 +721,14 @@ const Sales = () => {
           <div className="stat-content">
             <h3>{formatCurrency(salesStats.totalRevenue)}</h3>
             <p>Total Revenue</p>
-            {salesStats.totalRevenue > 0 && (
+            {salesStats.totalRevenue > 0 && quickFilter !== 'all' && (
               <small className="stat-secondary">
                 {formatCurrency(calculateDailyAverage(salesStats.totalRevenue, dateRange.startDate, dateRange.endDate))} per day avg
+              </small>
+            )}
+            {quickFilter === 'all' && (
+              <small className="stat-secondary">
+                All time revenue
               </small>
             )}
           </div>
@@ -550,7 +757,7 @@ const Sales = () => {
             </h3>
             <p>Top Product</p>
             <small className="stat-secondary">
-              {salesStats.topProduct ? 'Best seller this period' : 'No sales in period'}
+              {salesStats.topProduct ? (quickFilter === 'all' ? 'Best seller all time' : 'Best seller this period') : 'No sales in period'}
             </small>
           </div>
         </div>
@@ -618,6 +825,7 @@ const Sales = () => {
                   <th>Slot</th>
                   <th>Price</th>
                   <th>{isMobile ? 'Pay' : 'Payment'}</th>
+                  <th style={{ width: '80px', textAlign: 'center' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -645,12 +853,31 @@ const Sales = () => {
                       <td>
                         <span className="payment-method">{sale.paymentMethod || 'cash'}</span>
                       </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteClick(sale)}
+                          className="btn btn-danger"
+                          style={{
+                            padding: isMobile ? '6px' : '8px',
+                            minWidth: 'auto',
+                            fontSize: '12px',
+                            background: '#fed7d7',
+                            color: '#742a2a',
+                            border: '1px solid #feb2b2'
+                          }}
+                          title="Delete transaction"
+                        >
+                          <Trash2 size={isMobile ? 14 : 16} />
+                          {!isMobile && <span style={{ marginLeft: '4px' }}>Delete</span>}
+                        </button>
+                      </td>
                     </tr>
                   )
                 )}
                 {getSalesToDisplay().length === 0 && (
                   <tr>
-                    <td colSpan="5" className="no-data">
+                    <td colSpan="6" className="no-data">
                       <div className="no-data-content">
                         <div className="no-data-icon">📊</div>
                         <div className="no-data-title">
@@ -659,7 +886,9 @@ const Sales = () => {
                         <div className="no-data-subtitle">
                           {searchTerm 
                             ? `No transactions match "${searchTerm}" in the selected period`
-                            : 'Try adjusting your date range'
+                            : quickFilter === 'all' 
+                              ? 'No sales data in database'
+                              : 'Try selecting "All Data" or adjusting your date range'
                           }
                         </div>
                       </div>
@@ -724,6 +953,22 @@ const Sales = () => {
 
       <ChartForecast data={filteredSales} formatCurrency={formatCurrency} />
 
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirmation && saleToDelete && (
+        <DeleteConfirmation
+          isOpen={showDeleteConfirmation}
+          onClose={handleDeleteCancel}
+          onConfirm={handleDeleteConfirm}
+          title="Delete Sales Transaction"
+          message="Are you sure you want to delete this sales transaction?"
+          itemName={getSaleDescription(saleToDelete)}
+          type="transaction"
+          warningText="This action cannot be undone. This will permanently remove the transaction from your sales records."
+          confirmText="Delete Transaction"
+          showInput={false}
+        />
+      )}
+
       {/* Enhanced Responsive Export Modal */}
       {showExportModal && (
         <Modal
@@ -736,7 +981,7 @@ const Sales = () => {
               <h4 className="export-summary-title">Export Summary</h4>
               <p className="export-summary-text">
                 Exporting <strong>{filteredSales.length} sales transactions</strong> from 
-                <strong> {quickFilter ? quickFilter.charAt(0).toUpperCase() + quickFilter.slice(1) : 'Custom Period'}</strong>
+                <strong> {quickFilter === 'all' ? 'All Time' : quickFilter ? quickFilter.charAt(0).toUpperCase() + quickFilter.slice(1) : 'Custom Period'}</strong>
                 {searchTerm && <span> matching "<strong>{searchTerm}</strong>"</span>}
               </p>
             </div>

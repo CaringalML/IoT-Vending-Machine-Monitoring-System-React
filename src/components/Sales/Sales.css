@@ -407,6 +407,79 @@
   text-transform: capitalize;
 }
 
+/* DELETE BUTTON STYLES - NEW SECTION */
+.table .btn-danger {
+  background: #fed7d7;
+  color: #742a2a;
+  border: 1px solid #feb2b2;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 6px;
+  min-width: auto;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.table .btn-danger:hover {
+  background: #fc8181;
+  color: #ffffff;
+  border-color: #f56565;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245, 101, 101, 0.3);
+}
+
+.table .btn-danger:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(245, 101, 101, 0.3);
+}
+
+.table .btn-danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.table .btn-danger:disabled:hover {
+  background: #fed7d7;
+  color: #742a2a;
+  border-color: #feb2b2;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Actions column styles */
+.table th:last-child,
+.table td:last-child {
+  text-align: center;
+  width: 80px;
+  padding: 8px 4px;
+}
+
+/* Delete confirmation modal specific styles */
+.delete-loading-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.delete-loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 /* Enhanced Top Products */
 .top-products-container {
   max-height: 600px;
@@ -536,27 +609,6 @@
   max-width: 600px !important;
 }
 
-@media (max-width: 768px) {
-  .modal-overlay {
-    padding: 100px 15px 80px 15px !important;
-  }
-  
-  .modal-content {
-    max-height: calc(100vh - 200px) !important;
-    max-width: none !important;
-  }
-}
-
-@media (max-width: 480px) {
-  .modal-overlay {
-    padding: 80px 10px 100px 10px !important;
-  }
-  
-  .modal-content {
-    max-height: calc(100vh - 200px) !important;
-  }
-}
-
 .stat-card,
 .chart-card,
 .top-product-item {
@@ -595,6 +647,15 @@
 }
 
 @media (max-width: 768px) {
+  .modal-overlay {
+    padding: 100px 15px 80px 15px !important;
+  }
+  
+  .modal-content {
+    max-height: calc(100vh - 200px) !important;
+    max-width: none !important;
+  }
+
   .sales-header {
     flex-direction: column;
     gap: 16px;
@@ -672,7 +733,21 @@
   }
 
   .table {
-    min-width: 600px;
+    min-width: 650px; /* Updated to accommodate Actions column */
+  }
+
+  /* Mobile responsive delete buttons */
+  .table .btn-danger {
+    padding: 6px;
+    font-size: 11px;
+    min-width: 32px;
+    height: 32px;
+  }
+  
+  .table th:last-child,
+  .table td:last-child {
+    width: 60px;
+    padding: 6px 2px;
   }
 
   /*
@@ -725,6 +800,14 @@
 }
 
 @media (max-width: 480px) {
+  .modal-overlay {
+    padding: 80px 10px 100px 10px !important;
+  }
+  
+  .modal-content {
+    max-height: calc(100vh - 200px) !important;
+  }
+
   .sales {
     padding: 0;
   }
@@ -775,6 +858,24 @@
 
   .product-sales {
     font-size: 11px;
+  }
+
+  .table {
+    min-width: 600px; /* Adjusted for mobile with Actions column */
+  }
+
+  /* Ultra-mobile responsive delete buttons */
+  .table .btn-danger {
+    padding: 4px;
+    font-size: 10px;
+    min-width: 28px;
+    height: 28px;
+  }
+  
+  .table th:last-child,
+  .table td:last-child {
+    width: 50px;
+    padding: 4px 2px;
   }
 
   .table th,
@@ -874,7 +975,6 @@
   background: #a8a8a8;
 }
 
-
 /* Focus states for accessibility */
 .filter-btn:focus,
 .form-input:focus,
@@ -915,5 +1015,11 @@
   .table th,
   .table td {
     padding: 8px;
+  }
+
+  /* Hide delete buttons when printing */
+  .table th:last-child,
+  .table td:last-child {
+    display: none;
   }
 }
