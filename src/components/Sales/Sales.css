@@ -520,6 +520,49 @@
   }
 }
 
+/* Modal positioning adjustments for better visibility */
+.modal-overlay {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  padding: 120px 20px 60px 20px !important;
+  min-height: 100vh !important;
+  box-sizing: border-box !important;
+}
+
+.modal-content {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  transform: none !important;
+  margin: 0 !important;
+  max-height: calc(100vh - 200px) !important;
+  overflow-y: auto !important;
+  width: 100% !important;
+  max-width: 600px !important;
+}
+
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 100px 15px 80px 15px !important;
+  }
+  
+  .modal-content {
+    max-height: calc(100vh - 200px) !important;
+    max-width: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-overlay {
+    padding: 80px 10px 100px 10px !important;
+  }
+  
+  .modal-content {
+    max-height: calc(100vh - 200px) !important;
+  }
+}
+
 .stat-card,
 .chart-card,
 .top-product-item {

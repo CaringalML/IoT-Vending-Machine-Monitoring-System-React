@@ -1,11 +1,15 @@
 /**
- * PDF Export Component
+ * PDF Export Component - Mobile Compatible
  * Generates and exports sales data as a PDF using browser print functionality
+ * Enhanced for mobile compatibility and better user experience
  */
+// eslint-disable-next-line no-unused-vars
 class PDFExport {
   /**
-   * Export sales data as PDF with enhanced options support
-   * @param {Object} config - Export configuration
+   * Export sales data as PDF with enhanced mobile support
+   * @param {Object}
+
+export default PDFExport; config - Export configuration
    * @param {Array} config.salesData - Array of sales transactions
    * @param {Object} config.stats - Sales statistics object
    * @param {Object} config.dateRange - Date range object with startDate and endDate
@@ -33,6 +37,45 @@ class PDFExport {
       return;
     }
 
+    // Check if we're on mobile
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                    window.innerWidth <= 768;
+
+    if (isMobile) {
+      this.exportMobilePDF({
+        salesData,
+        stats,
+        dateRange,
+        formatCurrency,
+        getProductName,
+        title,
+        options
+      });
+    } else {
+      this.exportDesktopPDF({
+        salesData,
+        stats,
+        dateRange,
+        formatCurrency,
+        getProductName,
+        title,
+        options
+      });
+    }
+  }
+
+  /**
+   * Mobile-specific PDF export using a new tab approach
+   */
+  static exportMobilePDF({
+    salesData,
+    stats,
+    dateRange,
+    formatCurrency,
+    getProductName,
+    title,
+    options
+  }) {
     const currentDate = new Date().toLocaleDateString('en-NZ');
     const startDateFormatted = dateRange.startDate ? new Date(dateRange.startDate).toLocaleDateString('en-NZ') : 'N/A';
     const endDateFormatted = dateRange.endDate ? new Date(dateRange.endDate).toLocaleDateString('en-NZ') : 'N/A';
@@ -45,45 +88,287 @@ class PDFExport {
       processedData = this.groupSalesByDate(processedData);
     }
 
-    const printWindow = window.open('', '_blank');
+    const htmlContent = this.buildCompleteHTML({
+      title,
+      startDateFormatted,
+      endDateFormatted,
+      currentDate,
+      stats,
+      salesData: processedData,
+      formatCurrency,
+      getProductName,
+      options,
+      isMobile: true
+    });
+
+    // Create a blob with the HTML content
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+
+    // Create a temporary link to open in new tab
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.download = `${title.replace(/\s+/g, '-')}-${startDateFormatted}.html`;
     
-    const htmlContent = `
+    // Add the link to the document briefly
+    document.body.appendChild(link);
+    
+    // For mobile, we'll open in a new tab and provide instructions
+    try {
+      const newWindow = window.open(url, '_blank');
+      
+      if (newWindow) {
+        // Window opened successfully
+        setTimeout(() => {
+          // Show mobile-friendly instructions
+          this.showMobileInstructions();
+          // Clean up
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }, 1000);
+      } else {
+        // Popup blocked, fallback to download
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        alert('Your browser blocked the popup. The report has been downloaded as an HTML file instead. Open it in your browser and use your browser\'s print function to save as PDF.');
+      }
+    } catch (error) {
+      // Fallback to download
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      alert('Opening in new tab failed. The report has been downloaded as an HTML file. Open it in your browser and use your browser\'s print function to save as PDF.');
+    }
+  }
+
+  /**
+   * Desktop PDF export using popup window
+   */
+  static exportDesktopPDF({
+    salesData,
+    stats,
+    dateRange,
+    formatCurrency,
+    getProductName,
+    title,
+    options
+  }) {
+    const currentDate = new Date().toLocaleDateString('en-NZ');
+    const startDateFormatted = dateRange.startDate ? new Date(dateRange.startDate).toLocaleDateString('en-NZ') : 'N/A';
+    const endDateFormatted = dateRange.endDate ? new Date(dateRange.endDate).toLocaleDateString('en-NZ') : 'N/A';
+
+    // Process data based on options
+    let processedData = [...salesData];
+    if (options.groupByProduct) {
+      processedData = this.groupSalesByProduct(processedData, getProductName);
+    } else if (options.groupByDate) {
+      processedData = this.groupSalesByDate(processedData);
+    }
+
+    const htmlContent = this.buildCompleteHTML({
+      title,
+      startDateFormatted,
+      endDateFormatted,
+      currentDate,
+      stats,
+      salesData: processedData,
+      formatCurrency,
+      getProductName,
+      options,
+      isMobile: false
+    });
+
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    
+    if (printWindow) {
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      
+      // Wait for content to load, then trigger print dialog
+      setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+        
+        // Close the window after a delay
+        setTimeout(() => {
+          printWindow.close();
+        }, 100);
+      }, 500);
+    } else {
+      alert('Popup window was blocked. Please allow popups for this site to export PDF reports.');
+    }
+  }
+
+  /**
+   * Show mobile-friendly instructions overlay
+   */
+  static showMobileInstructions() {
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      box-sizing: border-box;
+    `;
+
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    `;
+
+    modal.innerHTML = `
+      <div style="font-size: 48px; margin-bottom: 16px;">📱</div>
+      <h3 style="margin: 0 0 12px 0; color: #1a202c; font-size: 18px;">Mobile PDF Export</h3>
+      <p style="margin: 0 0 20px 0; color: #4a5568; font-size: 14px; line-height: 1.4;">
+        Your report has opened in a new tab. To save as PDF:
+      </p>
+      <ol style="text-align: left; color: #4a5568; font-size: 14px; margin: 0 0 24px 0; padding-left: 20px;">
+        <li style="margin-bottom: 8px;">Open your browser's menu (⋮ or ≡)</li>
+        <li style="margin-bottom: 8px;">Select "Print" or "Share" → "Print"</li>
+        <li style="margin-bottom: 8px;">Choose "Save as PDF" as destination</li>
+        <li>Tap "Save" or "Print"</li>
+      </ol>
+      <button id="mobileInstructionsClose" style="
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        width: 100%;
+      ">Got it!</button>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    // Close button handler
+    const closeBtn = modal.querySelector('#mobileInstructionsClose');
+    closeBtn.onclick = () => {
+      document.body.removeChild(overlay);
+    };
+
+    // Click outside to close
+    overlay.onclick = (e) => {
+      if (e.target === overlay) {
+        document.body.removeChild(overlay);
+      }
+    };
+
+    // Auto-close after 10 seconds
+    setTimeout(() => {
+      if (document.body.contains(overlay)) {
+        document.body.removeChild(overlay);
+      }
+    }, 10000);
+  }
+
+  /**
+   * Build complete HTML document
+   */
+  static buildCompleteHTML({
+    title,
+    startDateFormatted,
+    endDateFormatted,
+    currentDate,
+    stats,
+    salesData,
+    formatCurrency,
+    getProductName,
+    options,
+    isMobile
+  }) {
+    return `
       <!DOCTYPE html>
-      <html>
+      <html lang="en">
         <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>${title} - ${startDateFormatted} to ${endDateFormatted}</title>
           <style>
-            ${this.getStyles()}
+            ${this.getStyles(isMobile)}
           </style>
+          ${isMobile ? this.getMobileScripts() : ''}
         </head>
         <body>
+          ${isMobile ? this.getMobileHeader() : ''}
           ${this.generateHTML({
             title,
             startDateFormatted,
             endDateFormatted,
             currentDate,
             stats,
-            salesData: processedData,
+            salesData,
             formatCurrency,
             getProductName,
-            options
+            options,
+            isMobile
           })}
         </body>
       </html>
     `;
+  }
 
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-    
-    // Wait for content to load, then trigger print dialog
-    setTimeout(() => {
-      printWindow.focus();
-      printWindow.print();
-      // Close the window after printing (user can cancel)
-      setTimeout(() => {
-        printWindow.close();
-      }, 100);
-    }, 500);
+  /**
+   * Get mobile-specific header with print button
+   */
+  static getMobileHeader() {
+    return `
+      <div class="mobile-header">
+        <button onclick="window.print()" class="mobile-print-btn">
+          📄 Print / Save as PDF
+        </button>
+        <button onclick="window.close()" class="mobile-close-btn">
+          ✕ Close
+        </button>
+      </div>
+    `;
+  }
+
+  /**
+   * Get mobile-specific scripts
+   */
+  static getMobileScripts() {
+    return `
+      <script>
+        // Mobile-specific functionality
+        document.addEventListener('DOMContentLoaded', function() {
+          // Auto-hide mobile header when printing
+          window.addEventListener('beforeprint', function() {
+            const mobileHeader = document.querySelector('.mobile-header');
+            if (mobileHeader) {
+              mobileHeader.style.display = 'none';
+            }
+          });
+          
+          window.addEventListener('afterprint', function() {
+            const mobileHeader = document.querySelector('.mobile-header');
+            if (mobileHeader) {
+              mobileHeader.style.display = 'flex';
+            }
+          });
+        });
+      </script>
+    `;
   }
 
   /**
@@ -171,7 +456,7 @@ class PDFExport {
     }));
   }
 
-  static getStyles() {
+  static getStyles(isMobile = false) {
     return `
       * {
         margin: 0;
@@ -181,59 +466,103 @@ class PDFExport {
       
       body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        font-size: 11px;
-        line-height: 1.2;
+        font-size: ${isMobile ? '12px' : '11px'};
+        line-height: 1.3;
         color: #333;
-        padding: 15px;
+        padding: ${isMobile ? '0' : '15px'};
         background: white;
+      }
+
+      .mobile-header {
+        display: ${isMobile ? 'flex' : 'none'};
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background: #667eea;
+        color: white;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        gap: 12px;
+      }
+
+      .mobile-print-btn, .mobile-close-btn {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s ease;
+        flex: 1;
+        max-width: 150px;
+      }
+
+      .mobile-print-btn:hover, .mobile-close-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+
+      .mobile-print-btn:active, .mobile-close-btn:active {
+        background: rgba(255, 255, 255, 0.4);
+      }
+
+      .content-wrapper {
+        padding: ${isMobile ? '16px' : '0'};
       }
       
       .header {
         text-align: center;
-        margin-bottom: 20px;
-        border-bottom: 1px solid #667eea;
-        padding-bottom: 10px;
+        margin-bottom: ${isMobile ? '16px' : '20px'};
+        border-bottom: 2px solid #667eea;
+        padding-bottom: ${isMobile ? '12px' : '10px'};
       }
       
       .header h1 {
-        font-size: 20px;
+        font-size: ${isMobile ? '22px' : '20px'};
         color: #1a202c;
-        margin-bottom: 3px;
+        margin-bottom: 4px;
         font-weight: 700;
       }
       
       .header .subtitle {
         color: #718096;
-        font-size: 12px;
+        font-size: ${isMobile ? '13px' : '12px'};
         margin-bottom: 2px;
       }
 
       .export-config {
         background: #f7fafc;
-        padding: 10px;
-        border-radius: 6px;
-        margin-bottom: 15px;
+        padding: ${isMobile ? '12px' : '10px'};
+        border-radius: 8px;
+        margin-bottom: ${isMobile ? '16px' : '15px'};
         border: 1px solid #e2e8f0;
       }
 
       .export-config h3 {
-        font-size: 12px;
+        font-size: ${isMobile ? '14px' : '12px'};
         color: #2d3748;
-        margin-bottom: 6px;
+        margin-bottom: 8px;
         font-weight: 600;
       }
 
       .config-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 6px;
-        font-size: 9px;
+        grid-template-columns: ${isMobile ? '1fr' : 'repeat(3, 1fr)'};
+        gap: ${isMobile ? '8px' : '6px'};
+        font-size: ${isMobile ? '11px' : '9px'};
       }
 
       .config-item {
         display: flex;
         justify-content: space-between;
-        padding: 2px 0;
+        padding: ${isMobile ? '4px 0' : '2px 0'};
+        border-bottom: ${isMobile ? '1px solid #e2e8f0' : 'none'};
+      }
+
+      .config-item:last-child {
+        border-bottom: none;
       }
 
       .config-label {
@@ -248,30 +577,31 @@ class PDFExport {
       
       .summary {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 10px;
-        margin-bottom: 15px;
+        grid-template-columns: ${isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)'};
+        gap: ${isMobile ? '12px' : '10px'};
+        margin-bottom: ${isMobile ? '16px' : '15px'};
         background: #f7fafc;
-        padding: 10px;
-        border-radius: 6px;
+        padding: ${isMobile ? '12px' : '10px'};
+        border-radius: 8px;
         border: 1px solid #e2e8f0;
       }
       
       .summary-item {
         text-align: center;
-        padding: 6px;
+        padding: ${isMobile ? '8px' : '6px'};
       }
       
       .summary-item .value {
-        font-size: 14px;
+        font-size: ${isMobile ? '16px' : '14px'};
         font-weight: bold;
         color: #1a202c;
-        margin-bottom: 3px;
+        margin-bottom: 4px;
         word-break: break-word;
+        line-height: 1.1;
       }
       
       .summary-item .label {
-        font-size: 9px;
+        font-size: ${isMobile ? '10px' : '9px'};
         color: #718096;
         text-transform: uppercase;
         letter-spacing: 0.3px;
@@ -279,59 +609,65 @@ class PDFExport {
       }
       
       .table-section {
-        margin-bottom: 15px;
+        margin-bottom: ${isMobile ? '16px' : '15px'};
       }
       
       .table-title {
-        font-size: 14px;
+        font-size: ${isMobile ? '16px' : '14px'};
         font-weight: 600;
         color: #2d3748;
-        margin-bottom: 6px;
+        margin-bottom: ${isMobile ? '8px' : '6px'};
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
       }
 
       .grouped-info {
         background: #fff3cd;
         color: #856404;
-        padding: 6px 8px;
-        border-radius: 3px;
-        font-size: 9px;
-        margin-bottom: 6px;
+        padding: ${isMobile ? '8px 10px' : '6px 8px'};
+        border-radius: 4px;
+        font-size: ${isMobile ? '11px' : '9px'};
+        margin-bottom: ${isMobile ? '8px' : '6px'};
         border: 1px solid #ffeaa7;
+        line-height: 1.3;
       }
       
       .table-container {
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
       }
       
       .table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 10px;
+        margin-bottom: ${isMobile ? '12px' : '10px'};
         border: 1px solid #e2e8f0;
-        font-size: 9px;
+        font-size: ${isMobile ? '10px' : '9px'};
+        min-width: ${isMobile ? '600px' : 'auto'};
       }
       
       .table th {
         background: #667eea;
         color: white;
-        padding: 6px 4px;
+        padding: ${isMobile ? '8px 6px' : '6px 4px'};
         text-align: left;
         font-weight: 600;
-        font-size: 9px;
+        font-size: ${isMobile ? '10px' : '9px'};
         text-transform: uppercase;
         letter-spacing: 0.3px;
         border-bottom: 1px solid #5a67d8;
+        position: sticky;
+        top: ${isMobile ? '60px' : '0'};
+        z-index: 10;
       }
       
       .table td {
-        padding: 4px 3px;
+        padding: ${isMobile ? '6px 4px' : '4px 3px'};
         border-bottom: 1px solid #e2e8f0;
-        font-size: 9px;
+        font-size: ${isMobile ? '10px' : '9px'};
         vertical-align: top;
-        line-height: 1.1;
+        line-height: 1.2;
       }
       
       .table tbody tr:nth-child(even) {
@@ -354,21 +690,21 @@ class PDFExport {
       .table-date {
         font-weight: 500;
         color: #2d3748;
-        margin-bottom: 1px;
-        font-size: 9px;
+        margin-bottom: 2px;
+        font-size: ${isMobile ? '10px' : '9px'};
       }
       
       .table-time {
         color: #718096;
-        font-size: 8px;
+        font-size: ${isMobile ? '9px' : '8px'};
       }
       
       .table-product {
         font-weight: 500;
         color: #2d3748;
-        max-width: 120px;
+        max-width: ${isMobile ? '150px' : '120px'};
         word-break: break-word;
-        font-size: 9px;
+        font-size: ${isMobile ? '10px' : '9px'};
       }
 
       .table-product.grouped {
@@ -379,23 +715,23 @@ class PDFExport {
       .table-price {
         font-weight: 600;
         color: #38a169;
-        font-size: 9px;
+        font-size: ${isMobile ? '10px' : '9px'};
       }
 
       .table-price.grouped {
         color: #c53030;
-        font-size: 10px;
+        font-size: ${isMobile ? '11px' : '10px'};
       }
       
       .table-slot {
         background: #667eea;
         color: white;
-        padding: 1px 3px;
-        border-radius: 2px;
-        font-size: 8px;
+        padding: ${isMobile ? '2px 4px' : '1px 3px'};
+        border-radius: 3px;
+        font-size: ${isMobile ? '9px' : '8px'};
         font-weight: 600;
         display: inline-block;
-        max-width: 60px;
+        max-width: ${isMobile ? '80px' : '60px'};
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -408,13 +744,13 @@ class PDFExport {
       .payment-method {
         background: #e2e8f0;
         color: #4a5568;
-        padding: 1px 4px;
-        border-radius: 6px;
-        font-size: 8px;
+        padding: ${isMobile ? '2px 5px' : '1px 4px'};
+        border-radius: 8px;
+        font-size: ${isMobile ? '9px' : '8px'};
         font-weight: 500;
         text-transform: capitalize;
         display: inline-block;
-        max-width: 60px;
+        max-width: ${isMobile ? '80px' : '60px'};
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -428,25 +764,25 @@ class PDFExport {
       .grouped-badge {
         background: #f56565;
         color: white;
-        padding: 1px 3px;
-        border-radius: 2px;
-        font-size: 7px;
+        padding: ${isMobile ? '2px 4px' : '1px 3px'};
+        border-radius: 3px;
+        font-size: ${isMobile ? '8px' : '7px'};
         font-weight: 600;
-        margin-left: 3px;
+        margin-left: 4px;
       }
       
       .footer {
-        margin-top: 15px;
+        margin-top: ${isMobile ? '20px' : '15px'};
         text-align: center;
         color: #718096;
-        font-size: 8px;
+        font-size: ${isMobile ? '10px' : '8px'};
         border-top: 1px solid #e2e8f0;
-        padding-top: 8px;
+        padding-top: ${isMobile ? '12px' : '8px'};
         page-break-inside: avoid;
       }
       
       .footer p {
-        margin-bottom: 2px;
+        margin-bottom: 3px;
       }
       
       .company-logo {
@@ -465,9 +801,17 @@ class PDFExport {
       
       /* Print-specific styles */
       @media print {
+        .mobile-header {
+          display: none !important;
+        }
+
         body { 
           padding: 10px;
           font-size: 9px;
+        }
+
+        .content-wrapper {
+          padding: 0;
         }
         
         .header h1 { 
@@ -508,6 +852,10 @@ class PDFExport {
           padding: 3px 2px; 
           font-size: 8px; 
         }
+
+        .table th {
+          position: static;
+        }
         
         .table-product {
           max-width: 100px;
@@ -533,11 +881,11 @@ class PDFExport {
         }
       }
       
-      /* Alternative print styles for different paper sizes */
-      @media print and (max-width: 8.5in) {
+      /* Mobile-specific styles */
+      @media (max-width: 768px) {
         .summary {
           grid-template-columns: 1fr;
-          gap: 6px;
+          gap: 8px;
         }
 
         .config-grid {
@@ -545,11 +893,32 @@ class PDFExport {
         }
         
         .table {
-          font-size: 7px;
+          font-size: 9px;
+          min-width: 500px;
         }
         
         .table th, .table td {
-          padding: 2px 1px;
+          padding: 4px 3px;
+        }
+
+        .table-product {
+          max-width: 120px;
+        }
+      }
+
+      /* Very small screens */
+      @media (max-width: 480px) {
+        .table {
+          min-width: 400px;
+          font-size: 8px;
+        }
+
+        .table th, .table td {
+          padding: 3px 2px;
+        }
+
+        .table-product {
+          max-width: 100px;
         }
       }
     `;
@@ -557,8 +926,6 @@ class PDFExport {
 
   /**
    * Generate HTML content for the PDF
-   * @param {Object} data - Data for generating HTML
-   * @returns {string} HTML content
    */
   static generateHTML({
     title,
@@ -569,187 +936,198 @@ class PDFExport {
     salesData,
     formatCurrency,
     getProductName,
-    options = {}
+    options = {},
+    isMobile = false
   }) {
     const isGrouped = options.groupByProduct || options.groupByDate;
     const groupType = options.groupByProduct ? 'Product' : options.groupByDate ? 'Date' : 'None';
 
     return `
-      <div class="header">
-        <h1>${title}</h1>
-        <div class="subtitle">Period: ${startDateFormatted} - ${endDateFormatted}</div>
-        <div class="subtitle">Generated on ${currentDate}</div>
-      </div>
+      <div class="content-wrapper">
+        <div class="header">
+          <h1>${title}</h1>
+          <div class="subtitle">Period: ${startDateFormatted} - ${endDateFormatted}</div>
+          <div class="subtitle">Generated on ${currentDate}</div>
+        </div>
 
-      <div class="export-config no-break">
-        <h3>📋 Export Configuration</h3>
-        <div class="config-grid">
-          <div class="config-item">
-            <span class="config-label">Data Grouping:</span>
-            <span class="config-value">${groupType}</span>
-          </div>
-          <div class="config-item">
-            <span class="config-label">Product Details:</span>
-            <span class="config-value">${options.includeProductDetails ? 'Included' : 'Excluded'}</span>
-          </div>
-          <div class="config-item">
-            <span class="config-label">Timestamps:</span>
-            <span class="config-value">${options.includeTimestamps ? 'Included' : 'Excluded'}</span>
-          </div>
-          <div class="config-item">
-            <span class="config-label">Payment Methods:</span>
-            <span class="config-value">${options.includePaymentMethods ? 'Included' : 'Excluded'}</span>
-          </div>
-          <div class="config-item">
-            <span class="config-label">Summary Stats:</span>
-            <span class="config-value">${options.includeSummaryStats ? 'Included' : 'Excluded'}</span>
-          </div>
-          <div class="config-item">
-            <span class="config-label">Records:</span>
-            <span class="config-value">${salesData.length} ${isGrouped ? 'grouped' : 'individual'}</span>
+        <div class="export-config no-break">
+          <h3>📋 Export Configuration</h3>
+          <div class="config-grid">
+            <div class="config-item">
+              <span class="config-label">Data Grouping:</span>
+              <span class="config-value">${groupType}</span>
+            </div>
+            <div class="config-item">
+              <span class="config-label">Product Details:</span>
+              <span class="config-value">${options.includeProductDetails ? 'Included' : 'Excluded'}</span>
+            </div>
+            <div class="config-item">
+              <span class="config-label">Timestamps:</span>
+              <span class="config-value">${options.includeTimestamps ? 'Included' : 'Excluded'}</span>
+            </div>
+            <div class="config-item">
+              <span class="config-label">Payment Methods:</span>
+              <span class="config-value">${options.includePaymentMethods ? 'Included' : 'Excluded'}</span>
+            </div>
+            <div class="config-item">
+              <span class="config-label">Summary Stats:</span>
+              <span class="config-value">${options.includeSummaryStats ? 'Included' : 'Excluded'}</span>
+            </div>
+            <div class="config-item">
+              <span class="config-label">Records:</span>
+              <span class="config-value">${salesData.length} ${isGrouped ? 'grouped' : 'individual'}</span>
+            </div>
           </div>
         </div>
-      </div>
-      
-      <div class="summary no-break">
-        <div class="summary-item">
-          <div class="value">${stats.totalSales || 0}</div>
-          <div class="label">Total Sales</div>
-        </div>
-        <div class="summary-item">
-          <div class="value">${formatCurrency(stats.totalRevenue || 0)}</div>
-          <div class="label">Total Revenue</div>
-        </div>
-        <div class="summary-item">
-          <div class="value">${formatCurrency(stats.averageTransaction || 0)}</div>
-          <div class="label">Avg Transaction</div>
-        </div>
-        <div class="summary-item">
-          <div class="value">${stats.topProduct?.name || 'No Data'}</div>
-          <div class="label">Top Product</div>
-        </div>
-      </div>
-      
-      <div class="table-section">
-        <div class="table-title">📊 ${isGrouped ? 'Grouped' : 'Transaction'} Details</div>
-        ${isGrouped ? `
-          <div class="grouped-info">
-            ⚠️ Data has been grouped by ${groupType.toLowerCase()}. Individual transaction details are aggregated.
+        
+        <div class="summary no-break">
+          <div class="summary-item">
+            <div class="value">${stats.totalSales || 0}</div>
+            <div class="label">Total Sales</div>
           </div>
-        ` : ''}
-        <div class="table-container">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Date & Time</th>
-                <th>Product${isGrouped ? '/Summary' : ''}</th>
-                <th>Slot${isGrouped ? 's' : ''}</th>
-                <th>Price${isGrouped ? '/Total' : ''}</th>
-                <th>Payment${isGrouped ? 's' : ''}</th>
-                ${options.includeTimestamps ? '<th>Day/Hour</th>' : ''}
-                ${options.includeProductDetails ? '<th>Product ID</th>' : ''}
-              </tr>
-            </thead>
-            <tbody>
-              ${salesData.map(sale => {
-                const saleDate = new Date(sale.timestamp?.seconds * 1000);
-                const isGroupedRow = sale.isGrouped;
-                
-                return `
-                  <tr${isGroupedRow ? ' class="grouped-row"' : ''}>
-                    <td>
-                      <div class="table-date">
-                        ${saleDate.toLocaleDateString('en-NZ', { 
-                          month: 'short', 
-                          day: 'numeric', 
-                          year: 'numeric' 
-                        })}
-                      </div>
-                      <div class="table-time">${saleDate.toLocaleTimeString('en-NZ', { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                      })}</div>
-                    </td>
-                    <td>
-                      <span class="table-product${isGroupedRow ? ' grouped' : ''}">
-                        ${getProductName(sale.productId)}
-                      </span>
-                      ${isGroupedRow ? `<span class="grouped-badge">${sale.count}x</span>` : ''}
-                    </td>
-                    <td>
-                      <span class="table-slot${isGroupedRow ? ' grouped' : ''}">${sale.slot}</span>
-                    </td>
-                    <td>
-                      <span class="table-price${isGroupedRow ? ' grouped' : ''}">${formatCurrency(sale.price)}</span>
-                    </td>
-                    <td>
-                      <span class="payment-method${isGroupedRow ? ' grouped' : ''}">${sale.paymentMethod || 'cash'}</span>
-                    </td>
-                    ${options.includeTimestamps ? `
-                      <td>
-                        <div style="font-size: 10px;">
-                          ${saleDate.toLocaleDateString('en-US', { weekday: 'short' })} / ${saleDate.getHours()}h
-                        </div>
-                      </td>
-                    ` : ''}
-                    ${options.includeProductDetails ? `
-                      <td style="font-size: 10px; color: #718096;">
-                        ${sale.productId || 'N/A'}
-                      </td>
-                    ` : ''}
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
+          <div class="summary-item">
+            <div class="value">${formatCurrency(stats.totalRevenue || 0)}</div>
+            <div class="label">Total Revenue</div>
+          </div>
+          <div class="summary-item">
+            <div class="value">${formatCurrency(stats.averageTransaction || 0)}</div>
+            <div class="label">Avg Transaction</div>
+          </div>
+          <div class="summary-item">
+            <div class="value">${stats.topProduct?.name || 'No Data'}</div>
+            <div class="label">Top Product</div>
+          </div>
         </div>
-      </div>
-
-      ${options.includeSummaryStats ? `
+        
         <div class="table-section">
-          <div class="table-title">📈 Performance Analysis</div>
+          <div class="table-title">📊 ${isGrouped ? 'Grouped' : 'Transaction'} Details</div>
+          ${isGrouped ? `
+            <div class="grouped-info">
+              ⚠️ Data has been grouped by ${groupType.toLowerCase()}. Individual transaction details are aggregated.
+            </div>
+          ` : ''}
           <div class="table-container">
             <table class="table">
               <thead>
                 <tr>
-                  <th>Metric</th>
-                  <th>Value</th>
-                  <th>Analysis</th>
+                  <th>Date & Time</th>
+                  <th>Product${isGrouped ? '/Summary' : ''}</th>
+                  <th>Slot${isGrouped ? 's' : ''}</th>
+                  <th>Price${isGrouped ? '/Total' : ''}</th>
+                  <th>Payment${isGrouped ? 's' : ''}</th>
+                  ${options.includeTimestamps ? '<th>Day/Hour</th>' : ''}
+                  ${options.includeProductDetails ? '<th>Product ID</th>' : ''}
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td><strong>Payment Methods</strong></td>
-                  <td>
-                    Cash: ${this.countPaymentMethod(salesData, 'cash')} | 
-                    Card: ${this.countPaymentMethod(salesData, 'card')}
-                  </td>
-                  <td style="font-size: 10px;">${this.getPaymentAnalysis(salesData)}</td>
-                </tr>
-                <tr>
-                  <td><strong>Peak Activity</strong></td>
-                  <td>${this.getBusiestHour(salesData)}</td>
-                  <td style="font-size: 10px;">Optimize stock during peak hours</td>
-                </tr>
-                <tr>
-                  <td><strong>Weekly Pattern</strong></td>
-                  <td>
-                    Weekdays: ${this.getWeekdaySales(salesData)} | 
-                    Weekends: ${this.getWeekendSales(salesData)}
-                  </td>
-                  <td style="font-size: 10px;">${this.getWeeklyAnalysis(salesData)}</td>
-                </tr>
+                ${salesData.slice(0, isMobile ? 50 : 100).map(sale => {
+                  const saleDate = new Date(sale.timestamp?.seconds * 1000);
+                  const isGroupedRow = sale.isGrouped;
+                  
+                  return `
+                    <tr${isGroupedRow ? ' class="grouped-row"' : ''}>
+                      <td>
+                        <div class="table-date">
+                          ${saleDate.toLocaleDateString('en-NZ', { 
+                            month: 'short', 
+                            day: 'numeric', 
+                            year: isMobile ? '2-digit' : 'numeric' 
+                          })}
+                        </div>
+                        <div class="table-time">${saleDate.toLocaleTimeString('en-NZ', { 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })}</div>
+                      </td>
+                      <td>
+                        <span class="table-product${isGroupedRow ? ' grouped' : ''}">
+                          ${getProductName(sale.productId)}
+                        </span>
+                        ${isGroupedRow ? `<span class="grouped-badge">${sale.count}x</span>` : ''}
+                      </td>
+                      <td>
+                        <span class="table-slot${isGroupedRow ? ' grouped' : ''}">${sale.slot}</span>
+                      </td>
+                      <td>
+                        <span class="table-price${isGroupedRow ? ' grouped' : ''}">${formatCurrency(sale.price)}</span>
+                      </td>
+                      <td>
+                        <span class="payment-method${isGroupedRow ? ' grouped' : ''}">${sale.paymentMethod || 'cash'}</span>
+                      </td>
+                      ${options.includeTimestamps ? `
+                        <td>
+                          <div style="font-size: ${isMobile ? '9px' : '10px'};">
+                            ${saleDate.toLocaleDateString('en-US', { weekday: 'short' })} / ${saleDate.getHours()}h
+                          </div>
+                        </td>
+                      ` : ''}
+                      ${options.includeProductDetails ? `
+                        <td style="font-size: ${isMobile ? '9px' : '10px'}; color: #718096;">
+                          ${sale.productId || 'N/A'}
+                        </td>
+                      ` : ''}
+                    </tr>
+                  `;
+                }).join('')}
+                ${salesData.length > (isMobile ? 50 : 100) ? `
+                  <tr>
+                    <td colspan="${4 + (options.includeTimestamps ? 1 : 0) + (options.includeProductDetails ? 1 : 0)}" style="text-align: center; font-style: italic; color: #718096; padding: 12px;">
+                      ... and ${salesData.length - (isMobile ? 50 : 100)} more transactions (truncated for ${isMobile ? 'mobile' : 'print'} display)
+                    </td>
+                  </tr>
+                ` : ''}
               </tbody>
             </table>
           </div>
         </div>
-      ` : ''}
-      
-      <div class="footer">
-        <p>This report contains <strong>${salesData.length}</strong> ${isGrouped ? 'grouped records' : 'transactions'}</p>
-        <p class="company-logo">🏪 Vending Machine Sales Analytics System</p>
-        <p>Report generated automatically on ${currentDate}</p>
-        ${isGrouped ? '<p><em>Note: This report shows aggregated data grouped by ' + groupType.toLowerCase() + '</em></p>' : ''}
+
+        ${options.includeSummaryStats ? `
+          <div class="table-section">
+            <div class="table-title">📈 Performance Analysis</div>
+            <div class="table-container">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Metric</th>
+                    <th>Value</th>
+                    <th>Analysis</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Payment Methods</strong></td>
+                    <td>
+                      Cash: ${this.countPaymentMethod(salesData, 'cash')} | 
+                      Card: ${this.countPaymentMethod(salesData, 'card')}
+                    </td>
+                    <td style="font-size: ${isMobile ? '9px' : '10px'};">${this.getPaymentAnalysis(salesData)}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Peak Activity</strong></td>
+                    <td>${this.getBusiestHour(salesData)}</td>
+                    <td style="font-size: ${isMobile ? '9px' : '10px'};">Optimize stock during peak hours</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Weekly Pattern</strong></td>
+                    <td>
+                      Weekdays: ${this.getWeekdaySales(salesData)} | 
+                      Weekends: ${this.getWeekendSales(salesData)}
+                    </td>
+                    <td style="font-size: ${isMobile ? '9px' : '10px'};">${this.getWeeklyAnalysis(salesData)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ` : ''}
+        
+        <div class="footer">
+          <p>This report contains <strong>${salesData.length}</strong> ${isGrouped ? 'grouped records' : 'transactions'}</p>
+          <p class="company-logo">🏪 Vending Machine Sales Analytics System</p>
+          <p>Report generated automatically on ${currentDate}</p>
+          ${isGrouped ? '<p><em>Note: This report shows aggregated data grouped by ' + groupType.toLowerCase() + '</em></p>' : ''}
+          ${isMobile ? '<p><em>Mobile-optimized version - some data may be truncated for display</em></p>' : ''}
+        </div>
       </div>
     `;
   }
@@ -830,8 +1208,7 @@ class PDFExport {
   }
 
   /**
-   * Export product performance data as PDF
-   * @param {Object} config - Export configuration for product data
+   * Export product performance data as PDF (mobile compatible)
    */
   static exportProductPerformancePDF({
     productData = [],
@@ -850,82 +1227,131 @@ class PDFExport {
       return;
     }
 
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                    window.innerWidth <= 768;
+
     const currentDate = new Date().toLocaleDateString('en-NZ');
     const startDateFormatted = dateRange.startDate ? new Date(dateRange.startDate).toLocaleDateString('en-NZ') : 'N/A';
     const endDateFormatted = dateRange.endDate ? new Date(dateRange.endDate).toLocaleDateString('en-NZ') : 'N/A';
 
-    const printWindow = window.open('', '_blank');
-    
     const htmlContent = `
       <!DOCTYPE html>
-      <html>
+      <html lang="en">
         <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>${title} - ${startDateFormatted} to ${endDateFormatted}</title>
-          <style>${this.getStyles()}</style>
+          <style>${this.getStyles(isMobile)}</style>
+          ${isMobile ? this.getMobileScripts() : ''}
         </head>
         <body>
-          <div class="header">
-            <h1>${title}</h1>
-            <div class="subtitle">Period: ${startDateFormatted} - ${endDateFormatted}</div>
-            <div class="subtitle">Generated on ${currentDate}</div>
-          </div>
-          
-          <div class="table-section">
-            <div class="table-title">📈 Product Rankings</div>
-            <div class="table-container">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>Rank</th>
-                    <th>Product Name</th>
-                    <th>Sales Count</th>
-                    <th>Revenue</th>
-                    <th>Avg. Price</th>
-                    <th>Market Share</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${productData.map((product, index) => {
-                    const avgPrice = product.revenue / product.count;
-                    const totalSales = productData.reduce((sum, p) => sum + p.count, 0);
-                    const marketShare = totalSales > 0 ? (product.count / totalSales * 100).toFixed(1) : '0.0';
-                    
-                    return `
-                      <tr>
-                        <td><strong>#${index + 1}</strong></td>
-                        <td class="table-product">${product.productName}</td>
-                        <td>${product.count}</td>
-                        <td class="table-price">${formatCurrency(product.revenue)}</td>
-                        <td>${formatCurrency(avgPrice)}</td>
-                        <td>${marketShare}%</td>
-                      </tr>
-                    `;
-                  }).join('')}
-                </tbody>
-              </table>
+          ${isMobile ? this.getMobileHeader() : ''}
+          <div class="content-wrapper">
+            <div class="header">
+              <h1>${title}</h1>
+              <div class="subtitle">Period: ${startDateFormatted} - ${endDateFormatted}</div>
+              <div class="subtitle">Generated on ${currentDate}</div>
             </div>
-          </div>
-          
-          <div class="footer">
-            <p>This report contains <strong>${productData.length}</strong> products</p>
-            <p class="company-logo">🏪 Vending Machine Sales Analytics System</p>
-            <p>Report generated automatically on ${currentDate}</p>
+            
+            <div class="table-section">
+              <div class="table-title">📈 Product Rankings</div>
+              <div class="table-container">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Product Name</th>
+                      <th>Sales</th>
+                      <th>Revenue</th>
+                      <th>Avg. Price</th>
+                      <th>Share %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${productData.slice(0, isMobile ? 25 : 50).map((product, index) => {
+                      const avgPrice = product.revenue / product.count;
+                      const totalSales = productData.reduce((sum, p) => sum + p.count, 0);
+                      const marketShare = totalSales > 0 ? (product.count / totalSales * 100).toFixed(1) : '0.0';
+                      
+                      return `
+                        <tr>
+                          <td><strong>#${index + 1}</strong></td>
+                          <td class="table-product">${product.productName}</td>
+                          <td>${product.count}</td>
+                          <td class="table-price">${formatCurrency(product.revenue)}</td>
+                          <td>${formatCurrency(avgPrice)}</td>
+                          <td>${marketShare}%</td>
+                        </tr>
+                      `;
+                    }).join('')}
+                    ${productData.length > (isMobile ? 25 : 50) ? `
+                      <tr>
+                        <td colspan="6" style="text-align: center; font-style: italic; color: #718096; padding: 12px;">
+                          ... and ${productData.length - (isMobile ? 25 : 50)} more products (truncated for ${isMobile ? 'mobile' : 'print'} display)
+                        </td>
+                      </tr>
+                    ` : ''}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            <div class="footer">
+              <p>This report contains <strong>${productData.length}</strong> products</p>
+              <p class="company-logo">🏪 Vending Machine Sales Analytics System</p>
+              <p>Report generated automatically on ${currentDate}</p>
+              ${isMobile ? '<p><em>Mobile-optimized version - some data may be truncated for display</em></p>' : ''}
+            </div>
           </div>
         </body>
       </html>
     `;
 
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-    
-    setTimeout(() => {
-      printWindow.focus();
-      printWindow.print();
-      setTimeout(() => {
-        printWindow.close();
-      }, 100);
-    }, 500);
+    if (isMobile) {
+      // Use the same mobile approach as sales PDF
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.download = `${title.replace(/\s+/g, '-')}-${startDateFormatted}.html`;
+      
+      document.body.appendChild(link);
+      
+      try {
+        const newWindow = window.open(url, '_blank');
+        if (newWindow) {
+          setTimeout(() => {
+            this.showMobileInstructions();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          }, 1000);
+        } else {
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          alert('Your browser blocked the popup. The report has been downloaded as an HTML file instead.');
+        }
+      } catch (error) {
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        alert('Opening in new tab failed. The report has been downloaded as an HTML file.');
+      }
+    } else {
+      // Desktop approach
+      const printWindow = window.open('', '_blank', 'width=800,height=600');
+      if (printWindow) {
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        setTimeout(() => {
+          printWindow.focus();
+          printWindow.print();
+          setTimeout(() => printWindow.close(), 100);
+        }, 500);
+      } else {
+        alert('Popup window was blocked. Please allow popups for this site to export PDF reports.');
+      }
+    }
   }
 }
-
-export default PDFExport;
