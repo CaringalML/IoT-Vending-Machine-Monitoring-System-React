@@ -75,6 +75,7 @@ class PDFExport {
     options
   }) {
     const currentDate = new Date().toLocaleDateString('en-NZ');
+    const currentTime = new Date().toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' });
     const startDateFormatted = dateRange.startDate ? new Date(dateRange.startDate).toLocaleDateString('en-NZ') : 'N/A';
     const endDateFormatted = dateRange.endDate ? new Date(dateRange.endDate).toLocaleDateString('en-NZ') : 'N/A';
 
@@ -91,6 +92,7 @@ class PDFExport {
       startDateFormatted,
       endDateFormatted,
       currentDate,
+      currentTime,
       stats,
       salesData: processedData,
       formatCurrency,
@@ -154,6 +156,7 @@ class PDFExport {
     options
   }) {
     const currentDate = new Date().toLocaleDateString('en-NZ');
+    const currentTime = new Date().toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' });
     const startDateFormatted = dateRange.startDate ? new Date(dateRange.startDate).toLocaleDateString('en-NZ') : 'N/A';
     const endDateFormatted = dateRange.endDate ? new Date(dateRange.endDate).toLocaleDateString('en-NZ') : 'N/A';
 
@@ -170,6 +173,7 @@ class PDFExport {
       startDateFormatted,
       endDateFormatted,
       currentDate,
+      currentTime,
       stats,
       salesData: processedData,
       formatCurrency,
@@ -288,6 +292,7 @@ class PDFExport {
     startDateFormatted,
     endDateFormatted,
     currentDate,
+    currentTime,
     stats,
     salesData,
     formatCurrency,
@@ -314,6 +319,7 @@ class PDFExport {
             startDateFormatted,
             endDateFormatted,
             currentDate,
+            currentTime,
             stats,
             salesData,
             formatCurrency,
@@ -930,6 +936,7 @@ class PDFExport {
     startDateFormatted,
     endDateFormatted,
     currentDate,
+    currentTime,
     stats,
     salesData,
     formatCurrency,
@@ -945,7 +952,7 @@ class PDFExport {
         <div class="header">
           <h1>${title}</h1>
           <div class="subtitle">Period: ${startDateFormatted} - ${endDateFormatted}</div>
-          <div class="subtitle">Generated on ${currentDate}</div>
+          <div class="subtitle">Generated on ${currentDate} at ${currentTime}</div>
         </div>
 
         <div class="export-config no-break">
@@ -1122,7 +1129,7 @@ class PDFExport {
         <div class="footer">
           <p>This report contains <strong>${salesData.length}</strong> ${isGrouped ? 'grouped records' : 'transactions'}</p>
           <p class="company-logo">🏪 Vending Machine Sales Analytics System</p>
-          <p>Report generated automatically on ${currentDate}</p>
+          <p>Report generated automatically on ${currentDate} at ${currentTime}</p>
           ${isGrouped ? '<p><em>Note: This report shows aggregated data grouped by ' + groupType.toLowerCase() + '</em></p>' : ''}
           ${isMobile ? '<p><em>Mobile-optimized version - some data may be truncated for display</em></p>' : ''}
         </div>
@@ -1229,6 +1236,7 @@ class PDFExport {
                     window.innerWidth <= 768;
 
     const currentDate = new Date().toLocaleDateString('en-NZ');
+    const currentTime = new Date().toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' });
     const startDateFormatted = dateRange.startDate ? new Date(dateRange.startDate).toLocaleDateString('en-NZ') : 'N/A';
     const endDateFormatted = dateRange.endDate ? new Date(dateRange.endDate).toLocaleDateString('en-NZ') : 'N/A';
 
@@ -1248,7 +1256,7 @@ class PDFExport {
             <div class="header">
               <h1>${title}</h1>
               <div class="subtitle">Period: ${startDateFormatted} - ${endDateFormatted}</div>
-              <div class="subtitle">Generated on ${currentDate}</div>
+              <div class="subtitle">Generated on ${currentDate} at ${currentTime}</div>
             </div>
             
             <div class="table-section">
@@ -1297,7 +1305,7 @@ class PDFExport {
             <div class="footer">
               <p>This report contains <strong>${productData.length}</strong> products</p>
               <p class="company-logo">🏪 Vending Machine Sales Analytics System</p>
-              <p>Report generated automatically on ${currentDate}</p>
+              <p>Report generated automatically on ${currentDate} at ${currentTime}</p>
               ${isMobile ? '<p><em>Mobile-optimized version - some data may be truncated for display</em></p>' : ''}
             </div>
           </div>
