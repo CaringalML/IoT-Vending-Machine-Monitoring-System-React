@@ -3,14 +3,13 @@ import { Download, TrendingUp, DollarSign, Calendar, Filter, Search, X, FileText
 import {
   subscribeToSales,
   subscribeToProducts,
-  deleteSale  // Add this import
+  deleteSale
 } from '../../services/firestore';
 import LoadingSpinner from '../Common/LoadingSpinner';
 import Modal from '../Common/Modal';
-import DeleteConfirmation from '../Common/DeleteConfirmation';  // Add this import
+import DeleteConfirmation from '../Common/DeleteConfirmation';
 import CustomBarChart from './CustomBarChart'; 
 import ChartForecast from './ChartForecast';
-// Fixed import - make sure all exports are imported correctly
 import { CSVExport, ExcelExport, PDFExport } from './exports';
 import './Sales.css'; 
 
@@ -29,18 +28,16 @@ const Sales = () => {
     averageTransaction: 0,
     topProduct: null
   });
-  const [quickFilter, setQuickFilter] = useState('all'); // Changed default to 'all'
+  const [quickFilter, setQuickFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   
-  // Debug info state
   const [dataInfo, setDataInfo] = useState({
     totalSalesInDB: 0,
     dateRange: { oldest: null, newest: null },
     filteredCount: 0
   });
   
-  // Export modal states
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportFormat, setExportFormat] = useState('csv');
   const [exportOptions, setExportOptions] = useState({
@@ -54,11 +51,9 @@ const Sales = () => {
   const [exportLoading, setExportLoading] = useState(false);
   const [exportPreview, setExportPreview] = useState(null);
 
-  // Delete confirmation states
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [saleToDelete, setSaleToDelete] = useState(null);
 
-  // Responsive state
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -72,7 +67,7 @@ const Sales = () => {
   }, []);
 
   useEffect(() => {
-    applyQuickFilter('all'); // Start with all data
+    applyQuickFilter('all');
     const unsubscribeSales = subscribeToSales(setSales);
     const unsubscribeProducts = subscribeToProducts(setProducts);
 
@@ -107,12 +102,10 @@ const Sales = () => {
         startDate.setDate(startDate.getDate() - 90);
         break;
       case 'all':
-        // Show all data - set very wide date range
-        startDate.setFullYear(2020, 0, 1); // Start from 2020
-        endDate.setFullYear(2030, 11, 31); // End at 2030
+        startDate.setFullYear(2020, 0, 1);
+        endDate.setFullYear(2030, 11, 31);
         break;
       default:
-        // Default to all data
         startDate.setFullYear(2020, 0, 1);
         endDate.setFullYear(2030, 11, 31);
     }
@@ -124,9 +117,9 @@ const Sales = () => {
     setQuickFilter(filterType);
   };
 
-  // Calculate data info for debugging
   const calculateDataInfo = useCallback(() => {
-    if (sales.length === 0) {
+    const safeSales = sales || [];
+    if (safeSales.length === 0) {
       setDataInfo({
         totalSalesInDB: 0,
         dateRange: { oldest: null, newest: null },
@@ -135,8 +128,7 @@ const Sales = () => {
       return;
     }
 
-    // Find oldest and newest dates
-    const dates = sales
+    const dates = safeSales
       .map(sale => sale.timestamp?.seconds ? new Date(sale.timestamp.seconds * 1000) : null)
       .filter(Boolean)
       .sort((a, b) => a - b);
@@ -145,79 +137,37 @@ const Sales = () => {
     const newest = dates[dates.length - 1];
 
     setDataInfo({
-      totalSalesInDB: sales.length,
+      totalSalesInDB: safeSales.length,
       dateRange: { 
         oldest: oldest ? oldest.toLocaleDateString('en-NZ') : null, 
         newest: newest ? newest.toLocaleDateString('en-NZ') : null 
       },
-      filteredCount: filteredSales.length
+      filteredCount: (filteredSales || []).length
     });
   }, [sales, filteredSales]);
 
-  // FIXED: Direct filtering function that recalculates everything
   const filterAndCalculateAll = useCallback(() => {
-    console.log('🔄 Starting filterAndCalculateAll');
-    console.log('📊 Total sales in database:', sales.length);
-    console.log('📅 Filter range:', dateRange.startDate, 'to', dateRange.endDate);
-    console.log('🔍 Quick filter:', quickFilter);
+    const safeSales = sales || [];
     
-    if (!dateRange.startDate || !dateRange.endDate) {
-      console.log('❌ No date range set');
+    if (!dateRange.startDate || !dateRange.endDate || safeSales.length === 0) {
       setFilteredSales([]);
-      setSalesStats({
-        totalSales: 0,
-        totalRevenue: 0,
-        averageTransaction: 0,
-        topProduct: null
-      });
+      setSalesStats({ totalSales: 0, totalRevenue: 0, averageTransaction: 0, topProduct: null });
+      if (safeSales.length > 0) setLoading(false);
       return;
     }
 
-    if (sales.length === 0) {
-      console.log('❌ No sales data');
-      setFilteredSales([]);
-      setSalesStats({
-        totalSales: 0,
-        totalRevenue: 0,
-        averageTransaction: 0,
-        topProduct: null
-      });
-      return;
-    }
-
-    // Filter sales by date range
     const startDate = new Date(dateRange.startDate);
     const endDate = new Date(dateRange.endDate);
     endDate.setHours(23, 59, 59, 999);
 
-    console.log('📅 Filtering between:', startDate.toISOString(), 'and', endDate.toISOString());
-
-    const filtered = sales.filter(sale => {
-      if (!sale.timestamp?.seconds) {
-        console.log('⚠️ Sale without timestamp:', sale.id);
-        return false;
-      }
+    const filtered = safeSales.filter(sale => {
+      if (!sale.timestamp?.seconds) return false;
       const saleDate = new Date(sale.timestamp.seconds * 1000);
-      const inRange = saleDate >= startDate && saleDate <= endDate;
-      
-      if (!inRange) {
-        console.log('🚫 Sale outside range:', sale.id, 'date:', saleDate.toISOString());
-      }
-      
-      return inRange;
+      return saleDate >= startDate && saleDate <= endDate;
     });
-
-    console.log('📊 Filtered sales count:', filtered.length);
-    console.log('📊 Sample filtered sales:', filtered.slice(0, 3).map(s => ({
-      id: s.id,
-      date: new Date(s.timestamp.seconds * 1000).toISOString(),
-      product: s.productId,
-      price: s.price
-    })));
 
     setFilteredSales(filtered);
 
-    // Calculate stats immediately
     const totalSales = filtered.length;
     const totalRevenue = filtered.reduce((sum, sale) => sum + (sale.price || 0), 0);
     const averageTransaction = totalSales > 0 ? totalRevenue / totalSales : 0;
@@ -231,36 +181,20 @@ const Sales = () => {
 
     let topProduct = null;
     if (Object.keys(productCounts).length > 0) {
-      const topProductId = Object.keys(productCounts).reduce((a, b) =>
-        productCounts[a] > productCounts[b] ? a : b
-      );
-      topProduct = products.find(p => p.id === topProductId);
+      const topProductId = Object.keys(productCounts).reduce((a, b) => productCounts[a] > productCounts[b] ? a : b);
+      topProduct = (products || []).find(p => p.id === topProductId);
     }
 
-    const newStats = {
-      totalSales,
-      totalRevenue,
-      averageTransaction,
-      topProduct
-    };
-
-    console.log('📈 New stats calculated:', newStats);
-    setSalesStats(newStats);
-
-    if (sales.length > 0) {
-      setLoading(false);
-    }
-  }, [dateRange.startDate, dateRange.endDate, sales, products, quickFilter]);
+    setSalesStats({ totalSales, totalRevenue, averageTransaction, topProduct });
+    setLoading(false);
+  }, [dateRange.startDate, dateRange.endDate, sales, products]);
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-NZ', {
-      style: 'currency',
-      currency: 'NZD'
-    }).format(amount);
+    return new Intl.NumberFormat('en-NZ', { style: 'currency', currency: 'NZD' }).format(amount);
   };
 
   const getProductName = useCallback((productId) => {
-    const product = products.find(p => p.id === productId);
+    const product = (products || []).find(p => p.id === productId);
     return product?.name || 'Unknown Product';
   }, [products]);
 
@@ -269,76 +203,49 @@ const Sales = () => {
       setSearchResults([]);
       return;
     }
-
     const searchLower = term.toLowerCase();
-    const results = filteredSales.filter(sale => {
-      const product = products.find(p => p.id === sale.productId);
+    const results = (filteredSales || []).filter(sale => {
+      const product = (products || []).find(p => p.id === sale.productId);
       const saleDate = new Date(sale.timestamp?.seconds * 1000);
-
       const searchFields = [
-        product?.name || 'Unknown Product',
-        product?.sku || '',
-        product?.category || '',
-        sale.slot || '',
-        sale.paymentMethod || 'cash',
-        formatCurrency(sale.price),
-        sale.price?.toString() || '',
-        saleDate.toLocaleDateString('en-NZ'),
-        saleDate.toLocaleDateString('en-US'),
-        saleDate.toISOString().split('T')[0]
+        product?.name, product?.sku, product?.category, sale.slot, sale.paymentMethod,
+        sale.price?.toString(), saleDate.toLocaleDateString('en-NZ'), saleDate.toISOString().split('T')[0]
       ].filter(Boolean).map(field => field.toString().toLowerCase());
-
       return searchFields.some(field => field.includes(searchLower));
     });
-
     setSearchResults(results);
   }, [filteredSales, products]);
 
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      performSearch(searchTerm);
-    }, 300);
-
+    const timeoutId = setTimeout(() => performSearch(searchTerm), 300);
     return () => clearTimeout(timeoutId);
   }, [searchTerm, performSearch]);
-  
-  // FIXED: Improved rankedProductData calculation with better dependency tracking
+
   const rankedProductData = useMemo(() => {
-    console.log('🏆 Recalculating ranked product data, filteredSales:', filteredSales.length);
-    
+    // FIX: Add guards to prevent crash if dependencies are undefined.
+    if (!filteredSales || !products) return [];
+
     if (filteredSales.length === 0 || products.length === 0) return [];
 
     const productStats = {};
     filteredSales.forEach(sale => {
       if (sale.productId) {
-        if (!productStats[sale.productId]) {
-          productStats[sale.productId] = {
-            count: 0,
-            revenue: 0
-          };
-        }
+        productStats[sale.productId] = productStats[sale.productId] || { count: 0, revenue: 0 };
         productStats[sale.productId].count += 1;
         productStats[sale.productId].revenue += sale.price || 0;
       }
     });
 
-    const ranked = Object.entries(productStats)
-      .map(([productId, stats]) => ({
-        productId,
-        productName: getProductName(productId),
-        ...stats,
-      }))
+    return Object.entries(productStats)
+      .map(([productId, stats]) => ({ productId, productName: getProductName(productId), ...stats }))
       .sort((a, b) => b.count - a.count);
-
-    console.log('🏆 Ranked product data:', ranked);
-    return ranked;
   }, [filteredSales, products, getProductName]);
 
-  const getSalesToDisplay = () => {
-    return searchTerm.trim() ? searchResults : filteredSales;
-  };
+  const getSalesToDisplay = useCallback(() => {
+    // FIX: Ensure the function always returns an array to prevent crashes.
+    return searchTerm.trim() ? (searchResults || []) : (filteredSales || []);
+  }, [searchTerm, searchResults, filteredSales]);
 
-  // FIXED: Optimistic updates for immediate UI response
   const handleDeleteClick = (sale) => {
     setSaleToDelete(sale);
     setShowDeleteConfirmation(true);
@@ -346,40 +253,15 @@ const Sales = () => {
 
   const handleDeleteConfirm = async () => {
     if (!saleToDelete) return;
-
     try {
-      console.log('🗑️ Starting delete process for sale:', saleToDelete.id);
-      
-      // OPTIMISTIC UPDATE: Remove from local state immediately
-      console.log('⚡ Applying optimistic update');
-      setSales(currentSales => {
-        const updated = currentSales.filter(sale => sale.id !== saleToDelete.id);
-        console.log('⚡ Sales updated from', currentSales.length, 'to', updated.length);
-        return updated;
-      });
-      
-      // Close the modal immediately
+      setSales(currentSales => (currentSales || []).filter(sale => sale.id !== saleToDelete.id));
       setShowDeleteConfirmation(false);
       setSaleToDelete(null);
-      
-      // Delete from Firebase (this will sync with real-time subscription)
       await deleteSale(saleToDelete.id);
-      console.log('✅ Sale deleted from Firebase successfully');
-      
     } catch (error) {
-      console.error('❌ Error deleting sale:', error);
-      
-      // ROLLBACK: If delete fails, add the sale back to local state
-      console.log('🔄 Rolling back optimistic update');
-      setSales(currentSales => {
-        const restored = [...currentSales, saleToDelete].sort((a, b) => 
-          (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0)
-        );
-        console.log('🔄 Sales restored to', restored.length);
-        return restored;
-      });
-      
-      throw error; // Let DeleteConfirmation handle the error display
+      console.error('Error deleting sale:', error);
+      // Optional: Add rollback logic here if needed
+      throw error;
     }
   };
 
@@ -389,189 +271,95 @@ const Sales = () => {
   };
 
   const getSaleDescription = (sale) => {
-    const product = products.find(p => p.id === sale.productId);
+    const product = (products || []).find(p => p.id === sale.productId);
     const saleDate = new Date(sale.timestamp?.seconds * 1000);
-    const formattedDate = saleDate.toLocaleDateString('en-NZ', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric',
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
-    
+    const formattedDate = saleDate.toLocaleString('en-NZ', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     return `${product?.name || 'Unknown Product'} - ${formatCurrency(sale.price)} - ${formattedDate}`;
   };
 
-  // Export functionality
   const generateExportPreview = useCallback(() => {
-    if (!filteredSales.length) return null;
+    const salesToPreview = getSalesToDisplay();
+    if (salesToPreview.length === 0) return null;
 
     const formats = {
-      csv: {
-        format: 'CSV',
-        description: 'Excel, Sheets compatible',
-        features: [
-          'Universal spreadsheet compatibility',
-          'Lightweight file format',
-          'Easy to import and manipulate',
-          'Compatible with Excel, Google Sheets'
-        ]
-      },
-      excel: {
-        format: 'Excel (.xlsx)',
-        description: '.xlsx format',
-        features: [
-          'Formatted headers with styling',
-          'Multiple worksheets',
-          'Advanced formulas and charts',
-          'Currency and date formatting',
-          'Summary statistics sheet'
-        ]
-      },
-      pdf: {
-        format: 'PDF',
-        description: 'Print-ready report',
-        features: [
-          'Professional formatting',
-          'Print-optimized layout',
-          'Executive summary',
-          'Charts and visualizations',
-          'Company branding'
-        ]
-      }
+      csv: { format: 'CSV', description: 'Excel, Sheets compatible', features: ['Universal spreadsheet compatibility', 'Lightweight file format'] },
+      excel: { format: 'Excel (.xlsx)', description: '.xlsx format', features: ['Formatted headers with styling', 'Multiple worksheets', 'Currency formatting'] },
+      pdf: { format: 'PDF', description: 'Print-ready report', features: ['Professional formatting', 'Print-optimized layout', 'Executive summary'] }
     };
 
-    const baseColumns = ['Transaction ID', 'Date', 'Time', 'Product Name', 'Slot', 'Price'];
-    let columns = [...baseColumns];
-
-    if (exportOptions.includeProductDetails) {
-      columns.push('Product ID', 'Category', 'SKU');
-    }
-    if (exportOptions.includePaymentMethods) {
-      columns.push('Payment Method');
-    }
-    if (exportOptions.includeTimestamps) {
-      columns.push('Timestamp', 'Day of Week', 'Hour');
-    }
+    let columns = ['Transaction ID', 'Date', 'Time', 'Product Name', 'Slot', 'Price'];
+    if (exportOptions.includeProductDetails) columns.push('Product ID', 'Category', 'SKU');
+    if (exportOptions.includePaymentMethods) columns.push('Payment Method');
+    if (exportOptions.includeTimestamps) columns.push('Timestamp', 'Day of Week', 'Hour');
 
     return {
       ...formats[exportFormat],
-      itemCount: filteredSales.length,
-      estimatedSize: `${(filteredSales.length * 0.1).toFixed(1)} KB`,
+      itemCount: salesToPreview.length,
+      columns: columns,
       dateRange: `${dateRange.startDate} to ${dateRange.endDate}`,
       searchFilter: searchTerm ? `Filtered by "${searchTerm}"` : null
     };
-  }, [filteredSales, exportFormat, exportOptions, dateRange, searchTerm]);
+  }, [getSalesToDisplay, exportFormat, exportOptions.includeProductDetails, exportOptions.includePaymentMethods, exportOptions.includeTimestamps, dateRange, searchTerm]);
 
   useEffect(() => {
-    if (showExportModal) {
-      setExportPreview(generateExportPreview());
-    }
+    if (showExportModal) setExportPreview(generateExportPreview());
   }, [showExportModal, generateExportPreview]);
 
-  const handleExportSales = () => {
-    setShowExportModal(true);
-  };
+  const handleExportSales = () => setShowExportModal(true);
 
   const performExport = async () => {
-    if (!filteredSales.length) {
+    const exportData = getSalesToDisplay();
+    if (exportData.length === 0) {
       alert('No sales data to export.');
       return;
     }
-
     setExportLoading(true);
-    
     try {
-      const exportData = getSalesToDisplay();
-
+      const exportProps = {
+        salesData: exportData,
+        stats: salesStats,
+        dateRange: dateRange,
+        formatCurrency: formatCurrency,
+        getProductName: getProductName,
+        options: exportOptions
+      };
       switch (exportFormat) {
-        case 'csv':
-          CSVExport.exportSalesCSV({
-            salesData: exportData,
-            dateRange: dateRange,
-            getProductName: getProductName,
-            stats: salesStats,
-            options: exportOptions
-          });
-          break;
-          
-        case 'excel':
-          ExcelExport.exportSalesExcel({
-            salesData: exportData,
-            stats: salesStats,
-            dateRange: dateRange,
-            formatCurrency: formatCurrency,
-            getProductName: getProductName,
-            productData: rankedProductData,
-            options: exportOptions
-          });
-          break;
-          
-        case 'pdf':
-          // Fixed: Use the correct static method call
-          PDFExport.exportSalesPDF({
-            salesData: exportData,
-            stats: salesStats,
-            dateRange: dateRange,
-            formatCurrency: formatCurrency,
-            getProductName: getProductName,
-            title: `Sales Report${searchTerm ? ` - Search: ${searchTerm}` : ''}`,
-            options: exportOptions
-          });
-          break;
-          
-        default:
-          throw new Error(`Unsupported export format: ${exportFormat}`);
+        case 'csv': CSVExport.exportSalesCSV(exportProps); break;
+        case 'excel': ExcelExport.exportSalesExcel({...exportProps, productData: rankedProductData}); break;
+        case 'pdf': PDFExport.exportSalesPDF({...exportProps, title: `Sales Report${searchTerm ? ` - Search: ${searchTerm}` : ''}`}); break;
+        default: throw new Error(`Unsupported export format: ${exportFormat}`);
       }
-
       setShowExportModal(false);
-      console.log(`${exportFormat.toUpperCase()} export completed successfully`);
-      
     } catch (error) {
-      console.error(`Export error (${exportFormat}):`, error);
-      alert(`Failed to export ${exportFormat.toUpperCase()}: ${error.message}`);
+      alert(`Export failed: ${error.message}`);
     } finally {
       setExportLoading(false);
     }
   };
 
-  // FIXED: Single effect that handles all data processing
   useEffect(() => {
-    console.log('🔄 Data changed - triggering recalculation');
     filterAndCalculateAll();
     calculateDataInfo();
   }, [filterAndCalculateAll, calculateDataInfo]);
 
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const clearSearch = () => {
-    setSearchTerm('');
-    setSearchResults([]);
-  };
+  const handleSearchChange = (e) => setSearchTerm(e.target.value);
+  const clearSearch = () => setSearchTerm('');
 
   const handleDateRangeChange = (field, value) => {
-    setDateRange(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setDateRange(prev => ({ ...prev, [field]: value }));
     setQuickFilter('custom');
   };
 
   const calculateDailyAverage = (total, startDate, endDate) => {
     if (!startDate || !endDate || total === 0) return 0;
-
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const timeDiff = end.getTime() - start.getTime();
+    const timeDiff = new Date(endDate).getTime() - new Date(startDate).getTime();
     const days = Math.max(1, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1);
-
     return total / days;
   };
 
   const getTopProductsHeader = () => {
-    const uniqueProductCount = rankedProductData.length;
+    const safeRankedData = rankedProductData || [];
+    const uniqueProductCount = safeRankedData.length;
 
     if (uniqueProductCount >= 5) {
       return `Top 5 Products (${quickFilter === 'all' ? 'All Time' : quickFilter || 'Custom Period'})`;
@@ -580,9 +368,7 @@ const Sales = () => {
     }
   };
   
-  if (loading) {
-    return <LoadingSpinner text="Loading sales data..." />;
-  }
+  if (loading) return <LoadingSpinner text="Loading sales data..." />;
 
   return (
     <div className="sales">
@@ -594,14 +380,13 @@ const Sales = () => {
         <button
           className="btn btn-primary"
           onClick={handleExportSales}
-          disabled={filteredSales.length === 0}
+          disabled={getSalesToDisplay().length === 0}
         >
           <Download size={16} />
           {isMobile ? 'Export' : 'Export Data'}
         </button>
       </div>
 
-      {/* Debug Info Panel */}
       <div className="sales-debug-info" style={{ 
         background: '#f0f9ff', 
         border: '1px solid #0ea5e9', 
@@ -769,8 +554,8 @@ const Sales = () => {
             <h3>Sales Transactions</h3>
             <div className="table-info">
               {isMobile ? 
-                `${getSalesToDisplay().length} of ${filteredSales.length}` :
-                `Showing ${getSalesToDisplay().length} of ${filteredSales.length} transactions`
+                `${getSalesToDisplay().length} of ${(filteredSales || []).length}` :
+                `Showing ${getSalesToDisplay().length} of ${(filteredSales || []).length} transactions`
               }
               {searchTerm && (
                 <span style={{ color: '#667eea', marginLeft: '8px' }}>
@@ -807,8 +592,8 @@ const Sales = () => {
               </div>
               {searchTerm && (
                 <div style={{ fontSize: '12px', color: '#718096', marginTop: '4px', paddingLeft: '40px' }}>
-                  {searchResults.length > 0 
-                    ? `Found ${searchResults.length} result${searchResults.length !== 1 ? 's' : ''}`
+                  {(searchResults || []).length > 0 
+                    ? `Found ${(searchResults || []).length} result${(searchResults || []).length !== 1 ? 's' : ''}`
                     : 'No results found'
                   }
                 </div>
@@ -907,9 +692,9 @@ const Sales = () => {
             <h3>{isMobile ? 'Top Products' : getTopProductsHeader()}</h3>
           </div>
           <div className="card-body">
-            {rankedProductData.length > 0 ? (
+            {(rankedProductData || []).length > 0 ? (
               <div className="top-products-list">
-                {rankedProductData.slice(0, 5).map((product, index) => (
+                {(rankedProductData || []).slice(0, 5).map((product, index) => (
                   <div key={product.productId} className="top-product-item">
                     <div className="product-rank">
                       {index + 1}
@@ -940,8 +725,8 @@ const Sales = () => {
         <div className="chart-header">
           <h3>Product Performance</h3>
           <div className="chart-summary">
-            {rankedProductData.length > 0 ? 
-              (isMobile ? `${rankedProductData.length} products` : `All ${rankedProductData.length} products ranked by sales`) : 
+            {(rankedProductData || []).length > 0 ? 
+              (isMobile ? `${(rankedProductData || []).length} products` : `All ${(rankedProductData || []).length} products ranked by sales`) : 
               'No product data for this period'
             }
           </div>
@@ -953,7 +738,6 @@ const Sales = () => {
 
       <ChartForecast data={filteredSales} formatCurrency={formatCurrency} />
 
-      {/* Delete Confirmation Modal */}
       {showDeleteConfirmation && saleToDelete && (
         <DeleteConfirmation
           isOpen={showDeleteConfirmation}
@@ -969,7 +753,6 @@ const Sales = () => {
         />
       )}
 
-      {/* Enhanced Responsive Export Modal */}
       {showExportModal && (
         <Modal
           title="Export Sales Data"
@@ -980,13 +763,12 @@ const Sales = () => {
             <div className="export-info">
               <h4 className="export-summary-title">Export Summary</h4>
               <p className="export-summary-text">
-                Exporting <strong>{filteredSales.length} sales transactions</strong> from 
+                Exporting <strong>{getSalesToDisplay().length} sales transactions</strong> from 
                 <strong> {quickFilter === 'all' ? 'All Time' : quickFilter ? quickFilter.charAt(0).toUpperCase() + quickFilter.slice(1) : 'Custom Period'}</strong>
                 {searchTerm && <span> matching "<strong>{searchTerm}</strong>"</span>}
               </p>
             </div>
 
-            {/* File Format Selection */}
             <div className="form-group">
               <label className="form-label">Export Format</label>
               <div className="export-format-options">
@@ -1040,169 +822,68 @@ const Sales = () => {
               </div>
             </div>
 
-            {/* Export Options */}
             <div className="form-group">
               <label className="form-label">Export Options</label>
               <div className="export-options">
                 <label className="export-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={exportOptions.includeProductDetails}
-                    onChange={(e) => setExportOptions(prev => ({ 
-                      ...prev, 
-                      includeProductDetails: e.target.checked 
-                    }))}
-                    className="export-checkbox-input"
-                  />
+                  <input type="checkbox" checked={exportOptions.includeProductDetails} onChange={(e) => setExportOptions(prev => ({...prev, includeProductDetails: e.target.checked }))} className="export-checkbox-input" />
                   <span className="export-checkbox-checkmark"></span>
-                  <span className="export-checkbox-text">
-                    {isMobile ? 'Product details (ID, category, SKU)' : 'Include product details (ID, category, SKU)'}
-                  </span>
+                  <span className="export-checkbox-text">{isMobile ? 'Product details' : 'Include product details (ID, category, SKU)'}</span>
                 </label>
-
                 <label className="export-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={exportOptions.includeTimestamps}
-                    onChange={(e) => setExportOptions(prev => ({ 
-                      ...prev, 
-                      includeTimestamps: e.target.checked 
-                    }))}
-                    className="export-checkbox-input"
-                  />
+                  <input type="checkbox" checked={exportOptions.includeTimestamps} onChange={(e) => setExportOptions(prev => ({...prev, includeTimestamps: e.target.checked }))} className="export-checkbox-input" />
                   <span className="export-checkbox-checkmark"></span>
-                  <span className="export-checkbox-text">
-                    {isMobile ? 'Detailed timestamps' : 'Include detailed timestamps (day of week, hour)'}
-                  </span>
+                  <span className="export-checkbox-text">{isMobile ? 'Detailed timestamps' : 'Include detailed timestamps (day, hour)'}</span>
                 </label>
-
                 <label className="export-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={exportOptions.includePaymentMethods}
-                    onChange={(e) => setExportOptions(prev => ({ 
-                      ...prev, 
-                      includePaymentMethods: e.target.checked 
-                    }))}
-                    className="export-checkbox-input"
-                  />
+                  <input type="checkbox" checked={exportOptions.includePaymentMethods} onChange={(e) => setExportOptions(prev => ({...prev, includePaymentMethods: e.target.checked }))} className="export-checkbox-input" />
                   <span className="export-checkbox-checkmark"></span>
-                  <span className="export-checkbox-text">
-                    {isMobile ? 'Payment method details' : 'Include payment method details'}
-                  </span>
+                  <span className="export-checkbox-text">{isMobile ? 'Payment methods' : 'Include payment method details'}</span>
                 </label>
-
                 <label className="export-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={exportOptions.includeSummaryStats}
-                    onChange={(e) => setExportOptions(prev => ({ 
-                      ...prev, 
-                      includeSummaryStats: e.target.checked 
-                    }))}
-                    className="export-checkbox-input"
-                  />
+                  <input type="checkbox" checked={exportOptions.includeSummaryStats} onChange={(e) => setExportOptions(prev => ({...prev, includeSummaryStats: e.target.checked }))} className="export-checkbox-input" />
                   <span className="export-checkbox-checkmark"></span>
-                  <span className="export-checkbox-text">
-                    {isMobile ? 'Summary statistics' : 'Include summary statistics'}
-                  </span>
+                  <span className="export-checkbox-text">{isMobile ? 'Summary stats' : 'Include summary statistics'}</span>
                 </label>
-
                 <label className="export-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={exportOptions.groupByProduct}
-                    onChange={(e) => setExportOptions(prev => ({ 
-                      ...prev, 
-                      groupByProduct: e.target.checked,
-                      groupByDate: e.target.checked ? false : prev.groupByDate 
-                    }))}
-                    className="export-checkbox-input"
-                  />
+                  <input type="checkbox" checked={exportOptions.groupByProduct} onChange={(e) => setExportOptions(prev => ({...prev, groupByProduct: e.target.checked, groupByDate: e.target.checked ? false : prev.groupByDate }))} className="export-checkbox-input" />
                   <span className="export-checkbox-checkmark"></span>
-                  <span className="export-checkbox-text">
-                    {isMobile ? 'Group by product' : 'Group transactions by product'}
-                  </span>
+                  <span className="export-checkbox-text">{isMobile ? 'Group by product' : 'Group transactions by product'}</span>
                 </label>
-
                 <label className="export-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={exportOptions.groupByDate}
-                    onChange={(e) => setExportOptions(prev => ({ 
-                      ...prev, 
-                      groupByDate: e.target.checked,
-                      groupByProduct: e.target.checked ? false : prev.groupByProduct 
-                    }))}
-                    className="export-checkbox-input"
-                  />
+                  <input type="checkbox" checked={exportOptions.groupByDate} onChange={(e) => setExportOptions(prev => ({...prev, groupByDate: e.target.checked, groupByProduct: e.target.checked ? false : prev.groupByProduct }))} className="export-checkbox-input" />
                   <span className="export-checkbox-checkmark"></span>
-                  <span className="export-checkbox-text">
-                    {isMobile ? 'Group by date' : 'Group transactions by date'}
-                  </span>
+                  <span className="export-checkbox-text">{isMobile ? 'Group by date' : 'Group transactions by date'}</span>
                 </label>
               </div>
             </div>
 
-            {/* Preview */}
             {exportPreview && !isMobile && (
               <div className="export-preview">
                 <h4 className="export-preview-title">Export Preview</h4>
                 <div className="export-preview-details">
-                  <div className="export-preview-item">
-                    <span className="export-preview-label">Format:</span>
-                    <span className="export-preview-value">{exportPreview.format}</span>
-                  </div>
-                  <div className="export-preview-item">
-                    <span className="export-preview-label">Items:</span>
-                    <span className="export-preview-value">{exportPreview.itemCount} transactions</span>
-                  </div>
-                  <div className="export-preview-item">
-                    <span className="export-preview-label">Columns:</span>
-                    <span className="export-preview-value">{exportPreview.columns.length} data fields</span>
-                  </div>
-                  <div className="export-preview-item">
-                    <span className="export-preview-label">Period:</span>
-                    <span className="export-preview-value">{exportPreview.dateRange}</span>
-                  </div>
-                  {exportPreview.searchFilter && (
-                    <div className="export-preview-item">
-                      <span className="export-preview-label">Filter:</span>
-                      <span className="export-preview-value">{exportPreview.searchFilter}</span>
-                    </div>
-                  )}
-                  <div className="export-preview-item">
-                    <span className="export-preview-label">Features:</span>
-                    <span className="export-preview-value">{exportPreview.features.slice(0, 2).join(', ')}</span>
-                  </div>
+                  <div className="export-preview-item"><span className="export-preview-label">Format:</span><span className="export-preview-value">{exportPreview.format}</span></div>
+                  <div className="export-preview-item"><span className="export-preview-label">Items:</span><span className="export-preview-value">{exportPreview.itemCount} transactions</span></div>
+                  <div className="export-preview-item"><span className="export-preview-label">Columns:</span><span className="export-preview-value">{exportPreview.columns.length} data fields</span></div>
+                  <div className="export-preview-item"><span className="export-preview-label">Period:</span><span className="export-preview-value">{exportPreview.dateRange}</span></div>
+                  {exportPreview.searchFilter && <div className="export-preview-item"><span className="export-preview-label">Filter:</span><span className="export-preview-value">{exportPreview.searchFilter}</span></div>}
+                  <div className="export-preview-item"><span className="export-preview-label">Features:</span><span className="export-preview-value">{exportPreview.features.slice(0, 2).join(', ')}</span></div>
                 </div>
               </div>
             )}
 
             <div className="export-modal-actions">
-              <button
-                type="button"
-                className="btn btn-secondary export-modal-btn-secondary"
-                onClick={() => setShowExportModal(false)}
-                disabled={exportLoading}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary export-modal-btn-primary"
-                onClick={performExport}
-                disabled={filteredSales.length === 0 || exportLoading}
-              >
+              <button type="button" className="btn btn-secondary export-modal-btn-secondary" onClick={() => setShowExportModal(false)} disabled={exportLoading}>Cancel</button>
+              <button type="button" className="btn btn-primary export-modal-btn-primary" onClick={performExport} disabled={getSalesToDisplay().length === 0 || exportLoading}>
                 {exportLoading ? (
                   <div className="export-loading-content">
                     <div className="export-loading-spinner"></div>
-                    <span>{isMobile ? 'Exporting...' : 'Exporting...'}</span>
+                    <span>Exporting...</span>
                   </div>
                 ) : (
                   <div className="export-button-content">
                     <Download size={16} />
-                    <span>{isMobile ? `Export ${exportFormat.toUpperCase()}` : `Export ${exportFormat.toUpperCase()}`}</span>
+                    <span>Export {exportFormat.toUpperCase()}</span>
                   </div>
                 )}
               </button>

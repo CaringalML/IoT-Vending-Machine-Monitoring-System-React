@@ -103,7 +103,7 @@ class CSVExport {
       const baseRow = [
         sale.id || '',
         saleDate.toLocaleDateString('en-NZ'),
-        // FIXED: Format time to show only hour and minute, matching the UI.
+        // Note: Time is formatted to show only hour and minute.
         saleDate.toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' }),
         this.escapeCSVField(getProductName(sale.productId)),
         sale.slot || '',
@@ -150,7 +150,8 @@ class CSVExport {
       ['Top Product', stats.topProduct?.name || 'No Data'],
       ['Date Range', `${dateRange.startDate || 'N/A'} to ${dateRange.endDate || 'N/A'}`],
       ['Export Date', new Date().toLocaleDateString('en-NZ')],
-      ['Export Time', new Date().toLocaleTimeString('en-NZ')],
+      // Note: Time is formatted to be shorter, preventing '#####' display in narrow columns.
+      ['Export Time', new Date().toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' })],
       [],
       ['=== PAYMENT METHOD BREAKDOWN ==='],
       ['Cash Payments', this.countPaymentMethod(salesData, 'cash')],
