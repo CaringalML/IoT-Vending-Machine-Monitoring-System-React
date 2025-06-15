@@ -14,7 +14,6 @@
   height: 100vh;
   left: 0;
   top: 0;
-  /* FIX: Increased z-index to ensure sidebar is on top of the header */
   z-index: 1005; 
   box-shadow: 4px 0 10px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s ease;
@@ -112,27 +111,24 @@
   background: #f56565;
 }
 
-/* Mobile Sidebar Overlay */
-.sidebar-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  /* FIX: Ensure overlay is just below the sidebar */
-  z-index: 1004; 
-  display: none;
-}
-
 /* Main Content */
 .main-content {
   flex: 1;
-  margin-left: 260px;
   display: flex;
   flex-direction: column;
   transition: margin-left 0.3s ease;
   min-width: 0;
+}
+
+/* Desktop with sidebar */
+.main-content.desktop-sidebar {
+  margin-left: 260px;
+}
+
+/* Mobile with bottom navigation */
+.main-content.mobile-bottom-nav {
+  margin-left: 0;
+  padding-bottom: 80px; /* Space for bottom navigation */
 }
 
 /* Header Styles */
@@ -162,8 +158,8 @@
   min-width: 0;
 }
 
-.mobile-menu-btn {
-  display: none;
+.desktop-menu-btn {
+  display: flex;
   background: none;
   border: none;
   padding: 8px;
@@ -174,11 +170,11 @@
   flex-shrink: 0;
 }
 
-.mobile-menu-btn:hover {
+.desktop-menu-btn:hover {
   background: #f7fafc;
 }
 
-.mobile-menu-btn:focus {
+.desktop-menu-btn:focus {
   outline: 2px solid #667eea;
   outline-offset: 2px;
 }
@@ -203,6 +199,31 @@
 
 .desktop-title {
   display: block;
+}
+
+/* Mobile Header Content */
+.mobile-header-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.mobile-app-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobile-app-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.mobile-app-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #667eea;
 }
 
 .header-right {
@@ -396,7 +417,7 @@
     width: 240px;
   }
 
-  .main-content {
+  .main-content.desktop-sidebar {
     margin-left: 240px;
   }
 
@@ -411,28 +432,21 @@
 
 /* Mobile Styles */
 @media (max-width: 768px) {
+  /* Hide desktop sidebar completely on mobile */
   .sidebar {
-    transform: translateX(-100%);
-  }
-  
-  .sidebar.sidebar-open {
-    transform: translateX(0);
-  }
-
-  .sidebar-overlay {
-    display: block;
+    display: none;
   }
 
   .main-content {
     margin-left: 0;
   }
 
-  .main-content.sidebar-open {
-     /* No styles needed here anymore */
+  .main-content.mobile-bottom-nav {
+    padding-bottom: 80px; /* Space for bottom navigation */
   }
 
-  .mobile-menu-btn {
-    display: flex;
+  .desktop-menu-btn {
+    display: none;
   }
 
   .header-content {
@@ -444,7 +458,7 @@
   }
 
   .page-title {
-    font-size: 20px;
+    font-size: 16px;
   }
 
   .desktop-title {
@@ -496,7 +510,15 @@
   }
 
   .page-title {
-    font-size: 18px;
+    font-size: 14px;
+  }
+
+  .mobile-app-name {
+    font-size: 12px;
+  }
+
+  .mobile-app-icon {
+    font-size: 16px;
   }
 
   .header-right {
@@ -528,12 +550,12 @@
 
 /* Landscape Mobile Styles */
 @media (max-width: 768px) and (orientation: landscape) {
-  .sidebar {
-    width: 220px;
-  }
-
   .content {
     padding: 12px 16px;
+  }
+  
+  .main-content.mobile-bottom-nav {
+    padding-bottom: 70px; /* Reduced padding for landscape */
   }
 }
 
@@ -551,7 +573,8 @@
   .notification-btn,
   .user-menu-btn,
   .nav-item,
-  .user-menu-item {
+  .user-menu-item,
+  .desktop-menu-btn {
     transition: none;
   }
 
@@ -567,7 +590,7 @@
 /* Focus Visible Support */
 .notification-btn:focus-visible,
 .user-menu-btn:focus-visible,
-.mobile-menu-btn:focus-visible,
+.desktop-menu-btn:focus-visible,
 .user-menu-item:focus-visible {
   outline: 2px solid #667eea;
   outline-offset: 2px;

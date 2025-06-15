@@ -7,7 +7,7 @@ import NotificationDropdown from '../Notifications/NotificationDropdown';
 import NotificationSettings from '../Notifications/NotificationSettings';
 import notificationService from '../../services/NotificationService';
 
-const Header = ({ onToggleSidebar, isSidebarOpen }) => {
+const Header = ({ onToggleSidebar, isSidebarOpen, isMobile }) => {
   const { user } = useAuth();
   const location = useLocation();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -130,45 +130,59 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
     <header className="header">
       <div className="header-content">
         <div className="header-left">
-          {/* Mobile menu button */}
-          <button 
-            className="mobile-menu-btn"
-            onClick={onToggleSidebar}
-            aria-label="Toggle navigation menu"
-          >
-            {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+          {/* Desktop menu button - only show on desktop */}
+          {!isMobile && (
+            <button 
+              className="desktop-menu-btn"
+              onClick={onToggleSidebar}
+              aria-label="Toggle navigation menu"
+            >
+              {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          )}
           
           <div className="page-title-container">
-            <h1 className="page-title desktop-title">{getPageTitle()}</h1>
-            <h1 className="page-title mobile-title">{getShortPageTitle()}</h1>
+            {/* Mobile: Show app logo/name and current page */}
+            {isMobile ? (
+              <div className="mobile-header-content">
+                <div className="mobile-app-title">
+                  <span className="mobile-app-icon" role="img" aria-label="Shopping cart">🛒</span>
+                  <span className="mobile-app-name">Vending Admin</span>
+                </div>
+                <h1 className="page-title mobile-title">{getShortPageTitle()}</h1>
+              </div>
+            ) : (
+              <h1 className="page-title desktop-title">{getPageTitle()}</h1>
+            )}
           </div>
         </div>
 
         <div className="header-right">
-          {/* Notification Button */}
-          <div className="notification-container" ref={notificationRef}>
-            <button 
-              className="notification-btn"
-              onClick={handleNotificationClick}
-              title="Notifications"
-              aria-label={`Notifications ${notificationCount > 0 ? `(${notificationCount} unread)` : ''}`}
-            >
-              <Bell size={20} />
-              {notificationCount > 0 && (
-                <span className="notification-badge" aria-hidden="true">
-                  {notificationCount > 99 ? '99+' : notificationCount}
-                </span>
-              )}
-            </button>
+          {/* Notification Button - Hidden on mobile for /notifications page to avoid duplication */}
+          {!(isMobile && location.pathname === '/notifications') && (
+            <div className="notification-container" ref={notificationRef}>
+              <button 
+                className="notification-btn"
+                onClick={handleNotificationClick}
+                title="Notifications"
+                aria-label={`Notifications ${notificationCount > 0 ? `(${notificationCount} unread)` : ''}`}
+              >
+                <Bell size={20} />
+                {notificationCount > 0 && (
+                  <span className="notification-badge" aria-hidden="true">
+                    {notificationCount > 99 ? '99+' : notificationCount}
+                  </span>
+                )}
+              </button>
 
-            {/* Notification Dropdown */}
-            <NotificationDropdown
-              isOpen={showNotifications}
-              onClose={() => setShowNotifications(false)}
-              onOpenSettings={handleOpenNotificationSettings}
-            />
-          </div>
+              {/* Notification Dropdown */}
+              <NotificationDropdown
+                isOpen={showNotifications}
+                onClose={() => setShowNotifications(false)}
+                onOpenSettings={handleOpenNotificationSettings}
+              />
+            </div>
+          )}
 
           {/* User Menu */}
           <div className="user-menu-container" ref={userMenuRef}>
@@ -182,9 +196,11 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
               <div className="user-avatar">
                 <User size={18} />
               </div>
-              <span className="user-name">
-                {user?.email?.split('@')[0] || 'Admin'}
-              </span>
+              {!isMobile && (
+                <span className="user-name">
+                  {user?.email?.split('@')[0] || 'Admin'}
+                </span>
+              )}
             </button>
 
             {showUserMenu && (

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import BottomNavigation from './BottomNavigation';
 import './Layout.css';
 
 const Layout = ({ children }) => {
@@ -37,7 +38,10 @@ const Layout = ({ children }) => {
   }, []);
 
   const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
+    // Only allow sidebar toggle on desktop, since mobile uses bottom navigation
+    if (!isMobile) {
+      setIsSidebarOpen(!isSidebarOpen);
+    }
   };
 
   const closeSidebar = () => {
@@ -46,22 +50,30 @@ const Layout = ({ children }) => {
 
   return (
     <div className="layout">
-      <Sidebar 
-        isOpen={isMobile ? isSidebarOpen : true} 
-        onClose={closeSidebar}
-      />
+      {/* Desktop Sidebar - hidden on mobile */}
+      {!isMobile && (
+        <Sidebar 
+          isOpen={true} 
+          onClose={closeSidebar}
+        />
+      )}
+      
       <div 
-        className={`main-content ${isMobile && isSidebarOpen ? 'sidebar-open' : ''}`}
+        className={`main-content ${!isMobile ? 'desktop-sidebar' : 'mobile-bottom-nav'}`}
         data-page={getCurrentPage()}
       >
         <Header 
           onToggleSidebar={toggleSidebar}
           isSidebarOpen={isSidebarOpen}
+          isMobile={isMobile}
         />
         <main className="content">
           {children}
         </main>
       </div>
+      
+      {/* Mobile Bottom Navigation - hidden on desktop */}
+      {isMobile && <BottomNavigation />}
     </div>
   );
 };

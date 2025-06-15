@@ -31,10 +31,10 @@ const Sidebar = ({ isOpen, onClose }) => {
     }
   ];
 
-  // Close sidebar on escape key
+  // Close sidebar on escape key (desktop only)
   useEffect(() => {
     const handleEscape = (event) => {
-      if (event.key === 'Escape' && isOpen) {
+      if (event.key === 'Escape' && isOpen && window.innerWidth > 768) {
         onClose();
       }
     };
@@ -45,69 +45,39 @@ const Sidebar = ({ isOpen, onClose }) => {
     };
   }, [isOpen, onClose]);
 
-  // Prevent body scroll when mobile sidebar is open
-  useEffect(() => {
-    // FIX: This logic should only apply on mobile view.
-    if (window.innerWidth <= 768) {
-      if (isOpen) {
-        document.body.style.overflow = 'hidden';
-      } else {
-        document.body.style.overflow = 'unset';
-      }
-    }
-
-    // Cleanup on unmount to be safe
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen]);
-
-  const handleNavClick = () => {
-    // Close sidebar on mobile when nav item is clicked
-    if (window.innerWidth <= 768) {
-      onClose();
-    }
-  };
-
+  // Only render sidebar content (no mobile overlay since sidebar is desktop-only now)
   return (
-    <>
-      {/* Mobile Overlay */}
-      {isOpen && window.innerWidth <= 768 && <div className="sidebar-overlay" onClick={onClose} />}
-      
-      {/* Sidebar */}
-      <div className={`sidebar ${isOpen ? 'sidebar-open' : ''}`}>
-        <div className="sidebar-header">
-          <div className="sidebar-logo">
-            <span role="img" aria-label="Shopping cart">🛒</span>
-          </div>
-          <h2>Vending Admin</h2>
+    <div className={`sidebar ${isOpen ? 'sidebar-open' : ''}`}>
+      <div className="sidebar-header">
+        <div className="sidebar-logo">
+          <span role="img" aria-label="Shopping cart">🛒</span>
         </div>
+        <h2>Vending Admin</h2>
+      </div>
 
-        <nav className="sidebar-nav" role="navigation" aria-label="Main navigation">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) =>
-                `nav-item ${isActive ? 'nav-item-active' : ''}`
-              }
-              onClick={handleNavClick}
-              aria-label={item.label}
-            >
-              <item.icon size={20} aria-hidden="true" />
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
-        </nav>
+      <nav className="sidebar-nav" role="navigation" aria-label="Main navigation">
+        {navItems.map((item) => (
+          <NavLink
+            key={item.path}
+            to={item.path}
+            className={({ isActive }) =>
+              `nav-item ${isActive ? 'nav-item-active' : ''}`
+            }
+            aria-label={item.label}
+          >
+            <item.icon size={20} aria-hidden="true" />
+            <span>{item.label}</span>
+          </NavLink>
+        ))}
+      </nav>
 
-        <div className="sidebar-footer">
-          <div className="machine-status">
-            <div className="status-indicator online" aria-hidden="true"></div>
-            <span>Machine Online</span>
-          </div>
+      <div className="sidebar-footer">
+        <div className="machine-status">
+          <div className="status-indicator online" aria-hidden="true"></div>
+          <span>Machine Online</span>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
