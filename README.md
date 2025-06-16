@@ -500,3 +500,6 @@ This comprehensive reference gives you everything you need to choose the right c
 firebase > Project settings > Messaging > Web Push certificates
 
 generate your Key pair and update you .env and your github secrets
+
+
+//updates
