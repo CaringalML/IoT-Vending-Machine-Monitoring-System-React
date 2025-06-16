@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Package, AlertTriangle, RefreshCw, Trash2, Archive, Download, Upload, Zap, Search, X, FileText, FileSpreadsheet, FileImage } from 'lucide-react';
+import { Package, AlertTriangle, RefreshCw, Trash2, Archive, Download, Upload, Search, X, FileText, FileSpreadsheet, FileImage } from 'lucide-react';
 import { 
   subscribeToInventory, 
   subscribeToProducts,
   refillInventory,
   clearInventorySlot,
-  bulkUpdateInventory,
-  cleanupOrphanedInventorySlots,
-  syncInventoryWithProducts
+  bulkUpdateInventory
 } from '../../services/firestore';
 import Modal from '../Common/Modal';
 import LoadingSpinner from '../Common/LoadingSpinner';
@@ -33,10 +31,14 @@ const Inventory = () => {
   const [refillError, setRefillError] = useState('');
   const [bulkUpdates, setBulkUpdates] = useState([]);
   const [processingBulk, setProcessingBulk] = useState(false);
-  const [actionLoading, setActionLoading] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const [showExportModal, setShowExportModal] = useState(false);
+  
+  // Mobile Navigation States
+  const [activeTab, setActiveTab] = useState('overview'); // overview, export, bulk-refill
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Export States (moved from modal to tab)
   const [exportFormat, setExportFormat] = useState('csv');
   const [exportOptions, setExportOptions] = useState({
     includeImages: false,
@@ -57,6 +59,18 @@ const Inventory = () => {
     totalValue: 0,
     averageStock: 0
   });
+
+  // Check if mobile on mount and resize
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     const unsubscribeInventory = subscribeToInventory((inventoryData) => {
@@ -218,11 +232,11 @@ const Inventory = () => {
 
   // Update export preview when format or options change
   useEffect(() => {
-    if (exportManager && showExportModal) {
+    if (exportManager && activeTab === 'export') {
       const preview = exportManager.getExportPreview(exportFormat, filteredItems, exportOptions);
       setExportPreview(preview);
     }
-  }, [exportManager, exportFormat, exportOptions, filteredItems, showExportModal]);
+  }, [exportManager, exportFormat, exportOptions, filteredItems, activeTab]);
 
   // Additional helper functions
   const getStockStatus = (quantity, maxCapacity, threshold = 5) => {
@@ -391,25 +405,105 @@ const Inventory = () => {
     setShowBulkUpdateModal(true);
   };
 
-  const handleBulkUpdateSubmit = async () => {
+  // New quick bulk refill handler
+  const handleQuickBulkRefill = (type) => {
+    const availableItems = filteredItems.filter(item => !isDeletedProduct(item));
+    let itemsToRefill = [];
+
+    switch (type) {
+      case 'all':
+        itemsToRefill = availableItems;
+        break;
+      case 'low':
+        itemsToRefill = availableItems.filter(item => {
+          if (item.quantity === 0) return false;
+          const percentage = getStockPercentage(item.quantity, item.maxCapacity || 20);
+          return percentage <= 25;
+        });
+        break;
+      case 'out':
+        itemsToRefill = availableItems.filter(item => item.quantity === 0);
+        break;
+      default:
+        return;
+    }
+
+    const updates = itemsToRefill.map(item => ({
+      slotId: item.id,
+      quantity: item.maxCapacity || 20,
+      currentQuantity: item.quantity
+    }));
+
+    setBulkUpdates(updates);
+    // Auto-apply for quick actions
+    processBulkUpdate(updates);
+  };
+
+  // Toggle individual item selection
+  const toggleBulkSelection = (item) => {
+    setBulkUpdates(prev => {
+      const existingIndex = prev.findIndex(update => update.slotId === item.id);
+      
+      if (existingIndex >= 0) {
+        // Remove if already selected
+        return prev.filter(update => update.slotId !== item.id);
+      } else {
+        // Add if not selected
+        return [...prev, {
+          slotId: item.id,
+          quantity: item.maxCapacity || 20,
+          currentQuantity: item.quantity
+        }];
+      }
+    });
+  };
+
+  // Clear all selections
+  const clearBulkSelection = () => {
+    setBulkUpdates([]);
+  };
+
+  // Set all selected items to max capacity
+  const setSelectedToMax = () => {
+    setBulkUpdates(prev => 
+      prev.map(update => {
+        const item = inventory.find(i => i.id === update.slotId);
+        return { ...update, quantity: item?.maxCapacity || 20 };
+      })
+    );
+  };
+
+  // Process bulk update (separated for reuse)
+  const processBulkUpdate = async (updates = bulkUpdates) => {
     setProcessingBulk(true);
     try {
-      const validUpdates = bulkUpdates.filter(update => 
+      const validUpdates = updates.filter(update => 
         update.quantity !== update.currentQuantity
       );
       
       if (validUpdates.length > 0) {
         await bulkUpdateInventory(validUpdates);
+        
+        // Clear selections after successful update
+        setBulkUpdates([]);
+        
+        // Show success message for mobile
+        if (isMobile) {
+          alert(`Successfully updated ${validUpdates.length} items!`);
+        }
+      } else {
+        alert('No changes to apply.');
       }
-      
-      setShowBulkUpdateModal(false);
-      setBulkUpdates([]);
     } catch (error) {
       console.error('Error bulk updating inventory:', error);
       alert('Error updating inventory. Please try again.');
     } finally {
       setProcessingBulk(false);
     }
+  };
+
+  const handleBulkUpdateSubmit = async () => {
+    await processBulkUpdate();
   };
 
   const updateBulkQuantity = (slotId, quantity) => {
@@ -422,38 +516,7 @@ const Inventory = () => {
     );
   };
 
-  // Advanced actions
-  const handleCleanupOrphaned = async () => {
-    setActionLoading(prev => ({ ...prev, cleanup: true }));
-    try {
-      const cleaned = await cleanupOrphanedInventorySlots();
-      alert(`Cleaned up ${cleaned} orphaned inventory slots.`);
-    } catch (error) {
-      console.error('Error cleaning up orphaned slots:', error);
-      alert('Error cleaning up orphaned slots. Please try again.');
-    } finally {
-      setActionLoading(prev => ({ ...prev, cleanup: false }));
-    }
-  };
-
-  const handleSyncWithProducts = async () => {
-    setActionLoading(prev => ({ ...prev, sync: true }));
-    try {
-      const updates = await syncInventoryWithProducts();
-      alert(`Synchronized ${updates} inventory slots with products.`);
-    } catch (error) {
-      console.error('Error syncing inventory:', error);
-      alert('Error syncing inventory. Please try again.');
-    } finally {
-      setActionLoading(prev => ({ ...prev, sync: false }));
-    }
-  };
-
-  // Export functionality using the new export modules
-  const handleExportInventory = () => {
-    setShowExportModal(true);
-  };
-
+  // Export functionality
   const performExport = async () => {
     if (!exportManager) {
       alert('Export manager not initialized. Please try again.');
@@ -475,7 +538,6 @@ const Inventory = () => {
       );
 
       if (result.success) {
-        setShowExportModal(false);
         // Optional: Show success message
         console.log('Export successful:', result.message);
       } else {
@@ -489,34 +551,28 @@ const Inventory = () => {
     }
   };
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
+  // Mobile navigation tabs
+  const navigationTabs = [
+    { id: 'overview', label: 'Overview', icon: Package },
+    { id: 'export', label: 'Export', icon: Download },
+    { id: 'bulk-refill', label: 'Bulk Refill', icon: Upload }
+  ];
 
-  return (
-    <div className="inventory">
-      <div className="inventory-header">
-        <div>
-          <h1>Inventory Management</h1>
-          <p>Monitor and manage your vending machine stock levels</p>
-        </div>
-        <div className="header-actions" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          <button className="btn btn-secondary" onClick={handleExportInventory}>
-            <Download size={16} />
-            Export Data
-          </button>
-          <button 
-            className="btn btn-primary" 
-            onClick={handleBulkRefill}
-            disabled={filteredItems.filter(item => !isDeletedProduct(item)).length === 0}
-          >
-            <Upload size={16} />
-            Bulk Refill
-          </button>
-        </div>
-      </div>
+  // Render content based on active tab
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'export':
+        return renderExportTab();
+      case 'bulk-refill':
+        return renderBulkRefillTab();
+      default:
+        return renderOverviewTab();
+    }
+  };
 
-      {/* Enhanced Summary Cards */}
+  const renderOverviewTab = () => (
+    <>
+      {/* Summary Cards */}
       <div className="inventory-summary">
         <div className="summary-card total">
           <div className="summary-icon">
@@ -558,9 +614,8 @@ const Inventory = () => {
           </div>
         </div>
 
-        {/* Additional stats */}
-        <div className="summary-card value" style={{ gridColumn: 'span 2' }}>
-          <div className="summary-icon" style={{ background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)' }}>
+        <div className="summary-card value">
+          <div className="summary-icon value-icon">
             <Package size={24} />
           </div>
           <div className="summary-content">
@@ -569,8 +624,8 @@ const Inventory = () => {
           </div>
         </div>
 
-        <div className="summary-card average" style={{ gridColumn: 'span 2' }}>
-          <div className="summary-icon" style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }}>
+        <div className="summary-card average">
+          <div className="summary-icon average-icon">
             <Package size={24} />
           </div>
           <div className="summary-content">
@@ -578,45 +633,6 @@ const Inventory = () => {
             <p>Average Stock Level</p>
           </div>
         </div>
-      </div>
-
-      {/* Advanced Actions */}
-      <div className="advanced-actions">
-        <button 
-          className="btn btn-secondary"
-          onClick={handleCleanupOrphaned}
-          disabled={actionLoading.cleanup}
-        >
-          {actionLoading.cleanup ? (
-            <>
-              <div className="spinner small" style={{ marginRight: '8px' }}></div>
-              Cleaning...
-            </>
-          ) : (
-            <>
-              <Archive size={16} />
-              Cleanup Orphaned
-            </>
-          )}
-        </button>
-        
-        <button 
-          className="btn btn-secondary"
-          onClick={handleSyncWithProducts}
-          disabled={actionLoading.sync}
-        >
-          {actionLoading.sync ? (
-            <>
-              <div className="spinner small" style={{ marginRight: '8px' }}></div>
-              Syncing...
-            </>
-          ) : (
-            <>
-              <Zap size={16} />
-              Sync with Products
-            </>
-          )}
-        </button>
       </div>
 
       {/* Search and Filters */}
@@ -849,6 +865,430 @@ const Inventory = () => {
           )}
         </div>
       )}
+    </>
+  );
+
+  const renderExportTab = () => (
+    <div className="export-tab-content">
+      <div className="export-info">
+        <h4 className="export-summary-title">Export Summary</h4>
+        <p className="export-summary-text">
+          Exporting <strong>{filteredItems.length} items</strong> from 
+          <strong> {filter.charAt(0).toUpperCase() + filter.slice(1)}</strong> filter
+          {searchTerm && <span> matching "<strong>{searchTerm}</strong>"</span>}
+        </p>
+      </div>
+
+      {/* File Format Selection */}
+      <div className="form-group">
+        <label className="form-label">Export Format</label>
+        <div className="export-format-options">
+          <label className={`export-format-option ${exportFormat === 'csv' ? 'active' : ''}`}>
+            <input
+              type="radio"
+              name="exportFormat"
+              value="csv"
+              checked={exportFormat === 'csv'}
+              onChange={(e) => setExportFormat(e.target.value)}
+              className="export-format-radio"
+            />
+            <div className="export-format-content">
+              <FileText size={24} className={`export-format-icon ${exportFormat === 'csv' ? 'active' : ''}`} />
+              <span className="export-format-name">CSV</span>
+              <span className="export-format-description">Excel, Sheets</span>
+            </div>
+          </label>
+
+          <label className={`export-format-option ${exportFormat === 'excel' ? 'active' : ''}`}>
+            <input
+              type="radio"
+              name="exportFormat"
+              value="excel"
+              checked={exportFormat === 'excel'}
+              onChange={(e) => setExportFormat(e.target.value)}
+              className="export-format-radio"
+            />
+            <div className="export-format-content">
+              <FileSpreadsheet size={24} className={`export-format-icon ${exportFormat === 'excel' ? 'active' : ''}`} />
+              <span className="export-format-name">Excel</span>
+              <span className="export-format-description">.xlsx format</span>
+            </div>
+          </label>
+
+          <label className={`export-format-option ${exportFormat === 'pdf' ? 'active' : ''}`}>
+            <input
+              type="radio"
+              name="exportFormat"
+              value="pdf"
+              checked={exportFormat === 'pdf'}
+              onChange={(e) => setExportFormat(e.target.value)}
+              className="export-format-radio"
+            />
+            <div className="export-format-content">
+              <FileImage size={24} className={`export-format-icon ${exportFormat === 'pdf' ? 'active' : ''}`} />
+              <span className="export-format-name">PDF</span>
+              <span className="export-format-description">Print-ready</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      {/* Export Options */}
+      <div className="form-group">
+        <label className="form-label">Export Options</label>
+        <div className="export-options">
+          <label className="export-checkbox-label">
+            <input
+              type="checkbox"
+              checked={exportOptions.includeDeletedProducts}
+              onChange={(e) => setExportOptions(prev => ({ 
+                ...prev, 
+                includeDeletedProducts: e.target.checked 
+              }))}
+              className="export-checkbox-input"
+            />
+            <span className="export-checkbox-checkmark"></span>
+            <span className="export-checkbox-text">Include deleted/old products</span>
+          </label>
+
+          <label className="export-checkbox-label">
+            <input
+              type="checkbox"
+              checked={exportOptions.groupByCategory}
+              onChange={(e) => setExportOptions(prev => ({ 
+                ...prev, 
+                groupByCategory: e.target.checked 
+              }))}
+              className="export-checkbox-input"
+            />
+            <span className="export-checkbox-checkmark"></span>
+            <span className="export-checkbox-text">Group by product category</span>
+          </label>
+
+          <label className="export-checkbox-label">
+            <input
+              type="checkbox"
+              checked={exportOptions.includeImages}
+              onChange={(e) => setExportOptions(prev => ({ 
+                ...prev, 
+                includeImages: e.target.checked 
+              }))}
+              className="export-checkbox-input"
+            />
+            <span className="export-checkbox-checkmark"></span>
+            <span className="export-checkbox-text">Include product image URLs</span>
+          </label>
+        </div>
+      </div>
+
+      {/* Preview */}
+      {exportPreview && (
+        <div className="export-preview">
+          <h4 className="export-preview-title">Export Preview</h4>
+          <div className="export-preview-details">
+            <div className="export-preview-item">
+              <span className="export-preview-label">Format:</span>
+              <span className="export-preview-value">{exportPreview.format}</span>
+            </div>
+            <div className="export-preview-item">
+              <span className="export-preview-label">Items:</span>
+              <span className="export-preview-value">{exportPreview.itemCount} inventory items</span>
+            </div>
+            {exportPreview.columns && (
+              <div className="export-preview-item">
+                <span className="export-preview-label">Columns:</span>
+                <span className="export-preview-value">{exportPreview.columns.length} data fields</span>
+              </div>
+            )}
+            {exportPreview.features && exportPreview.features.length > 0 && (
+              <div className="export-preview-item">
+                <span className="export-preview-label">Features:</span>
+                <span className="export-preview-value">{exportPreview.features.slice(0, 3).join(', ')}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Export Action */}
+      <div className="export-tab-actions">
+        <button
+          type="button"
+          className="btn btn-primary export-btn-primary"
+          onClick={performExport}
+          disabled={filteredItems.length === 0 || exportLoading}
+        >
+          {exportLoading ? (
+            <div className="export-loading-content">
+              <div className="export-loading-spinner"></div>
+              <span>Exporting...</span>
+            </div>
+          ) : (
+            <div className="export-button-content">
+              <Download size={16} />
+              <span>Export {exportFormat.toUpperCase()}</span>
+            </div>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderBulkRefillTab = () => {
+    const availableItems = filteredItems.filter(item => !isDeletedProduct(item));
+    const lowStockItems = availableItems.filter(item => {
+      if (item.quantity === 0) return false;
+      const percentage = getStockPercentage(item.quantity, item.maxCapacity || 20);
+      return percentage <= 25;
+    });
+    const outOfStockItems = availableItems.filter(item => item.quantity === 0);
+
+    return (
+      <div className="bulk-refill-tab-content">
+        <div className="bulk-refill-info">
+          <h4 className="bulk-refill-title">Bulk Refill Operations</h4>
+          <p className="bulk-refill-description">
+            Select items to refill or choose quick actions below. Changes will be previewed before applying.
+          </p>
+        </div>
+
+        {/* Bulk Refill Stats */}
+        <div className="bulk-refill-stats">
+          <div className="bulk-stat-card">
+            <div className="bulk-stat-icon">
+              <Package size={20} />
+            </div>
+            <div className="bulk-stat-content">
+              <span className="bulk-stat-value">{availableItems.length}</span>
+              <span className="bulk-stat-label">Available for Refill</span>
+            </div>
+          </div>
+
+          <div className="bulk-stat-card">
+            <div className="bulk-stat-icon">
+              <AlertTriangle size={20} />
+            </div>
+            <div className="bulk-stat-content">
+              <span className="bulk-stat-value">{lowStockItems.length}</span>
+              <span className="bulk-stat-label">Low Stock Items</span>
+            </div>
+          </div>
+
+          <div className="bulk-stat-card">
+            <div className="bulk-stat-icon">
+              <Archive size={20} />
+            </div>
+            <div className="bulk-stat-content">
+              <span className="bulk-stat-value">{outOfStockItems.length}</span>
+              <span className="bulk-stat-label">Out of Stock</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="bulk-refill-quick-actions">
+          <div className="quick-action-group">
+            <h5 className="quick-action-title">Quick Refill Options</h5>
+            <div className="quick-action-buttons">
+              <button
+                className="btn btn-primary bulk-action-btn"
+                onClick={() => handleQuickBulkRefill('all')}
+                disabled={availableItems.length === 0}
+              >
+                <Upload size={16} />
+                Refill All ({availableItems.length} items)
+              </button>
+              
+              <button
+                className="btn btn-warning bulk-action-btn"
+                onClick={() => handleQuickBulkRefill('low')}
+                disabled={lowStockItems.length === 0}
+              >
+                <AlertTriangle size={16} />
+                Refill Low Stock ({lowStockItems.length} items)
+              </button>
+              
+              <button
+                className="btn btn-danger bulk-action-btn"
+                onClick={() => handleQuickBulkRefill('out')}
+                disabled={outOfStockItems.length === 0}
+              >
+                <Package size={16} />
+                Refill Out of Stock ({outOfStockItems.length} items)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Bulk Refill List */}
+        {availableItems.length > 0 && (
+          <div className="bulk-refill-list-container">
+            <h5 className="bulk-refill-list-title">Individual Item Control</h5>
+            <div className="bulk-refill-instructions">
+              <p>Tap items to select/deselect, then use "Refill Selected" button below.</p>
+            </div>
+            
+            <div className="bulk-refill-items">
+              {availableItems.map((item) => {
+                const product = getProductInfo(item.productId, item);
+                const status = getStockStatus(item.quantity, item.maxCapacity || 20);
+                const isSelected = bulkUpdates.some(update => update.slotId === item.id);
+                const currentUpdate = bulkUpdates.find(update => update.slotId === item.id);
+                
+                return (
+                  <div 
+                    key={item.id} 
+                    className={`bulk-refill-item ${isSelected ? 'selected' : ''} ${status}`}
+                    onClick={() => toggleBulkSelection(item)}
+                  >
+                    <div className="bulk-item-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleBulkSelection(item)}
+                        className="bulk-checkbox"
+                      />
+                    </div>
+                    
+                    <div className="bulk-item-info">
+                      <div className="bulk-item-header">
+                        <span className="bulk-item-slot">Slot {item.slot}</span>
+                        <span className={`bulk-item-status status-${status}`}>
+                          {getStockStatusLabel(item.quantity, item.maxCapacity || 20)}
+                        </span>
+                      </div>
+                      <div className="bulk-item-name">{product.name}</div>
+                      <div className="bulk-item-stock">
+                        Current: {item.quantity} / {item.maxCapacity || 20} items
+                      </div>
+                    </div>
+                    
+                    {isSelected && (
+                      <div className="bulk-item-quantity">
+                        <label className="bulk-quantity-label">New Qty:</label>
+                        <input
+                          type="number"
+                          value={currentUpdate?.quantity || item.maxCapacity || 20}
+                          onChange={(e) => updateBulkQuantity(item.id, e.target.value)}
+                          className="bulk-quantity-input-mobile"
+                          min="0"
+                          max={item.maxCapacity || 20}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Selected Items Actions */}
+            {bulkUpdates.length > 0 && (
+              <div className="bulk-selected-actions">
+                <div className="bulk-selected-info">
+                  <span className="selected-count">{bulkUpdates.length} items selected</span>
+                  <button 
+                    className="btn btn-secondary clear-selection-btn"
+                    onClick={clearBulkSelection}
+                  >
+                    Clear Selection
+                  </button>
+                </div>
+                
+                <div className="bulk-selected-buttons">
+                  <button
+                    className="btn btn-secondary bulk-preset-btn"
+                    onClick={() => setSelectedToMax()}
+                  >
+                    Set All to Max
+                  </button>
+                  
+                  <button
+                    className="btn btn-primary bulk-apply-btn"
+                    onClick={handleBulkUpdateSubmit}
+                    disabled={processingBulk}
+                  >
+                    {processingBulk ? (
+                      <div className="bulk-loading-content">
+                        <div className="bulk-spinner"></div>
+                        <span>Updating...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <Upload size={16} />
+                        <span>Refill {bulkUpdates.filter(u => u.quantity !== u.currentQuantity).length} Items</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* No Items State */}
+        {availableItems.length === 0 && (
+          <div className="bulk-refill-empty">
+            <Package size={48} />
+            <h4>No Items Available for Refill</h4>
+            <p>All filtered items are either deleted products or already at capacity.</p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  return (
+    <div className="inventory">
+      <div className="inventory-header">
+        {/* Desktop Actions - Show Export and Bulk Refill buttons only on desktop */}
+        {!isMobile && (
+          <div className="header-actions" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <button className="btn btn-secondary" onClick={() => setActiveTab('export')}>
+              <Download size={16} />
+              Export Data
+            </button>
+            <button 
+              className="btn btn-primary" 
+              onClick={handleBulkRefill}
+              disabled={filteredItems.filter(item => !isDeletedProduct(item)).length === 0}
+            >
+              <Upload size={16} />
+              Bulk Refill
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Mobile Navigation */}
+      {isMobile && (
+        <div className="mobile-inventory-navigation">
+          <div className="mobile-nav-tabs">
+            {navigationTabs.map((tab) => {
+              const IconComponent = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  className={`mobile-nav-tab ${activeTab === tab.id ? 'active' : ''}`}
+                  onClick={() => setActiveTab(tab.id)}
+                >
+                  <IconComponent size={20} />
+                  <span className="mobile-nav-label">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Tab Content */}
+      <div className="inventory-content">
+        {renderTabContent()}
+      </div>
 
       {/* Refill Modal */}
       {showRefillModal && (
@@ -1053,186 +1493,6 @@ const Inventory = () => {
                   )}
                 </button>
               </div>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Export Modal */}
-      {showExportModal && (
-        <Modal
-          title="Export Inventory Data"
-          onClose={() => setShowExportModal(false)}
-          size="medium"
-        >
-          <div className="export-modal-content">
-            <div className="export-info">
-              <h4 className="export-summary-title">Export Summary</h4>
-              <p className="export-summary-text">
-                Exporting <strong>{filteredItems.length} items</strong> from 
-                <strong> {filter.charAt(0).toUpperCase() + filter.slice(1)}</strong> filter
-                {searchTerm && <span> matching "<strong>{searchTerm}</strong>"</span>}
-              </p>
-            </div>
-
-            {/* File Format Selection */}
-            <div className="form-group">
-              <label className="form-label">Export Format</label>
-              <div className="export-format-options">
-                <label className={`export-format-option ${exportFormat === 'csv' ? 'active' : ''}`}>
-                  <input
-                    type="radio"
-                    name="exportFormat"
-                    value="csv"
-                    checked={exportFormat === 'csv'}
-                    onChange={(e) => setExportFormat(e.target.value)}
-                    className="export-format-radio"
-                  />
-                  <div className="export-format-content">
-                    <FileText size={24} className={`export-format-icon ${exportFormat === 'csv' ? 'active' : ''}`} />
-                    <span className="export-format-name">CSV</span>
-                    <span className="export-format-description">Excel, Sheets</span>
-                  </div>
-                </label>
-
-                <label className={`export-format-option ${exportFormat === 'excel' ? 'active' : ''}`}>
-                  <input
-                    type="radio"
-                    name="exportFormat"
-                    value="excel"
-                    checked={exportFormat === 'excel'}
-                    onChange={(e) => setExportFormat(e.target.value)}
-                    className="export-format-radio"
-                  />
-                  <div className="export-format-content">
-                    <FileSpreadsheet size={24} className={`export-format-icon ${exportFormat === 'excel' ? 'active' : ''}`} />
-                    <span className="export-format-name">Excel</span>
-                    <span className="export-format-description">.xlsx format</span>
-                  </div>
-                </label>
-
-                <label className={`export-format-option ${exportFormat === 'pdf' ? 'active' : ''}`}>
-                  <input
-                    type="radio"
-                    name="exportFormat"
-                    value="pdf"
-                    checked={exportFormat === 'pdf'}
-                    onChange={(e) => setExportFormat(e.target.value)}
-                    className="export-format-radio"
-                  />
-                  <div className="export-format-content">
-                    <FileImage size={24} className={`export-format-icon ${exportFormat === 'pdf' ? 'active' : ''}`} />
-                    <span className="export-format-name">PDF</span>
-                    <span className="export-format-description">Print-ready</span>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            {/* Export Options */}
-            <div className="form-group">
-              <label className="form-label">Export Options</label>
-              <div className="export-options">
-                <label className="export-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={exportOptions.includeDeletedProducts}
-                    onChange={(e) => setExportOptions(prev => ({ 
-                      ...prev, 
-                      includeDeletedProducts: e.target.checked 
-                    }))}
-                    className="export-checkbox-input"
-                  />
-                  <span className="export-checkbox-checkmark"></span>
-                  <span className="export-checkbox-text">Include deleted/old products</span>
-                </label>
-
-                <label className="export-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={exportOptions.groupByCategory}
-                    onChange={(e) => setExportOptions(prev => ({ 
-                      ...prev, 
-                      groupByCategory: e.target.checked 
-                    }))}
-                    className="export-checkbox-input"
-                  />
-                  <span className="export-checkbox-checkmark"></span>
-                  <span className="export-checkbox-text">Group by product category</span>
-                </label>
-
-                <label className="export-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={exportOptions.includeImages}
-                    onChange={(e) => setExportOptions(prev => ({ 
-                      ...prev, 
-                      includeImages: e.target.checked 
-                    }))}
-                    className="export-checkbox-input"
-                  />
-                  <span className="export-checkbox-checkmark"></span>
-                  <span className="export-checkbox-text">Include product image URLs</span>
-                </label>
-              </div>
-            </div>
-
-            {/* Preview */}
-            {exportPreview && (
-              <div className="export-preview">
-                <h4 className="export-preview-title">Export Preview</h4>
-                <div className="export-preview-details">
-                  <div className="export-preview-item">
-                    <span className="export-preview-label">Format:</span>
-                    <span className="export-preview-value">{exportPreview.format}</span>
-                  </div>
-                  <div className="export-preview-item">
-                    <span className="export-preview-label">Items:</span>
-                    <span className="export-preview-value">{exportPreview.itemCount} inventory items</span>
-                  </div>
-                  {exportPreview.columns && (
-                    <div className="export-preview-item">
-                      <span className="export-preview-label">Columns:</span>
-                      <span className="export-preview-value">{exportPreview.columns.length} data fields</span>
-                    </div>
-                  )}
-                  {exportPreview.features && exportPreview.features.length > 0 && (
-                    <div className="export-preview-item">
-                      <span className="export-preview-label">Features:</span>
-                      <span className="export-preview-value">{exportPreview.features.slice(0, 3).join(', ')}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div className="export-modal-actions">
-              <button
-                type="button"
-                className="btn btn-secondary export-modal-btn-secondary"
-                onClick={() => setShowExportModal(false)}
-                disabled={exportLoading}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary export-modal-btn-primary"
-                onClick={performExport}
-                disabled={filteredItems.length === 0 || exportLoading}
-              >
-                {exportLoading ? (
-                  <div className="export-loading-content">
-                    <div className="export-loading-spinner"></div>
-                    <span>Exporting...</span>
-                  </div>
-                ) : (
-                  <div className="export-button-content">
-                    <Download size={16} />
-                    <span>Export {exportFormat.toUpperCase()}</span>
-                  </div>
-                )}
-              </button>
             </div>
           </div>
         </Modal>
