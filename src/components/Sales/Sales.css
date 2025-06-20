@@ -660,10 +660,51 @@
     flex-direction: column;
     gap: 16px;
     align-items: stretch;
+    margin-bottom: 0 !important; /* Force margin to zero */
   }
 
   .sales-header h1 {
     font-size: 24px;
+    margin-bottom: 0 !important; /* Remove space below title */
+  }
+
+  /* Styles for mobile navigation bar */
+  .mobile-sales-navigation {
+    margin-top: -16px !important; /* Pull up to counteract header gap */
+    margin-bottom: 24px; 
+    background-color: #f7fafc;
+    border-bottom: 1px solid #e2e8f0;
+    box-shadow: none;
+  }
+
+  .mobile-nav-tabs {
+    display: flex;
+  }
+
+  .mobile-nav-tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-grow: 1;
+    padding: 12px 8px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    color: #4a5568;
+    transition: all 0.2s ease-in-out;
+  }
+
+  .mobile-nav-tab.active {
+    color: #667eea;
+    border-bottom-color: #667eea;
+    background-color: #f0f5ff;
+  }
+
+  .mobile-nav-tab .mobile-nav-label {
+    font-size: 14px;
+    font-weight: 500;
   }
 
   .sales-filters {
