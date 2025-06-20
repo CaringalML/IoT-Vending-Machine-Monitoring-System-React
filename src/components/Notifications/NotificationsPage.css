@@ -406,6 +406,10 @@
   margin-top: 2px;
 }
 
+.notification-icon-container svg {
+  color: #38a169; /* Green color for dollar sign */
+}
+
 .notification-icon.warning {
   color: #ed8936;
 }
@@ -420,6 +424,24 @@
 
 .notification-icon.info {
   color: #3182ce;
+}
+
+/* UPDATED MOBILE NOTIFICATION LAYOUT */
+.mobile-notification-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.notification-row-mobile {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
 }
 
 .notification-content {
@@ -441,6 +463,8 @@
   color: #2d3748;
   margin: 0;
   line-height: 1.3;
+  flex: 1;
+  min-width: 0;
 }
 
 .notification-meta {
@@ -458,25 +482,33 @@
   color: white;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  flex-shrink: 0;
+  align-self: flex-start;
 }
 
 .notification-time {
   font-size: 12px;
   color: #718096;
   white-space: nowrap;
+  flex-shrink: 0;
+  font-weight: 500;
 }
 
 .notification-message {
   color: #4a5568;
   font-size: 14px;
   line-height: 1.5;
-  margin: 0 0 12px 0;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
 }
 
 .notification-details {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-top: 4px;
+  width: 100%;
 }
 
 .detail-badge {
@@ -486,6 +518,9 @@
   border-radius: 12px;
   font-size: 12px;
   font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .notification-actions {
@@ -503,25 +538,31 @@
   cursor: pointer;
   color: #718096;
   transition: all 0.2s ease;
-  opacity: 0;
+  opacity: 1; /* Always visible on desktop */
 }
 
-.notification-item:hover .action-btn {
-  opacity: 1;
+/* Only hide on mobile */
+@media (max-width: 768px) {
+  .notification-actions {
+    display: none;
+  }
 }
 
-.action-btn:hover {
-  transform: scale(1.1);
-}
+/* Desktop hover effects */
+@media (min-width: 769px) {
+  .action-btn:hover {
+    transform: scale(1.1);
+  }
 
-.action-btn.mark-read:hover {
-  background: #c6f6d5;
-  color: #22543d;
-}
+  .action-btn.mark-read:hover {
+    background: #c6f6d5;
+    color: #22543d;
+  }
 
-.action-btn.remove:hover {
-  background: #fed7d7;
-  color: #e53e3e;
+  .action-btn.remove:hover {
+    background: #fed7d7;
+    color: #e53e3e;
+  }
 }
 
 /* Empty State */
@@ -625,6 +666,61 @@
   background: #e53e3e;
 }
 
+/* Settings Modal Styles */
+.settings-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.settings-modal {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.settings-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a202c;
+}
+
+.settings-header button {
+  background: none;
+  border: none;
+  color: #718096;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.settings-header button:hover {
+  background: #f7fafc;
+  color: #4a5568;
+}
+
 /* Custom Scrollbar */
 .notifications-list::-webkit-scrollbar {
   width: 6px;
@@ -654,27 +750,25 @@
     flex-direction: column;
     gap: 16px;
     align-items: stretch;
-    margin-bottom: 0 !important; /* Remove gap between header and tabs ONLY on mobile */
+    margin-bottom: 0 !important;
   }
 
   .notifications-header h1 {
     font-size: 24px;
-    margin-bottom: 0 !important; /* Remove bottom margin from title */
-    display: none !important; /* Hide header text on mobile */
+    margin-bottom: 0 !important;
+    display: none !important;
   }
 
   .notifications-header .header-left p {
-    display: none !important; /* Hide description text on mobile */
+    display: none !important;
   }
 
-  /* Hide desktop header actions on mobile */
   .notifications-header > .header-actions {
     display: none;
   }
 
-  /* Ensure mobile navigation sticks to header with no gap */
   .mobile-inventory-navigation {
-    margin-top: -16px !important; /* Pull navigation up more to completely close gap */
+    margin-top: -16px !important;
     margin-bottom: 24px;
     margin-left: -20px;
     margin-right: -20px;
@@ -726,6 +820,9 @@
     border: 1px solid #e2e8f0;
     background: white;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
   }
 
   .notification-item.unread {
@@ -743,96 +840,59 @@
     background: #f0fff4;
   }
 
-  /* Mobile notification header - improved layout */
-  .notification-header {
+  /* Hide the icon container on mobile */
+  .notification-icon-container {
+    display: none;
+  }
+  
+  /* Mobile notification body takes full width */
+  .mobile-notification-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Mobile rows with proper spacing */
+  .notification-row-mobile {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 12px;
     gap: 12px;
+    width: 100%;
   }
 
-  .notification-title-section {
+  .notification-title {
+    margin: 0;
+    line-height: 1.4;
     flex: 1;
     min-width: 0;
   }
 
-  .notification-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: #2d3748;
-    margin: 0 0 8px 0;
-    line-height: 1.3;
-  }
-
   .notification-message {
+    margin: 0;
+    flex: 1;
+    min-width: 0;
+    line-height: 1.4;
     color: #4a5568;
     font-size: 14px;
-    line-height: 1.4;
-    margin: 0 0 12px 0;
-  }
-
-  /* Mobile meta section - redesigned */
-  .notification-meta-mobile {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .notification-priority-time {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .priority-badge {
-    padding: 3px 8px;
-    border-radius: 12px;
-    font-size: 10px;
-    font-weight: 600;
-    color: white;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
   }
 
   .notification-time {
-    font-size: 12px;
-    color: #718096;
+    flex-shrink: 0;
     font-weight: 500;
   }
 
-  /* Mobile icon and checkbox section */
-  .notification-top-section {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    margin-bottom: 12px;
-  }
-
-  .notification-icon-container {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #f7fafc;
+  .priority-badge {
     flex-shrink: 0;
+    align-self: flex-start;
   }
 
-  .notification-select {
-    flex-shrink: 0;
-  }
-
-  /* Mobile details badges - improved */
   .notification-details {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 0; /* Remove bottom margin since no actions below */
+    margin-top: 4px;
+    gap: 8px;
   }
 
   .detail-badge {
@@ -845,9 +905,17 @@
     border: 1px solid #e2e8f0;
   }
 
-  /* Remove mobile action styles since actions are now in bulk bar */
+  /* Hide desktop layout elements on mobile */
+  .notification-header,
+  .notification-meta-mobile,
+  .notification-top-section,
+  .notification-title-section {
+    display: none;
+  }
+  
+  /* Hide individual action buttons on mobile */
   .notification-actions {
-    display: none; /* Hide individual action buttons on mobile */
+    display: none;
   }
 
   /* Mobile Settings Tab Styles */
@@ -896,13 +964,13 @@
 
 @media (max-width: 1024px) and (min-width: 769px) {
   .mobile-inventory-navigation {
-    display: none; /* Hide mobile nav on tablet/desktop */
+    display: none;
   }
 }
 
 @media (min-width: 1025px) {
   .mobile-inventory-navigation {
-    display: none; /* Hide mobile nav on desktop */
+    display: none;
   }
 }
 
