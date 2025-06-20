@@ -98,13 +98,14 @@ class NotificationService {
           this.addNotification({
             type: 'out_of_stock',
             title: 'Out of Stock Alert',
-            message: `${product.name} (${item.slot}) is now empty`,
+            message: `${product.name} is now empty`,
             priority: 'high',
             data: { 
               slot: item.slot, 
               productName: product.name,
               quantity: item.quantity,
-              maxCapacity: item.maxCapacity || 20
+              maxCapacity: item.maxCapacity || 20,
+              amount: '0 left'
             }
           });
         }
@@ -115,14 +116,15 @@ class NotificationService {
           this.addNotification({
             type: 'low_stock',
             title: 'Low Stock Alert',
-            message: `${product.name} (${item.slot}) is running low - ${item.quantity} left`,
+            message: `${product.name} is running low`,
             priority: 'medium',
             data: { 
               slot: item.slot, 
               productName: product.name,
               quantity: item.quantity,
               threshold: threshold,
-              maxCapacity: item.maxCapacity || 20
+              maxCapacity: item.maxCapacity || 20,
+              amount: `${item.quantity} left`
             }
           });
         }
@@ -132,13 +134,14 @@ class NotificationService {
         this.addNotification({
           type: 'stock_replenished',
           title: 'Stock Replenished',
-          message: `${product.name} (${item.slot}) has been restocked - ${item.quantity} items`,
+          message: `${product.name} has been restocked`,
           priority: 'low',
           data: { 
             slot: item.slot, 
             productName: product.name,
             quantity: item.quantity,
-            maxCapacity: item.maxCapacity || 20
+            maxCapacity: item.maxCapacity || 20,
+            amount: `${item.quantity} items`
           }
         });
       }
@@ -164,13 +167,14 @@ class NotificationService {
         this.addNotification({
           type: 'sale',
           title: 'Sale Completed',
-          message: `${product.name} sold for ${this.formatCurrency(sale.price)}`,
+          message: `${product.name} sold for`, // Removed price from message
           priority: 'low',
           data: { 
             productName: product.name,
             slot: sale.slot,
             price: sale.price,
-            paymentMethod: sale.paymentMethod
+            paymentMethod: sale.paymentMethod,
+            amount: this.formatCurrency(sale.price) // Price now in amount field
           }
         });
       }
