@@ -105,12 +105,13 @@ const Products = () => {
     setFilteredProducts(filtered);
   }, [searchTerm, products]);
 
-  // Mobile navigation tabs
-  const navigationTabs = [
-    { id: 'overview', label: 'Overview', icon: Package },
-    { id: 'add-product', label: 'Add Product', icon: Plus },
-    { id: 'edit-product', label: 'Edit Product', icon: Edit }
-  ];
+  // This effect resets the editing state when the user navigates away from the "Edit Product" tab on mobile.
+  useEffect(() => {
+    if (isMobile && activeTab !== 'edit-product' && editingProduct) {
+      setEditingProduct(null);
+    }
+  }, [activeTab, isMobile, editingProduct]);
+
 
   const handleViewImage = (product) => {
     setSelectedImage({
@@ -367,6 +368,16 @@ const Products = () => {
       currency: 'NZD'
     }).format(amount);
   };
+
+  // navigationTabs are now dynamically generated inside the component body
+  const navigationTabs = [
+    { id: 'overview', label: 'Overview', icon: Package },
+    { id: 'add-product', label: 'Add Product', icon: Plus },
+  ];
+
+  if (editingProduct) {
+    navigationTabs.push({ id: 'edit-product', label: 'Edit Product', icon: Edit });
+  }
 
   // Render content based on active tab
   const renderTabContent = () => {
@@ -834,8 +845,13 @@ const Products = () => {
     <div className="products">
       <div className="products-header">
         <div>
-          <h1>Product Management</h1>
-          <p>Manage your vending machine product catalog</p>
+          {/* FIX: The h1 and p tags are now wrapped in a conditional check for mobile view */}
+          {isMobile && (
+            <>
+              <h1>Product Management</h1>
+              <p>Manage your vending machine product catalog</p>
+            </>
+          )}
           
           <div className="machine-capacity-info">
             <span><strong>{totalActiveSlots}</strong> active slots</span>

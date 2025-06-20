@@ -527,19 +527,8 @@ const Sales = () => {
 
   return (
     <div className="sales">
+      {/* FIX: Removed button from here */}
       <div className="sales-header">
-        {/* Desktop Export Button */}
-        {!isMobile && (
-          <button
-            className="btn btn-primary"
-            onClick={handleExportSales}
-            disabled={getSalesToDisplay().length === 0}
-            style={{ marginLeft: 'auto' }}
-          >
-            <Download size={16} />
-            Export Data
-          </button>
-        )}
       </div>
 
       {/* Mobile Navigation - Only Analytics and Export */}
@@ -567,10 +556,24 @@ const Sales = () => {
       {(activeTab === 'analytics' || !isMobile) && (
         <div className="sales-filters">
           <div className="filter-section">
-            <h3 className="filter-section-title">
-              <Filter size={16} />
-              Time Period
-            </h3>
+            {/* FIX: New wrapper for title and button */}
+            <div className="filter-section-header">
+              <h3 className="filter-section-title">
+                <Filter size={16} />
+                Time Period
+              </h3>
+              {/* FIX: Moved button here, visible only on desktop */}
+              {!isMobile && (
+                <button
+                  className="btn btn-primary"
+                  onClick={handleExportSales}
+                  disabled={getSalesToDisplay().length === 0}
+                >
+                  <Download size={16} />
+                  Export Data
+                </button>
+              )}
+            </div>
             <div className="quick-filters">
               {[
                 { key: 'all', label: 'All Data', color: '#10b981' },

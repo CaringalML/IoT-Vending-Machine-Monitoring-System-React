@@ -7,7 +7,7 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 32px;
+  margin-bottom: 0; /* FIX: Minimized space between header and filters. */
 }
 
 .sales-header h1 {
@@ -97,13 +97,20 @@
   margin-bottom: 32px;
   background: white;
   border-radius: 12px;
-  padding: 24px;
+  padding: 20px 24px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   border: 1px solid #e2e8f0;
 }
 
+.filter-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
 .filter-section-title {
-  margin: 0 0 16px 0;
+  margin: 0; 
   font-weight: 600;
   color: #2d3748;
   font-size: 16px;
@@ -660,17 +667,17 @@
     flex-direction: column;
     gap: 16px;
     align-items: stretch;
-    margin-bottom: 0 !important; /* Force margin to zero */
+    margin-bottom: 0 !important;
   }
 
   .sales-header h1 {
     font-size: 24px;
-    margin-bottom: 0 !important; /* Remove space below title */
+    margin-bottom: 0 !important;
   }
 
   /* Styles for mobile navigation bar */
   .mobile-sales-navigation {
-    margin-top: -16px !important; /* Pull up to counteract header gap */
+    margin-top: -16px !important;
     margin-bottom: 24px; 
     background-color: #f7fafc;
     border-bottom: 1px solid #e2e8f0;
@@ -775,7 +782,7 @@
   }
 
   .table {
-    min-width: 650px; /* Updated to accommodate Actions column */
+    min-width: 650px;
   }
 
   /* Mobile responsive delete buttons */
@@ -792,27 +799,21 @@
     padding: 6px 2px;
   }
 
-  /*
-    FIX: This disables the sticky position of the table header on mobile.
-    This prevents it from creating a CSS stacking conflict that causes
-    the main header to be overlapped by the sidebar.
-  */
   .table th {
     position: static;
   }
   
-  /* FIX: Refined, more subtle scrollbar for the forecast chart on mobile */
   .forecast-chart-scroll-wrapper::-webkit-scrollbar {
-    height: 5px; /* A thin, but usable height for touch */
+    height: 5px;
   }
 
   .forecast-chart-scroll-wrapper::-webkit-scrollbar-track {
-    background: none; /* Make the track invisible */
+    background: none;
   }
 
   .forecast-chart-scroll-wrapper::-webkit-scrollbar-thumb {
-    background-color: #d6d6d6; /* A light grey, less intrusive color */
-    border-radius: 10px; /* Fully rounded ends */
+    background-color: #d6d6d6;
+    border-radius: 10px;
   }
 
   .table td {
@@ -859,6 +860,12 @@
     margin-bottom: 20px;
   }
 
+  .filter-section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
   .filter-section-title {
     font-size: 14px;
     margin-bottom: 12px;
@@ -903,7 +910,7 @@
   }
 
   .table {
-    min-width: 600px; /* Adjusted for mobile with Actions column */
+    min-width: 600px; 
   }
 
   /* Ultra-mobile responsive delete buttons */
@@ -1059,7 +1066,6 @@
     padding: 8px;
   }
 
-  /* Hide delete buttons when printing */
   .table th:last-child,
   .table td:last-child {
     display: none;
