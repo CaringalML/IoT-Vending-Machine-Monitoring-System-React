@@ -29,6 +29,10 @@ const Products = () => {
   const [saving, setSaving] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
 
+  // Mobile Navigation States
+  const [activeTab, setActiveTab] = useState('overview'); // overview, add-product, edit-product
+  const [isMobile, setIsMobile] = useState(false);
+
   // Form refs
   const nameRef = useRef();
   const skuRef = useRef();
@@ -46,6 +50,18 @@ const Products = () => {
     'healthy',
     'other'
   ];
+
+  // Check if mobile on mount and resize
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     const unsubscribeProducts = subscribeToProducts((productsData) => {
@@ -88,6 +104,13 @@ const Products = () => {
 
     setFilteredProducts(filtered);
   }, [searchTerm, products]);
+
+  // Mobile navigation tabs
+  const navigationTabs = [
+    { id: 'overview', label: 'Overview', icon: Package },
+    { id: 'add-product', label: 'Add Product', icon: Plus },
+    { id: 'edit-product', label: 'Edit Product', icon: Edit }
+  ];
 
   const handleViewImage = (product) => {
     setSelectedImage({
@@ -197,15 +220,29 @@ const Products = () => {
   };
 
   const handleAddProduct = () => {
-    setEditingProduct(null);
-    setShowModal(true);
-    resetForm();
+    if (isMobile) {
+      setEditingProduct(null);
+      setActiveTab('add-product');
+      resetForm();
+    } else {
+      // Desktop: Use modal
+      setEditingProduct(null);
+      setShowModal(true);
+      resetForm();
+    }
   };
 
   const handleEditProduct = (product) => {
-    setEditingProduct(product);
-    setShowModal(true);
-    populateForm(product);
+    if (isMobile) {
+      setEditingProduct(product);
+      setActiveTab('edit-product');
+      populateForm(product);
+    } else {
+      // Desktop: Use modal
+      setEditingProduct(product);
+      setShowModal(true);
+      populateForm(product);
+    }
   };
 
   const handleDeleteProduct = (product) => {
@@ -303,8 +340,18 @@ const Products = () => {
         }
       }
 
-      setShowModal(false);
-      setEditingProduct(null);
+      if (isMobile) {
+        // Mobile: Go back to overview and reset form
+        setActiveTab('overview');
+        resetForm();
+        setEditingProduct(null);
+        alert(`Product ${editingProduct ? 'updated' : 'added'} successfully!`);
+      } else {
+        // Desktop: Close modal
+        setShowModal(false);
+        setEditingProduct(null);
+      }
+      
       setValidationErrors({});
     } catch (error) {
       console.error('Error saving product:', error);
@@ -321,45 +368,20 @@ const Products = () => {
     }).format(amount);
   };
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
+  // Render content based on active tab
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'add-product':
+        return renderProductForm(false);
+      case 'edit-product':
+        return renderProductForm(true);
+      default:
+        return renderOverviewTab();
+    }
+  };
 
-  return (
-    <div className="products">
-      <div className="products-header">
-        <div>
-          <h1>Product Management</h1>
-          <p>Manage your vending machine product catalog</p>
-          
-          <div className="machine-capacity-info" style={{ 
-            marginTop: '12px', 
-            padding: '12px', 
-            background: '#f7fafc', 
-            borderRadius: '8px',
-            display: 'flex',
-            gap: '20px',
-            alignItems: 'center',
-            fontSize: '14px',
-            color: '#4a5568'
-          }}>
-            <span><strong>{totalActiveSlots}</strong> active slots</span>
-            {searchTerm && (
-              <span style={{ color: '#667eea' }}>
-                Showing <strong>{filteredProducts.length}</strong> of <strong>{products.length}</strong> products
-              </span>
-            )}
-          </div>
-        </div>
-        
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button className="btn btn-primary" onClick={handleAddProduct}>
-            <Plus size={16} />
-            Add Product
-          </button>
-        </div>
-      </div>
-
+  const renderOverviewTab = () => (
+    <>
       {/* Search Bar */}
       <div className="search-container" style={{ 
         marginBottom: '24px',
@@ -452,13 +474,15 @@ const Products = () => {
                     <Eye size={16} />
                   </button>
                 )}
-                <button 
-                  className="action-btn edit"
-                  onClick={() => handleEditProduct(product)}
-                  title="Edit Product"
-                >
-                  <Edit size={16} />
-                </button>
+                {!isMobile && (
+                  <button 
+                    className="action-btn edit"
+                    onClick={() => handleEditProduct(product)}
+                    title="Edit Product"
+                  >
+                    <Edit size={16} />
+                  </button>
+                )}
                 <button 
                   className="action-btn delete"
                   onClick={() => handleDeleteProduct(product)}
@@ -531,11 +555,26 @@ const Products = () => {
                   </span>
                 </div>
               </div>
+
+              {/* Mobile: Add edit button in card body */}
+              {isMobile && (
+                <div style={{ marginTop: '12px', padding: '12px 0', borderTop: '1px solid #e2e8f0' }}>
+                  <button 
+                    className="btn btn-secondary"
+                    onClick={() => handleEditProduct(product)}
+                    style={{ width: '100%', fontSize: '14px' }}
+                  >
+                    <Edit size={16} />
+                    Edit Product
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ))}
       </div>
 
+      {/* No Results States */}
       {filteredProducts.length === 0 && searchTerm && (
         <div className="no-products">
           <Search size={48} />
@@ -559,9 +598,296 @@ const Products = () => {
           </button>
         </div>
       )}
+    </>
+  );
 
-      {/* Product Form Modal */}
-      {showModal && (
+  const renderProductForm = (isEdit) => (
+    <div className="product-form-tab-content" style={{ padding: '20px 0' }}>
+      <div style={{ 
+        background: '#f7fafc', 
+        padding: '20px', 
+        borderRadius: '12px', 
+        marginBottom: '24px',
+        borderLeft: '4px solid #667eea'
+      }}>
+        <h4 style={{ 
+          margin: '0 0 8px 0', 
+          color: '#2d3748', 
+          fontSize: '18px', 
+          fontWeight: '600' 
+        }}>
+          {isEdit ? 'Edit Product' : 'Add New Product'}
+        </h4>
+        <p style={{ 
+          margin: '0', 
+          color: '#4a5568', 
+          fontSize: '14px', 
+          lineHeight: '1.5' 
+        }}>
+          {isEdit 
+            ? 'Update the product information below. Changes will be saved to the catalog and inventory.'
+            : 'Enter the product information below. A new inventory slot will be created automatically.'
+          }
+        </p>
+      </div>
+
+      <form onSubmit={handleFormSubmit} className="product-form">
+        <div className="form-group">
+          <label htmlFor="name" className="form-label">
+            Product Name *
+          </label>
+          <input
+            type="text"
+            id="name"
+            ref={nameRef}
+            className={`form-input ${validationErrors.name ? 'error' : ''}`}
+            placeholder="e.g., Coca Cola"
+            onChange={() => handleInputChange('name')}
+            required
+          />
+          {validationErrors.name && (
+            <div className="form-error">{validationErrors.name}</div>
+          )}
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="sku" className="form-label">
+            SKU
+          </label>
+          <input
+            type="text"
+            id="sku"
+            ref={skuRef}
+            className={`form-input ${validationErrors.sku ? 'error' : ''}`}
+            placeholder="e.g., BEV-001 (auto-generated if empty)"
+            onChange={() => handleInputChange('sku')}
+          />
+          <small className="form-help">Leave empty to auto-generate</small>
+          {validationErrors.sku && (
+            <div className="form-error">{validationErrors.sku}</div>
+          )}
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label htmlFor="price" className="form-label">
+              Price (NZD) *
+            </label>
+            <input
+              type="number"
+              id="price"
+              ref={priceRef}
+              className={`form-input ${validationErrors.price ? 'error' : ''}`}
+              placeholder="2.50"
+              step="0.01"
+              min="0"
+              onChange={() => handleInputChange('price')}
+              required
+            />
+            {validationErrors.price && (
+              <div className="form-error">{validationErrors.price}</div>
+            )}
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="maxCapacity" className="form-label">
+              Max Capacity
+            </label>
+            <input
+              type="number"
+              id="maxCapacity"
+              ref={maxCapacityRef}
+              className={`form-input ${validationErrors.maxCapacity ? 'error' : ''}`}
+              placeholder="20"
+              min="1"
+              max="100"
+              onChange={() => handleInputChange('maxCapacity')}
+            />
+            <small className="form-help">Maximum items this slot can hold (1-100)</small>
+            {validationErrors.maxCapacity && (
+              <div className="form-error">{validationErrors.maxCapacity}</div>
+            )}
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label htmlFor="category" className="form-label">
+              Category
+            </label>
+            <select
+              id="category"
+              ref={categoryRef}
+              className="form-select"
+            >
+              {categories.map(category => (
+                <option key={category} value={category}>
+                  {category.charAt(0).toUpperCase() + category.slice(1)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="slot" className="form-label">
+              Slot Name *
+            </label>
+            <input
+              type="text"
+              id="slot"
+              ref={slotRef}
+              className={`form-input ${validationErrors.slot ? 'error' : ''}`}
+              placeholder="e.g., Slot A1, Cold Drinks 1, etc."
+              onChange={() => handleInputChange('slot')}
+              required
+            />
+            <small className="form-help">Enter any custom slot name you want</small>
+            {validationErrors.slot && (
+              <div className="form-error">{validationErrors.slot}</div>
+            )}
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="image" className="form-label">
+            Image URL
+          </label>
+          <input
+            type="url"
+            id="image"
+            ref={imageRef}
+            className="form-input"
+            placeholder="https://example.com/product-image.jpg"
+          />
+          <small className="form-help">Add an image URL to display the product image</small>
+        </div>
+
+        <div className="form-group">
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              ref={activeRef}
+            />
+            <span className="checkmark"></span>
+            Active (available for purchase)
+          </label>
+        </div>
+
+        <div style={{ 
+          marginTop: '24px', 
+          padding: '20px 0', 
+          borderTop: '1px solid #e2e8f0',
+          display: 'flex',
+          gap: '12px',
+          flexDirection: 'column'
+        }}>
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={saving}
+            style={{ width: '100%', minHeight: '48px', fontSize: '16px' }}
+          >
+            {saving ? (
+              <div className="btn-loading-content">
+                <div className="spinner small" style={{ 
+                  width: '16px', 
+                  height: '16px', 
+                  border: '2px solid rgba(255,255,255,0.3)', 
+                  borderTop: '2px solid white',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }}></div>
+                <span>Saving...</span>
+              </div>
+            ) : (
+              <>
+                {isEdit ? <Edit size={16} /> : <Plus size={16} />}
+                <span>{isEdit ? 'Update Product' : 'Add Product'}</span>
+              </>
+            )}
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => {
+              setActiveTab('overview');
+              resetForm();
+              setEditingProduct(null);
+            }}
+            disabled={saving}
+            style={{ width: '100%', minHeight: '48px', fontSize: '16px' }}
+          >
+            <Package size={16} />
+            Back to Products
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  return (
+    <div className="products">
+      <div className="products-header">
+        <div>
+          <h1>Product Management</h1>
+          <p>Manage your vending machine product catalog</p>
+          
+          <div className="machine-capacity-info">
+            <span><strong>{totalActiveSlots}</strong> active slots</span>
+            {searchTerm && (
+              <span style={{ color: '#667eea' }}>
+                Showing <strong>{filteredProducts.length}</strong> of <strong>{products.length}</strong> products
+              </span>
+            )}
+          </div>
+        </div>
+        
+        {/* Desktop Actions - Show only on desktop */}
+        {!isMobile && (
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button className="btn btn-primary" onClick={handleAddProduct}>
+              <Plus size={16} />
+              Add Product
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Mobile Navigation */}
+      {isMobile && (
+        <div className="mobile-inventory-navigation">
+          <div className="mobile-nav-tabs">
+            {navigationTabs.map((tab) => {
+              const IconComponent = tab.icon;
+              const isActive = activeTab === tab.id;
+              
+              return (
+                <button
+                  key={tab.id}
+                  className={`mobile-nav-tab ${isActive ? 'active' : ''}`}
+                  onClick={() => setActiveTab(tab.id)}
+                >
+                  <IconComponent size={20} />
+                  <span className="mobile-nav-label">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Tab Content */}
+      <div className="products-content">
+        {isMobile ? renderTabContent() : renderOverviewTab()}
+      </div>
+
+      {/* Desktop Modal - Only show on desktop */}
+      {!isMobile && showModal && (
         <Modal
           title={editingProduct ? 'Edit Product' : 'Add New Product'}
           onClose={() => setShowModal(false)}
@@ -747,68 +1073,43 @@ const Products = () => {
         </Modal>
       )}
 
-      {/* Image Viewer Modal */}
+      {/* Mobile Responsive Image Viewer Modal */}
       {showImageModal && selectedImage && (
         <Modal
-          title="Product Image"
+          title=""
           onClose={() => setShowImageModal(false)}
           size="large"
         >
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#2d3748' }}>
-                {selectedImage.name}
-              </h3>
+          <div className="image-viewer-content">
+            <div className="image-viewer-header">
+              <h3>{selectedImage.name}</h3>
               {selectedImage.sku && (
-                <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#718096' }}>
-                  SKU: {selectedImage.sku}
-                </p>
+                <p>SKU: {selectedImage.sku}</p>
               )}
             </div>
             
-            <div style={{ 
-              maxWidth: '100%', 
-              maxHeight: '60vh',
-              overflow: 'hidden',
-              borderRadius: '8px',
-              border: '1px solid #e2e8f0',
-              display: 'inline-block'
-            }}>
-              <img 
-                src={selectedImage.url} 
-                alt={selectedImage.name}
-                style={{ 
-                  maxWidth: '100%', 
-                  maxHeight: '60vh',
-                  objectFit: 'contain',
-                  display: 'block'
-                }}
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.nextSibling.style.display = 'flex';
-                }}
-              />
-              <div 
-                style={{ 
-                  display: 'none',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  height: '200px',
-                  color: '#718096',
-                  fontSize: '14px'
-                }}
-              >
-                Failed to load image
+            <div className="image-viewer-body">
+              <div className="image-viewer-container">
+                <img 
+                  src={selectedImage.url} 
+                  alt={selectedImage.name}
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'flex';
+                  }}
+                />
+                <div className="image-viewer-error">
+                  Failed to load image
+                </div>
               </div>
             </div>
             
-            <div style={{ marginTop: '16px' }}>
+            <div className="image-viewer-footer">
               <a 
                 href={selectedImage.url} 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="btn btn-secondary"
-                style={{ marginRight: '8px' }}
               >
                 Open Original
               </a>
