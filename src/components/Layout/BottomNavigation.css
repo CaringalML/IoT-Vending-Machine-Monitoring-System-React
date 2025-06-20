@@ -61,6 +61,7 @@
   justify-content: center;
   margin-bottom: 4px;
   transition: transform 0.2s ease;
+  position: relative;
 }
 
 .bottom-nav-label {
@@ -76,6 +77,27 @@
 
 .bottom-nav-item-active .bottom-nav-label {
   font-weight: 600;
+}
+
+/* Bottom Navigation Badge */
+.bottom-nav-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #f56565;
+  color: white;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 4px;
+  border-radius: 8px;
+  min-width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(245, 101, 101, 0.3);
+  border: 2px solid white;
+  z-index: 1;
 }
 
 /* Mobile Styles */
@@ -115,6 +137,15 @@
   .bottom-nav-label {
     font-size: 10px;
   }
+
+  .bottom-nav-badge {
+    top: -2px;
+    right: -2px;
+    font-size: 8px;
+    min-width: 14px;
+    height: 14px;
+    padding: 1px 3px;
+  }
 }
 
 /* Landscape mode on mobile */
@@ -134,12 +165,21 @@
   .bottom-nav-label {
     font-size: 10px;
   }
+
+  .bottom-nav-badge {
+    top: -2px;
+    right: -2px;
+  }
 }
 
 /* High DPI displays */
 @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
   .bottom-navigation {
     border-top-width: 0.5px;
+  }
+  
+  .bottom-nav-badge {
+    border-width: 1px;
   }
 }
 

@@ -75,6 +75,88 @@
   box-shadow: none;
 }
 
+/* MOBILE NAVIGATION - Reuse styles from Products */
+.mobile-inventory-navigation {
+  margin: 0 -24px 24px -24px;
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.mobile-nav-tabs {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.mobile-nav-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-nav-tab {
+  flex: 1;
+  min-width: 0;
+  padding: 16px 8px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: #718096;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  position: relative;
+}
+
+.mobile-nav-tab:hover {
+  background: #f7fafc;
+  color: #4a5568;
+}
+
+.mobile-nav-tab.active {
+  color: #667eea;
+  border-bottom-color: #667eea;
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.mobile-nav-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #667eea;
+  border-radius: 2px 2px 0 0;
+}
+
+.mobile-nav-label {
+  font-size: 12px;
+  margin-top: 2px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+/* NOTIFICATIONS TAB CONTENT */
+.notifications-content {
+  position: relative;
+}
+
+.notification-settings-tab-content {
+  padding: 20px 0;
+}
+
 /* Controls Section */
 .notifications-controls {
   background: white;
@@ -491,6 +573,58 @@
   100% { transform: rotate(360deg); }
 }
 
+/* Button Styles */
+.btn {
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  min-height: 40px;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 600;
+}
+
+.btn-secondary {
+  background: #e2e8f0;
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #cbd5e0;
+  color: #2d3748;
+}
+
+.btn-danger {
+  background: #f56565;
+  color: white;
+  font-weight: 500;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #e53e3e;
+}
+
 /* Custom Scrollbar */
 .notifications-list::-webkit-scrollbar {
   width: 6px;
@@ -513,17 +647,37 @@
 /* Responsive Design */
 @media (max-width: 768px) {
   .notifications-page {
-    padding: 16px;
+    padding: 0 20px;
   }
 
   .notifications-header {
     flex-direction: column;
     gap: 16px;
     align-items: stretch;
+    margin-bottom: 0 !important; /* Remove gap between header and tabs ONLY on mobile */
   }
 
-  .header-actions {
-    flex-direction: column;
+  .notifications-header h1 {
+    font-size: 24px;
+    margin-bottom: 0 !important; /* Remove bottom margin from title */
+    display: none !important; /* Hide header text on mobile */
+  }
+
+  .notifications-header .header-left p {
+    display: none !important; /* Hide description text on mobile */
+  }
+
+  /* Hide desktop header actions on mobile */
+  .notifications-header > .header-actions {
+    display: none;
+  }
+
+  /* Ensure mobile navigation sticks to header with no gap */
+  .mobile-inventory-navigation {
+    margin-top: -16px !important; /* Pull navigation up more to completely close gap */
+    margin-bottom: 24px;
+    margin-left: -20px;
+    margin-right: -20px;
   }
 
   .notifications-controls {
@@ -535,13 +689,21 @@
   }
 
   .filter-tabs {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
   }
 
   .filter-tab {
     justify-content: center;
     text-align: center;
+    padding: 12px 8px;
+    flex-direction: column;
+    min-height: 60px;
+  }
+
+  .filter-tab svg {
+    margin-bottom: 4px;
   }
 
   .bulk-actions {
@@ -558,27 +720,189 @@
   }
 
   .notification-item {
-    flex-direction: column;
-    gap: 12px;
     padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    border: 1px solid #e2e8f0;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   }
 
+  .notification-item.unread {
+    border-left: 4px solid #667eea;
+    background: #fefefe;
+  }
+
+  .notification-item.read {
+    opacity: 0.8;
+    background: #fafafa;
+  }
+
+  .notification-item.selected {
+    border-left: 4px solid #38a169;
+    background: #f0fff4;
+  }
+
+  /* Mobile notification header - improved layout */
   .notification-header {
-    flex-direction: column;
-    align-items: stretch;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    gap: 12px;
+  }
+
+  .notification-title-section {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .notification-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0 0 8px 0;
+    line-height: 1.3;
+  }
+
+  .notification-message {
+    color: #4a5568;
+    font-size: 14px;
+    line-height: 1.4;
+    margin: 0 0 12px 0;
+  }
+
+  /* Mobile meta section - redesigned */
+  .notification-meta-mobile {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
     gap: 8px;
   }
 
-  .notification-meta {
-    justify-content: space-between;
+  .notification-priority-time {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
+  .priority-badge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .notification-time {
+    font-size: 12px;
+    color: #718096;
+    font-weight: 500;
+  }
+
+  /* Mobile icon and checkbox section */
+  .notification-top-section {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .notification-icon-container {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f7fafc;
+    flex-shrink: 0;
+  }
+
+  .notification-select {
+    flex-shrink: 0;
+  }
+
+  /* Mobile details badges - improved */
+  .notification-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 0; /* Remove bottom margin since no actions below */
+  }
+
+  .detail-badge {
+    background: #edf2f7;
+    color: #4a5568;
+    padding: 4px 10px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid #e2e8f0;
+  }
+
+  /* Remove mobile action styles since actions are now in bulk bar */
   .notification-actions {
-    align-self: flex-end;
+    display: none; /* Hide individual action buttons on mobile */
   }
 
-  .notification-actions .action-btn {
-    opacity: 1;
+  /* Mobile Settings Tab Styles */
+  .notification-settings-tab-content .notification-settings {
+    max-width: 100%;
+  }
+
+  .notification-settings-tab-content .settings-section {
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+  }
+
+  .notification-settings-tab-content .setting-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .notification-settings-tab-content .toggle-switch {
+    align-self: flex-start;
+  }
+
+  .notification-settings-tab-content .time-input-group {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .notification-settings-tab-content .settings-actions {
+    margin: 24px 0 0 0;
+    padding: 20px 0 0 0;
+    border-top: 1px solid #e2e8f0;
+    background: transparent;
+    box-shadow: none;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .notification-settings-tab-content .settings-actions .btn {
+    width: 100%;
+    min-height: 52px;
+    font-size: 16px;
+    font-weight: 600;
+    padding: 16px 24px;
+  }
+}
+
+@media (max-width: 1024px) and (min-width: 769px) {
+  .mobile-inventory-navigation {
+    display: none; /* Hide mobile nav on tablet/desktop */
+  }
+}
+
+@media (min-width: 1025px) {
+  .mobile-inventory-navigation {
+    display: none; /* Hide mobile nav on desktop */
   }
 }
 
@@ -629,7 +953,46 @@
 /* Focus states for accessibility */
 .filter-tab:focus,
 .action-btn:focus,
-.search-input:focus {
+.search-input:focus,
+.mobile-nav-tab:focus {
   outline: 2px solid #667eea;
   outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .notifications-container {
+    border-width: 2px;
+  }
+  
+  .notification-item.unread {
+    border-left-width: 6px;
+  }
+  
+  .btn-primary {
+    background: #4c51bf;
+  }
+  
+  .btn-secondary {
+    background: #cbd5e0;
+    border: 1px solid #4a5568;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .notification-item,
+  .btn,
+  .action-btn,
+  .mobile-nav-tab,
+  .filter-tab {
+    transition: none;
+    animation: none;
+  }
+  
+  .filter-tab:hover,
+  .btn:hover:not(:disabled),
+  .action-btn:hover {
+    transform: none;
+  }
 }

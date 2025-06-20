@@ -158,8 +158,8 @@ const Header = ({ onToggleSidebar, isSidebarOpen, isMobile }) => {
         </div>
 
         <div className="header-right">
-          {/* Notification Button - Hidden on mobile for /notifications page to avoid duplication */}
-          {!(isMobile && location.pathname === '/notifications') && (
+          {/* Notification Button - Hide completely on mobile */}
+          {!isMobile && (
             <div className="notification-container" ref={notificationRef}>
               <button 
                 className="notification-btn"

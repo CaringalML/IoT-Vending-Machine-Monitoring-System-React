@@ -14,7 +14,7 @@ import Modal from '../Common/Modal';
 import notificationService from '../../services/NotificationService';
 import './Notifications.css';
 
-const NotificationSettings = ({ isOpen, onClose }) => {
+const NotificationSettings = ({ isOpen, onClose, embedded = false }) => {
   const [settings, setSettings] = useState({
     enabled: true,
     sound: true,
@@ -38,10 +38,10 @@ const NotificationSettings = ({ isOpen, onClose }) => {
   const [testNotification, setTestNotification] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen || embedded) {
       loadSettings();
     }
-  }, [isOpen]);
+  }, [isOpen, embedded]);
 
   const loadSettings = async () => {
     try {
@@ -110,7 +110,13 @@ const NotificationSettings = ({ isOpen, onClose }) => {
       
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      onClose();
+      if (embedded) {
+        // Mobile: Show success message and stay on tab
+        alert('Settings saved successfully!');
+      } else {
+        // Desktop: Close modal
+        onClose();
+      }
     } catch (error) {
       console.error('Error saving notification settings:', error);
     } finally {
@@ -183,233 +189,227 @@ const NotificationSettings = ({ isOpen, onClose }) => {
     }
   ];
 
-  if (!isOpen) return null;
-
-  return (
-    <Modal
-      title="Notification Settings"
-      onClose={onClose}
-      size="medium"
-    >
-      <div className="notification-settings">
-        {/* Master Toggle */}
-        <div className="settings-section">
-          <div className="settings-section-header">
-            <Bell size={20} />
-            <h3>Notifications</h3>
-          </div>
-          
-          <div className="setting-item">
-            <div className="setting-info">
-              <div className="setting-label">Enable Notifications</div>
-              <div className="setting-description">
-                Turn on/off all notifications
-              </div>
-            </div>
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={settings.enabled}
-                onChange={() => handleToggle('enabled')}
-              />
-              <span className="toggle-slider"></span>
-            </label>
-          </div>
+  const renderSettingsContent = () => (
+    <div className="notification-settings">
+      {/* Master Toggle */}
+      <div className="settings-section">
+        <div className="settings-section-header">
+          <Bell size={20} />
+          <h3>Notifications</h3>
         </div>
-
-        {/* Delivery Methods */}
-        <div className="settings-section">
-          <div className="settings-section-header">
-            <Smartphone size={20} />
-            <h3>Delivery Methods</h3>
-          </div>
-          
-          <div className="setting-item">
-            <div className="setting-info">
-              <div className="setting-label">
-                <Volume2 size={16} />
-                Sound Notifications
-              </div>
-              <div className="setting-description">
-                Play sound when notifications arrive
-              </div>
+        
+        <div className="setting-item">
+          <div className="setting-info">
+            <div className="setting-label">Enable Notifications</div>
+            <div className="setting-description">
+              Turn on/off all notifications
             </div>
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={settings.sound && settings.enabled}
-                onChange={() => handleToggle('sound')}
-                disabled={!settings.enabled}
-              />
-              <span className="toggle-slider"></span>
-            </label>
           </div>
-
-          <div className="setting-item">
-            <div className="setting-info">
-              <div className="setting-label">
-                <Bell size={16} />
-                Desktop Notifications
-              </div>
-              <div className="setting-description">
-                Show browser notifications
-              </div>
-            </div>
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={settings.desktop && settings.enabled}
-                onChange={() => handleToggle('desktop')}
-                disabled={!settings.enabled}
-              />
-              <span className="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-
-        {/* Notification Types */}
-        <div className="settings-section">
-          <div className="settings-section-header">
-            <AlertTriangle size={20} />
-            <h3>Notification Types</h3>
-          </div>
-          
-          {notificationTypes.map(type => (
-            <div key={type.key} className="setting-item">
-              <div className="setting-info">
-                <div className="setting-label">
-                  <type.icon size={16} style={{ color: type.color }} />
-                  {type.label}
-                </div>
-                <div className="setting-description">
-                  {type.description}
-                </div>
-              </div>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={settings[type.key] && settings.enabled}
-                  onChange={() => handleToggle(type.key)}
-                  disabled={!settings.enabled}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-          ))}
-        </div>
-
-        {/* Thresholds */}
-        <div className="settings-section">
-          <div className="settings-section-header">
-            <Settings size={20} />
-            <h3>Thresholds</h3>
-          </div>
-          
-          <div className="setting-item">
-            <div className="setting-info">
-              <div className="setting-label">Low Stock Threshold</div>
-              <div className="setting-description">
-                Alert when stock falls below this number
-              </div>
-            </div>
+          <label className="toggle-switch">
             <input
-              type="number"
-              className="form-input"
-              style={{ width: '80px' }}
-              min="1"
-              max="20"
-              value={settings.lowStockThreshold}
-              onChange={(e) => handleInputChange('lowStockThreshold', parseInt(e.target.value) || 5)}
-              disabled={!settings.enabled || !settings.lowStock}
+              type="checkbox"
+              checked={settings.enabled}
+              onChange={() => handleToggle('enabled')}
             />
+            <span className="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      {/* Delivery Methods */}
+      <div className="settings-section">
+        <div className="settings-section-header">
+          <Smartphone size={20} />
+          <h3>Delivery Methods</h3>
+        </div>
+        
+        <div className="setting-item">
+          <div className="setting-info">
+            <div className="setting-label">
+              <Volume2 size={16} />
+              Sound Notifications
+            </div>
+            <div className="setting-description">
+              Play sound when notifications arrive
+            </div>
           </div>
+          <label className="toggle-switch">
+            <input
+              type="checkbox"
+              checked={settings.sound && settings.enabled}
+              onChange={() => handleToggle('sound')}
+              disabled={!settings.enabled}
+            />
+            <span className="toggle-slider"></span>
+          </label>
         </div>
 
-        {/* Quiet Hours */}
-        <div className="settings-section">
-          <div className="settings-section-header">
-            <VolumeX size={20} />
-            <h3>Quiet Hours</h3>
+        <div className="setting-item">
+          <div className="setting-info">
+            <div className="setting-label">
+              <Bell size={16} />
+              Desktop Notifications
+            </div>
+            <div className="setting-description">
+              Show browser notifications
+            </div>
           </div>
-          
-          <div className="setting-item">
+          <label className="toggle-switch">
+            <input
+              type="checkbox"
+              checked={settings.desktop && settings.enabled}
+              onChange={() => handleToggle('desktop')}
+              disabled={!settings.enabled}
+            />
+            <span className="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      {/* Notification Types */}
+      <div className="settings-section">
+        <div className="settings-section-header">
+          <AlertTriangle size={20} />
+          <h3>Notification Types</h3>
+        </div>
+        
+        {notificationTypes.map(type => (
+          <div key={type.key} className="setting-item">
             <div className="setting-info">
-              <div className="setting-label">Enable Quiet Hours</div>
+              <div className="setting-label">
+                <type.icon size={16} style={{ color: type.color }} />
+                {type.label}
+              </div>
               <div className="setting-description">
-                Disable sound notifications during specified hours
+                {type.description}
               </div>
             </div>
             <label className="toggle-switch">
               <input
                 type="checkbox"
-                checked={settings.quietHours.enabled && settings.enabled}
-                onChange={() => handleNestedToggle('quietHours', 'enabled')}
+                checked={settings[type.key] && settings.enabled}
+                onChange={() => handleToggle(type.key)}
                 disabled={!settings.enabled}
               />
               <span className="toggle-slider"></span>
             </label>
           </div>
+        ))}
+      </div>
 
-          {settings.quietHours.enabled && settings.enabled && (
-            <div className="quiet-hours-config">
-              <div className="time-input-group">
-                <div className="time-input-item">
-                  <label>Start Time</label>
-                  <input
-                    type="time"
-                    className="form-input"
-                    value={settings.quietHours.start}
-                    onChange={(e) => handleNestedInputChange('quietHours', 'start', e.target.value)}
-                  />
-                </div>
-                <div className="time-input-item">
-                  <label>End Time</label>
-                  <input
-                    type="time"
-                    className="form-input"
-                    value={settings.quietHours.end}
-                    onChange={(e) => handleNestedInputChange('quietHours', 'end', e.target.value)}
-                  />
-                </div>
-              </div>
+      {/* Thresholds */}
+      <div className="settings-section">
+        <div className="settings-section-header">
+          <Settings size={20} />
+          <h3>Thresholds</h3>
+        </div>
+        
+        <div className="setting-item">
+          <div className="setting-info">
+            <div className="setting-label">Low Stock Threshold</div>
+            <div className="setting-description">
+              Alert when stock falls below this number
             </div>
-          )}
+          </div>
+          <input
+            type="number"
+            className="form-input"
+            style={{ width: '80px' }}
+            min="1"
+            max="20"
+            value={settings.lowStockThreshold}
+            onChange={(e) => handleInputChange('lowStockThreshold', parseInt(e.target.value) || 5)}
+            disabled={!settings.enabled || !settings.lowStock}
+          />
+        </div>
+      </div>
+
+      {/* Quiet Hours */}
+      <div className="settings-section">
+        <div className="settings-section-header">
+          <VolumeX size={20} />
+          <h3>Quiet Hours</h3>
+        </div>
+        
+        <div className="setting-item">
+          <div className="setting-info">
+            <div className="setting-label">Enable Quiet Hours</div>
+            <div className="setting-description">
+              Disable sound notifications during specified hours
+            </div>
+          </div>
+          <label className="toggle-switch">
+            <input
+              type="checkbox"
+              checked={settings.quietHours.enabled && settings.enabled}
+              onChange={() => handleNestedToggle('quietHours', 'enabled')}
+              disabled={!settings.enabled}
+            />
+            <span className="toggle-slider"></span>
+          </label>
         </div>
 
-        {/* Test Notification */}
-        <div className="settings-section">
-          <div className="settings-section-header">
-            <Check size={20} />
-            <h3>Test</h3>
-          </div>
-          
-          <div className="setting-item">
-            <div className="setting-info">
-              <div className="setting-label">Test Notification</div>
-              <div className="setting-description">
-                Send a test notification to verify your settings
+        {settings.quietHours.enabled && settings.enabled && (
+          <div className="quiet-hours-config">
+            <div className="time-input-group">
+              <div className="time-input-item">
+                <label>Start Time</label>
+                <input
+                  type="time"
+                  className="form-input"
+                  value={settings.quietHours.start}
+                  onChange={(e) => handleNestedInputChange('quietHours', 'start', e.target.value)}
+                />
+              </div>
+              <div className="time-input-item">
+                <label>End Time</label>
+                <input
+                  type="time"
+                  className="form-input"
+                  value={settings.quietHours.end}
+                  onChange={(e) => handleNestedInputChange('quietHours', 'end', e.target.value)}
+                />
               </div>
             </div>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={sendTestNotification}
-              disabled={!settings.enabled || testNotification}
-            >
-              {testNotification ? (
-                <>
-                  <div className="loading-spinner small"></div>
-                  Sending...
-                </>
-              ) : (
-                'Send Test'
-              )}
-            </button>
           </div>
-        </div>
+        )}
+      </div>
 
-        {/* Fixed Actions */}
-        <div className="settings-actions">
+      {/* Test Notification */}
+      <div className="settings-section">
+        <div className="settings-section-header">
+          <Check size={20} />
+          <h3>Test</h3>
+        </div>
+        
+        <div className="setting-item">
+          <div className="setting-info">
+            <div className="setting-label">Test Notification</div>
+            <div className="setting-description">
+              Send a test notification to verify your settings
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={sendTestNotification}
+            disabled={!settings.enabled || testNotification}
+          >
+            {testNotification ? (
+              <>
+                <div className="loading-spinner small"></div>
+                Sending...
+              </>
+            ) : (
+              'Send Test'
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="settings-actions">
+        {!embedded && (
           <button
             type="button"
             className="btn btn-secondary"
@@ -419,24 +419,42 @@ const NotificationSettings = ({ isOpen, onClose }) => {
           >
             Cancel
           </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={handleSave}
-            disabled={saving}
-            style={{ cursor: 'pointer' }}
-          >
-            {saving ? (
-              <>
-                <div className="loading-spinner small"></div>
-                Saving...
-              </>
-            ) : (
-              'Save Settings'
-            )}
-          </button>
-        </div>
+        )}
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={handleSave}
+          disabled={saving}
+          style={{ cursor: 'pointer', width: embedded ? '100%' : 'auto' }}
+        >
+          {saving ? (
+            <>
+              <div className="loading-spinner small"></div>
+              Saving...
+            </>
+          ) : (
+            'Save Settings'
+          )}
+        </button>
       </div>
+    </div>
+  );
+
+  if (!isOpen && !embedded) return null;
+
+  // If embedded (mobile tab), return content directly
+  if (embedded) {
+    return renderSettingsContent();
+  }
+
+  // Otherwise, return content wrapped in modal (desktop)
+  return (
+    <Modal
+      title="Notification Settings"
+      onClose={onClose}
+      size="medium"
+    >
+      {renderSettingsContent()}
     </Modal>
   );
 };
