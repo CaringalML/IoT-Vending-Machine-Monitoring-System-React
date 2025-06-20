@@ -1078,7 +1078,7 @@ const Products = () => {
         <Modal
           title={`${selectedImage.name}${selectedImage.sku ? ` - ${selectedImage.sku}` : ''}`}
           onClose={() => setShowImageModal(false)}
-          size="large"
+          size="medium"
         >
           <div style={{ 
             display: 'flex', 

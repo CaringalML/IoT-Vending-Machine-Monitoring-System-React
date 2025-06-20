@@ -151,7 +151,7 @@
 /* STREAMLINED IMAGE VIEWER MODAL STYLES */
 .image-viewer-container {
   max-width: 100%;
-  max-height: 70vh;
+  max-height: 60vh;
   overflow: hidden;
   border-radius: 8px;
   border: 1px solid #e2e8f0;
@@ -163,9 +163,11 @@
 
 .image-viewer-container img {
   max-width: 100%;
-  max-height: 70vh;
+  max-height: 60vh;
   object-fit: contain;
   display: block;
+  width: auto;
+  height: auto;
 }
 
 .image-viewer-error {
@@ -890,11 +892,13 @@
 
   /* Desktop Image Viewer - Streamlined */
   .image-viewer-container {
-    max-height: 70vh;
+    max-height: 65vh;
+    max-width: 100%;
   }
 
   .image-viewer-container img {
-    max-height: 70vh;
+    max-height: 65vh;
+    max-width: 100%;
   }
 
   .image-viewer-footer {
