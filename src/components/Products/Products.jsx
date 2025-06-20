@@ -1073,34 +1073,30 @@ const Products = () => {
         </Modal>
       )}
 
-      {/* Mobile Responsive Image Viewer Modal */}
+      {/* Streamlined Image Viewer Modal */}
       {showImageModal && selectedImage && (
         <Modal
-          title=""
+          title={`${selectedImage.name}${selectedImage.sku ? ` - ${selectedImage.sku}` : ''}`}
           onClose={() => setShowImageModal(false)}
           size="large"
         >
-          <div className="image-viewer-content">
-            <div className="image-viewer-header">
-              <h3>{selectedImage.name}</h3>
-              {selectedImage.sku && (
-                <p>SKU: {selectedImage.sku}</p>
-              )}
-            </div>
-            
-            <div className="image-viewer-body">
-              <div className="image-viewer-container">
-                <img 
-                  src={selectedImage.url} 
-                  alt={selectedImage.name}
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.nextSibling.style.display = 'flex';
-                  }}
-                />
-                <div className="image-viewer-error">
-                  Failed to load image
-                </div>
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column',
+            alignItems: 'center',
+            padding: '20px 0'
+          }}>
+            <div className="image-viewer-container">
+              <img 
+                src={selectedImage.url} 
+                alt={selectedImage.name}
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+              <div className="image-viewer-error">
+                Failed to load image
               </div>
             </div>
             
@@ -1113,12 +1109,6 @@ const Products = () => {
               >
                 Open Original
               </a>
-              <button 
-                className="btn btn-primary" 
-                onClick={() => setShowImageModal(false)}
-              >
-                Close
-              </button>
             </div>
           </div>
         </Modal>
