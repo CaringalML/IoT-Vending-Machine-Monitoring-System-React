@@ -1,3 +1,12 @@
+# Quick Test!
+
+## Login with this credential
+
+### email: admin@vending.com
+### password: VEndingadmin123
+
+
+
 
 # 🔧 How to Change Domain for Password Reset
 
