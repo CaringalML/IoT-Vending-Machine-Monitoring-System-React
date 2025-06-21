@@ -17,11 +17,9 @@ export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [permissionRequested, setPermissionRequested] = useState(false);
   
   const { user } = useAuth();
 
-  // Wrap cleanup function in useCallback
   const cleanupNotificationService = useCallback(() => {
     if (window.notificationUnsubscribe) {
       window.notificationUnsubscribe();
@@ -31,93 +29,65 @@ export const NotificationProvider = ({ children }) => {
     firestoreNotificationService.cleanup();
     setNotifications([]);
     setUnreadCount(0);
-    setLoading(false);
+    setLoading(true); // Reset loading state on cleanup
   }, []);
 
-  // Wrap initialization function in useCallback
+  // --- UPDATED: More robust initialization logic ---
   const initializeNotificationService = useCallback(async () => {
+    // Prevent execution if there's no user
+    if (!user) return;
+
+    setLoading(true); // Always start in a loading state
+
     try {
-      setLoading(true);
-      
-      // Initialize the service with current user
+      // Initialize the service. This sets up the Firestore listeners.
       await firestoreNotificationService.initialize(user.uid);
       
-      // Subscribe to notification updates
-      const unsubscribe = firestoreNotificationService.addListener((notifications, unreadCount) => {
-        setNotifications(notifications);
-        setUnreadCount(unreadCount);
-        setLoading(false);
+      // The listener is now solely responsible for updating state.
+      // It will set the loading state to false only after the first data payload arrives.
+      const unsubscribe = firestoreNotificationService.addListener((newNotifications, newUnreadCount) => {
+        setNotifications(newNotifications);
+        setUnreadCount(newUnreadCount);
+        
+        // This is the key fix: The loading spinner will now persist until
+        // the first batch of data has been successfully received from the listener.
+        // We check the 'loading' state to ensure this only runs once per initialization.
+        if (loading) {
+            setLoading(false);
+        }
       });
 
-      // Store unsubscribe function
+      // Store the unsubscribe function to be called on cleanup.
       window.notificationUnsubscribe = unsubscribe;
-      
-      // Initial load
-      setNotifications(firestoreNotificationService.getNotifications());
-      setUnreadCount(firestoreNotificationService.getUnreadCount());
-      setLoading(false);
       
     } catch (error) {
       console.error('Failed to initialize notification service:', error);
-      setLoading(false);
+      setLoading(false); // Ensure loading is turned off if an error occurs
     }
-  }, [user]);
+    // We intentionally DO NOT set loading to false here on success.
+    // We wait for the listener to give us the first data set.
+  }, [user, loading]); // `loading` is included as a dependency to ensure the closure has the latest value.
 
-  // Initialize service when user logs in
+  // This effect hook handles the lifecycle of the notification service
   useEffect(() => {
     if (user) {
       initializeNotificationService();
     } else {
       cleanupNotificationService();
     }
-  }, [user, initializeNotificationService, cleanupNotificationService]);
-
-  // Request notification permission on first load
-  useEffect(() => {
-    const requestPermission = async () => {
-      if (!permissionRequested && 'Notification' in window) {
-        const permission = await firestoreNotificationService.requestNotificationPermission();
-        setPermissionRequested(true);
-        console.log('Notification permission:', permission ? 'granted' : 'denied');
+    
+    // The cleanup function for this effect will run when the user logs out
+    return () => {
+      if (window.notificationUnsubscribe) {
+        window.notificationUnsubscribe();
       }
     };
+  }, [user, initializeNotificationService, cleanupNotificationService]);
 
-    requestPermission();
-  }, [permissionRequested]);
-
-  // Notification management functions
-  const markAsRead = async (notificationId) => {
-    await firestoreNotificationService.markAsRead(notificationId);
-  };
-
-  const markAllAsRead = async () => {
-    await firestoreNotificationService.markAllAsRead();
-  };
-
-  const removeNotification = async (notificationId) => {
-    await firestoreNotificationService.removeNotification(notificationId);
-  };
-
-  const clearAllNotifications = async () => {
-    await firestoreNotificationService.clearAllNotifications();
-  };
-
-  const sendTestNotification = async () => {
-    await firestoreNotificationService.sendTestNotification();
-  };
-
-  // Settings management
-  const getSettings = () => {
-    return firestoreNotificationService.loadSettings();
-  };
-
-  const updateSettings = (newSettings) => {
-    firestoreNotificationService.updateSettings(newSettings);
-  };
-
-  const requestNotificationPermission = async () => {
-    return await firestoreNotificationService.requestNotificationPermission();
-  };
+  // Expose the unlockAudio function from the service through the context
+  const unlockAudio = useCallback(() => {
+    firestoreNotificationService.unlockAudio();
+  }, []);
 
   const value = {
     // State
@@ -126,19 +96,20 @@ export const NotificationProvider = ({ children }) => {
     loading,
     
     // Actions
-    markAsRead,
-    markAllAsRead,
-    removeNotification,
-    clearAllNotifications,
-    sendTestNotification,
+    markAsRead: firestoreNotificationService.markAsRead.bind(firestoreNotificationService),
+    markAllAsRead: firestoreNotificationService.markAllAsRead.bind(firestoreNotificationService),
+    removeNotification: firestoreNotificationService.removeNotification.bind(firestoreNotificationService),
+    clearAllNotifications: firestoreNotificationService.clearAllNotifications.bind(firestoreNotificationService),
+    sendTestNotification: firestoreNotificationService.sendTestNotification.bind(firestoreNotificationService),
     
-    // Settings
-    getSettings,
-    updateSettings,
-    requestNotificationPermission,
+    // Settings & Permissions
+    getSettings: firestoreNotificationService.loadSettings.bind(firestoreNotificationService),
+    updateSettings: firestoreNotificationService.updateSettings.bind(firestoreNotificationService),
+    requestNotificationPermission: firestoreNotificationService.requestNotificationPermission.bind(firestoreNotificationService),
+    unlockAudio, // Expose the new function
     
     // Service info
-    isSupported: true, // Firestore is always supported
+    isSupported: 'Notification' in window,
     permissionStatus: 'Notification' in window ? Notification.permission : 'denied'
   };
 
