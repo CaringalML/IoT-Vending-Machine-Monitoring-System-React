@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { loginUser, resetPassword } from '../../services/auth';
-import { LogIn, Eye, EyeOff, Mail, ArrowLeft, CheckCircle } from 'lucide-react';
+import { LogIn, Eye, EyeOff, Mail, ArrowLeft, CheckCircle, WifiOff } from 'lucide-react';
 import './Login.css';
 
 const Login = () => {
@@ -17,6 +17,33 @@ const Login = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  // Monitor online/offline status
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      // Clear network error when back online
+      if (error && (error.includes('Network') || error.includes('connection') || error.includes('internet'))) {
+        setError('');
+        setSuccess('Connection restored! You can try again.');
+        setTimeout(() => setSuccess(''), 3000);
+      }
+    };
+    
+    const handleOffline = () => {
+      setIsOnline(false);
+      setError('No internet connection. Please check your network.');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [error]);
 
   // Check for success message from URL params
   useEffect(() => {
@@ -42,6 +69,13 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Check online status before attempting login
+    if (!navigator.onLine) {
+      setError('No internet connection. Please check your network and try again.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     setSuccess('');
@@ -49,6 +83,7 @@ const Login = () => {
     try {
       await loginUser(formData.email, formData.password);
     } catch (error) {
+      console.error('Login error:', error);
       setError(error.message);
     } finally {
       setLoading(false);
@@ -60,6 +95,12 @@ const Login = () => {
     
     if (!resetEmail) {
       setError('Please enter your email address');
+      return;
+    }
+
+    // Check online status before attempting password reset
+    if (!navigator.onLine) {
+      setError('No internet connection. Please check your network and try again.');
       return;
     }
 
@@ -77,6 +118,7 @@ const Login = () => {
         setFormData({ ...formData, email: resetEmail }); // Pre-fill email
       }, 3000);
     } catch (error) {
+      console.error('Password reset error:', error);
       setError(error.message);
     } finally {
       setResetLoading(false);
@@ -96,10 +138,37 @@ const Login = () => {
     setSuccess('');
   };
 
+  // Network status indicator (only show when offline)
+  const NetworkIndicator = () => {
+    if (isOnline) return null;
+    
+    return (
+      <div style={{
+        position: 'absolute',
+        top: '16px',
+        right: '16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        fontSize: '12px',
+        color: '#f56565',
+        background: '#fed7d7',
+        padding: '4px 8px',
+        borderRadius: '6px',
+        border: '1px solid #fca5a5'
+      }}>
+        <WifiOff size={14} />
+        Offline
+      </div>
+    );
+  };
+
   if (showForgotPassword) {
     return (
       <div className="login-container">
-        <div className="login-card">
+        <div className="login-card" style={{ position: 'relative' }}>
+          <NetworkIndicator />
+          
           <div className="login-header">
             <div className="login-logo">
               <Mail size={32} />
@@ -137,13 +206,14 @@ const Login = () => {
                 className="form-input"
                 placeholder="admin@example.com"
                 required
+                disabled={!isOnline}
               />
             </div>
 
             <button
               type="submit"
               className="login-button"
-              disabled={resetLoading}
+              disabled={resetLoading || !isOnline}
             >
               {resetLoading ? (
                 <div className="loading-spinner"></div>
@@ -175,7 +245,9 @@ const Login = () => {
 
   return (
     <div className="login-container">
-      <div className="login-card">
+      <div className="login-card" style={{ position: 'relative' }}>
+        <NetworkIndicator />
+        
         <div className="login-header">
           <div className="login-logo">
             <LogIn size={32} />
@@ -211,6 +283,7 @@ const Login = () => {
               className="form-input"
               placeholder="admin@example.com"
               required
+              disabled={!isOnline}
             />
           </div>
 
@@ -228,11 +301,13 @@ const Login = () => {
                 className="form-input password-input"
                 placeholder="Enter your password"
                 required
+                disabled={!isOnline}
               />
               <button
                 type="button"
                 className="password-toggle"
                 onClick={() => setShowPassword(!showPassword)}
+                disabled={!isOnline}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -244,6 +319,7 @@ const Login = () => {
               type="button"
               className="forgot-password-btn"
               onClick={switchToForgotPassword}
+              disabled={!isOnline}
             >
               Forgot your password?
             </button>
@@ -252,7 +328,7 @@ const Login = () => {
           <button
             type="submit"
             className="login-button"
-            disabled={loading}
+            disabled={loading || !isOnline}
           >
             {loading ? (
               <div className="loading-spinner"></div>
@@ -263,6 +339,21 @@ const Login = () => {
               </>
             )}
           </button>
+
+          {!isOnline && (
+            <div style={{
+              textAlign: 'center',
+              marginTop: '16px',
+              padding: '12px',
+              background: '#fed7d7',
+              color: '#742a2a',
+              borderRadius: '8px',
+              fontSize: '14px'
+            }}>
+              <WifiOff size={16} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+              You're currently offline. Please check your internet connection.
+            </div>
+          )}
         </form>
 
         <div className="login-footer">
