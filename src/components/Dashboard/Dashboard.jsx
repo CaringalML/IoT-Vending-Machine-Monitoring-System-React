@@ -237,10 +237,7 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard">
-      <div className="dashboard-header">
-        <h1>Dashboard Overview</h1>
-        <p>Monitor your vending machine performance in real-time</p>
-      </div>
+
 
       <div className="stats-grid">
         <div className="stat-card revenue">

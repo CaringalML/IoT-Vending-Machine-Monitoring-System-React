@@ -499,27 +499,29 @@ const Sales = () => {
         </div>
       )}
 
-      {/* Export Action */}
-      <div className="export-tab-actions">
-        <button
-          type="button"
-          className="btn btn-primary export-btn-primary"
-          onClick={performExport}
-          disabled={getSalesToDisplay().length === 0 || exportLoading}
-        >
-          {exportLoading ? (
-            <div className="export-loading-content">
-              <div className="export-loading-spinner"></div>
-              <span>Exporting...</span>
-            </div>
-          ) : (
-            <div className="export-button-content">
-              <Download size={16} />
-              <span>Export {exportFormat.toUpperCase()}</span>
-            </div>
-          )}
-        </button>
-      </div>
+      {/* Export Action - Only show on mobile */}
+      {isMobile && (
+        <div className="export-tab-actions">
+          <button
+            type="button"
+            className="btn btn-primary export-btn-primary"
+            onClick={performExport}
+            disabled={getSalesToDisplay().length === 0 || exportLoading}
+          >
+            {exportLoading ? (
+              <div className="export-loading-content">
+                <div className="export-loading-spinner"></div>
+                <span>Exporting...</span>
+              </div>
+            ) : (
+              <div className="export-button-content">
+                <Download size={16} />
+                <span>Export {exportFormat.toUpperCase()}</span>
+              </div>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 

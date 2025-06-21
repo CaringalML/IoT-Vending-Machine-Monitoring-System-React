@@ -634,162 +634,6 @@
   letter-spacing: 0.5px;
 }
 
-/* Bulk Refill Tab Styles - Enhanced */
-.bulk-refill-tab-content {
-  padding: 20px 0;
-}
-
-.bulk-refill-info {
-  background: #f7fafc;
-  padding: 20px;
-  border-radius: 12px;
-  margin-bottom: 24px;
-  border-left: 4px solid #667eea;
-}
-
-.bulk-refill-title {
-  margin: 0 0 8px 0;
-  color: #2d3748;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.bulk-refill-description {
-  margin: 0;
-  color: #4a5568;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.bulk-refill-quick-actions {
-  margin-bottom: 24px;
-}
-
-.bulk-refill-btn {
-  width: 100%;
-  min-height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.bulk-refill-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-.bulk-refill-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none !important;
-}
-
-.bulk-refill-stats {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.bulk-stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  border: 1px solid #e2e8f0;
-}
-
-.bulk-stat-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.bulk-stat-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.bulk-stat-value {
-  font-size: 20px;
-  font-weight: 700;
-  color: #2d3748;
-  line-height: 1;
-}
-
-.bulk-stat-label {
-  font-size: 13px;
-  color: #718096;
-  margin-top: 2px;
-}
-
-.bulk-refill-advanced {
-  background: #f8fafc;
-  padding: 20px;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-}
-
-.bulk-refill-advanced-title {
-  margin: 0 0 8px 0;
-  color: #2d3748;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.bulk-refill-advanced-description {
-  margin: 0 0 16px 0;
-  color: #718096;
-  font-size: 14px;
-}
-
-.bulk-refill-coming-soon {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.coming-soon-content {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: white;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  color: #a0aec0;
-}
-
-.coming-soon-content small {
-  margin-left: auto;
-  font-size: 11px;
-  background: #e2e8f0;
-  color: #718096;
-  padding: 2px 6px;
-  border-radius: 4px;
-  text-transform: uppercase;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-}
-
 /* Summary Cards */
 .inventory-summary {
   display: grid;
@@ -1434,6 +1278,17 @@
 }
 
 /* Bulk Update Modal */
+.bulk-update-content {
+  padding: 20px;
+}
+
+/* Desktop spacing for bulk update modal content */
+@media (min-width: 769px) {
+  .bulk-update-content {
+    padding: 20px 32px;
+  }
+}
+
 .bulk-description {
   margin-bottom: 20px;
   color: #718096;
@@ -1450,6 +1305,7 @@
   width: 80px;
 }
 
+/* Bulk actions layout improvements */
 .bulk-actions {
   display: flex;
   gap: 12px;
@@ -1457,16 +1313,27 @@
   margin-top: 20px;
   padding-top: 20px;
   border-top: 1px solid #e2e8f0;
+  flex-wrap: wrap;
 }
 
 .bulk-action-buttons {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
+  flex: 1;
 }
 
 .bulk-modal-actions {
   display: flex;
   gap: 12px;
+  flex-shrink: 0;
+  min-width: fit-content;
+}
+
+/* Ensure buttons don't get too small */
+.bulk-modal-actions .btn {
+  min-width: 100px;
+  white-space: nowrap;
 }
 
 .bulk-spinner {
@@ -1503,6 +1370,11 @@
   text-align: center;
 }
 
+.export-loading-content span,
+.export-button-content span {
+  white-space: nowrap;
+}
+
 .export-loading-spinner {
   width: 16px;
   height: 16px;
@@ -1511,6 +1383,81 @@
   border-radius: 50%;
   animation: spin 1s linear infinite;
   flex-shrink: 0;
+}
+
+/* Tab Export Button (for mobile tab version) */
+.export-tab-actions {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.export-btn-primary {
+  width: 100%;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.export-btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.export-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Form Groups and Inputs */
+.form-group {
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 12px;
+  color: #2d3748;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #2d3748;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-input.error {
+  border-color: #e53e3e;
+}
+
+.form-input.error:focus {
+  border-color: #e53e3e;
+  box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.1);
 }
 
 /* Mobile Responsive Styles for Bulk Refill */
@@ -1625,6 +1572,12 @@
   .bulk-modal-actions {
     flex-direction: column;
     gap: 8px;
+  }
+
+  /* Ensure buttons don't get too small on mobile */
+  .bulk-modal-actions .btn {
+    min-width: auto;
+    width: 100%;
   }
 
   /* Mobile navigation adjustments */
@@ -1910,5 +1863,63 @@
   .bulk-apply-btn {
     min-height: 48px;
     font-size: 15px;
+  }
+}
+
+/* Touch Device Optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .export-format-option,
+  .export-checkbox-label,
+  .export-modal-btn-secondary,
+  .export-modal-btn-primary {
+    min-height: 48px;
+  }
+
+  .export-format-option:hover {
+    transform: none;
+  }
+
+  .export-checkbox-label:hover {
+    background: transparent;
+  }
+
+  .export-modal-btn-primary:hover,
+  .export-modal-btn-secondary:hover {
+    transform: none;
+  }
+}
+
+/* High DPI Display Optimizations */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .export-format-icon,
+  .export-checkbox-checkmark {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .export-format-option,
+  .export-checkbox-checkmark,
+  .export-modal-btn-primary,
+  .export-modal-btn-secondary,
+  .export-loading-spinner,
+  .refill-loading-spinner,
+  .bulk-spinner {
+    transition: none;
+    animation: none;
+  }
+  
+  .inventory-card:hover {
+    transform: none;
+  }
+  
+  .refill-btn:hover {
+    transform: none;
+  }
+  
+  .bulk-action-btn:hover:not(:disabled) {
+    transform: none;
   }
 }

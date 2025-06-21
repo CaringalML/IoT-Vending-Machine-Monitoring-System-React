@@ -2,6 +2,7 @@
   max-width: 1400px;
   margin: 0 auto;
   padding: 16px;
+  padding-top: 24px; /* Add specific top padding */
 }
 
 .dashboard-header {
@@ -28,6 +29,7 @@
   grid-template-columns: repeat(2, 1fr);
   gap: 16px;
   margin-bottom: 32px;
+  margin-top: 0; /* Remove default top margin since we removed header */
 }
 
 .stat-card {
@@ -443,6 +445,7 @@
 @media (min-width: 480px) {
   .dashboard {
     padding: 20px;
+    padding-top: 24px;
   }
   
   .stats-grid {
@@ -468,6 +471,7 @@
 @media (min-width: 768px) {
   .dashboard {
     padding: 24px;
+    padding-top: 24px;
   }
   
   .dashboard-header {
@@ -521,6 +525,7 @@
 @media (min-width: 1024px) {
   .dashboard {
     padding: 32px;
+    padding-top: 24px;
   }
   
   .stats-grid {
@@ -541,6 +546,7 @@
 @media (min-width: 1200px) {
   .dashboard {
     padding: 40px;
+    padding-top: 24px;
   }
   
   .stats-grid {
@@ -622,6 +628,7 @@
 @media (max-width: 320px) {
   .dashboard {
     padding: 12px;
+    padding-top: 24px;
   }
   
   .stats-grid {

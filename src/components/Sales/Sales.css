@@ -180,6 +180,321 @@
   min-width: 150px;
 }
 
+/* Export Tab Content Styles */
+.export-tab-content {
+  padding: 20px 0;
+}
+
+.export-info {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: #f0f9ff;
+  border: 1px solid #0ea5e9;
+  border-radius: 8px;
+}
+
+.export-summary-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0369a1;
+  margin: 0 0 8px 0;
+}
+
+.export-summary-text {
+  font-size: 14px;
+  color: #0f172a;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Export Format Options */
+.export-format-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.export-format-option {
+  position: relative;
+  cursor: pointer;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.export-format-option:hover {
+  border-color: #667eea;
+  background: #f7fafc;
+}
+
+.export-format-option.active {
+  border-color: #667eea;
+  background: #667eea;
+  color: white;
+}
+
+.export-format-radio {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.export-format-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.export-format-icon {
+  color: #4a5568;
+  transition: color 0.2s ease;
+}
+
+.export-format-icon.active {
+  color: white;
+}
+
+.export-format-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: inherit;
+}
+
+.export-format-description {
+  font-size: 12px;
+  color: #718096;
+}
+
+.export-format-option.active .export-format-description {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Export Options */
+.export-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.export-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  padding: 8px 0;
+  transition: background-color 0.2s ease;
+  border-radius: 4px;
+}
+
+.export-checkbox-label:hover {
+  background: #f7fafc;
+}
+
+.export-checkbox-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.export-checkbox-checkmark {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #d1d5db;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  background: white;
+  flex-shrink: 0;
+}
+
+.export-checkbox-input:checked + .export-checkbox-checkmark {
+  background: #667eea;
+  border-color: #667eea;
+}
+
+.export-checkbox-input:checked + .export-checkbox-checkmark::after {
+  content: '✓';
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.export-checkbox-text {
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.3;
+}
+
+/* Export Preview */
+.export-preview {
+  margin-top: 24px;
+  padding: 16px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.export-preview-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 12px 0;
+}
+
+.export-preview-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.export-preview-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.export-preview-label {
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.export-preview-value {
+  font-weight: 600;
+  color: #374151;
+}
+
+/* Export Tab Actions */
+.export-tab-actions {
+  margin-top: 24px;
+  display: flex;
+  justify-content: center;
+}
+
+.export-btn-primary {
+  padding: 12px 24px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 140px;
+  justify-content: center;
+}
+
+.export-btn-primary:hover:not(:disabled) {
+  background: #5a6fd8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.export-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.export-button-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.export-loading-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.export-loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Export Modal Specific Styles */
+.export-modal-content {
+  padding: 20px 0;
+}
+
+.export-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.export-modal-btn-secondary {
+  padding: 10px 20px;
+  background: #f7fafc;
+  color: #4a5568;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.export-modal-btn-secondary:hover:not(:disabled) {
+  background: #edf2f7;
+  border-color: #cbd5e0;
+}
+
+.export-modal-btn-primary {
+  padding: 10px 20px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+  justify-content: center;
+}
+
+.export-modal-btn-primary:hover:not(:disabled) {
+  background: #5a6fd8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.export-modal-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 /* Enhanced Stats */
 .sales-stats {
   display: grid;
@@ -633,6 +948,48 @@
 .btn:disabled:hover {
   transform: none !important;
   box-shadow: none !important;
+}
+
+/* Responsive Design for Export Components */
+@media (max-width: 768px) {
+  .export-format-options {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .export-format-option {
+    padding: 12px;
+    flex-direction: row;
+    text-align: left;
+    justify-content: flex-start;
+  }
+
+  .export-format-content {
+    flex-direction: row;
+    gap: 12px;
+  }
+
+  .export-preview-details {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .export-preview-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .export-modal-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .export-modal-btn-secondary,
+  .export-modal-btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 /* Responsive Design */
