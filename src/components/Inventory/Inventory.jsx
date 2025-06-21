@@ -16,29 +16,39 @@ import './Inventory.css';
 import './ExportModal.css';
 
 const Inventory = () => {
+  // Core inventory and product states
   const [inventory, setInventory] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Modal states
   const [showRefillModal, setShowRefillModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showBulkUpdateModal, setShowBulkUpdateModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false); // NEW: Export modal state
+  
+  // Selected item and form states
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [refillQuantity, setRefillQuantity] = useState('');
   const [processingRefill, setProcessingRefill] = useState(false);
-  const [filter, setFilter] = useState('all'); // all, low, out, deleted
-  const [imageLoading, setImageLoading] = useState(false);
-  const [filteredItems, setFilteredItems] = useState([]);
   const [refillError, setRefillError] = useState('');
-  const [bulkUpdates, setBulkUpdates] = useState([]);
-  const [processingBulk, setProcessingBulk] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
+  
+  // Filter and search states
+  const [filter, setFilter] = useState('all'); // all, low, out, deleted
+  const [filteredItems, setFilteredItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  
+  // Bulk operations states
+  const [bulkUpdates, setBulkUpdates] = useState([]);
+  const [processingBulk, setProcessingBulk] = useState(false);
   
   // Mobile Navigation States
   const [activeTab, setActiveTab] = useState('overview'); // overview, export, bulk-refill
   const [isMobile, setIsMobile] = useState(false);
   
-  // Export States (moved from modal to tab)
+  // Export States
   const [exportFormat, setExportFormat] = useState('csv');
   const [exportOptions, setExportOptions] = useState({
     includeImages: false,
@@ -72,6 +82,7 @@ const Inventory = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Subscribe to firestore data
   useEffect(() => {
     const unsubscribeInventory = subscribeToInventory((inventoryData) => {
       setInventory(inventoryData);
@@ -232,11 +243,11 @@ const Inventory = () => {
 
   // Update export preview when format or options change
   useEffect(() => {
-    if (exportManager && activeTab === 'export') {
+    if (exportManager && (activeTab === 'export' || showExportModal)) {
       const preview = exportManager.getExportPreview(exportFormat, filteredItems, exportOptions);
       setExportPreview(preview);
     }
-  }, [exportManager, exportFormat, exportOptions, filteredItems, activeTab]);
+  }, [exportManager, exportFormat, exportOptions, filteredItems, activeTab, showExportModal]);
 
   // Additional helper functions
   const getStockStatus = (quantity, maxCapacity, threshold = 5) => {
@@ -516,7 +527,17 @@ const Inventory = () => {
     );
   };
 
-  // Export functionality
+  // NEW: Export functionality handlers
+  const handleExportClick = () => {
+    if (isMobile) {
+      // Mobile: switch to export tab
+      setActiveTab('export');
+    } else {
+      // Desktop: show export modal
+      setShowExportModal(true);
+    }
+  };
+
   const performExport = async () => {
     if (!exportManager) {
       alert('Export manager not initialized. Please try again.');
@@ -540,6 +561,10 @@ const Inventory = () => {
       if (result.success) {
         // Optional: Show success message
         console.log('Export successful:', result.message);
+        // Close modal on desktop after successful export
+        if (!isMobile) {
+          setShowExportModal(false);
+        }
       } else {
         alert(`Export failed: ${result.error}`);
       }
@@ -1238,6 +1263,181 @@ const Inventory = () => {
     );
   };
 
+  // NEW: Render Export Modal Content (same as renderExportTab but for modal)
+  const renderExportModalContent = () => (
+    <div className="export-modal-content">
+      <div className="export-info">
+        <h4 className="export-summary-title">Export Summary</h4>
+        <p className="export-summary-text">
+          Exporting <strong>{filteredItems.length} items</strong> from 
+          <strong> {filter.charAt(0).toUpperCase() + filter.slice(1)}</strong> filter
+          {searchTerm && <span> matching "<strong>{searchTerm}</strong>"</span>}
+        </p>
+      </div>
+
+      {/* File Format Selection */}
+      <div className="form-group">
+        <label className="form-label">Export Format</label>
+        <div className="export-format-options">
+          <label className={`export-format-option ${exportFormat === 'csv' ? 'active' : ''}`}>
+            <input
+              type="radio"
+              name="exportFormat"
+              value="csv"
+              checked={exportFormat === 'csv'}
+              onChange={(e) => setExportFormat(e.target.value)}
+              className="export-format-radio"
+            />
+            <div className="export-format-content">
+              <FileText size={24} className={`export-format-icon ${exportFormat === 'csv' ? 'active' : ''}`} />
+              <span className="export-format-name">CSV</span>
+              <span className="export-format-description">Excel, Sheets</span>
+            </div>
+          </label>
+
+          <label className={`export-format-option ${exportFormat === 'excel' ? 'active' : ''}`}>
+            <input
+              type="radio"
+              name="exportFormat"
+              value="excel"
+              checked={exportFormat === 'excel'}
+              onChange={(e) => setExportFormat(e.target.value)}
+              className="export-format-radio"
+            />
+            <div className="export-format-content">
+              <FileSpreadsheet size={24} className={`export-format-icon ${exportFormat === 'excel' ? 'active' : ''}`} />
+              <span className="export-format-name">Excel</span>
+              <span className="export-format-description">.xlsx format</span>
+            </div>
+          </label>
+
+          <label className={`export-format-option ${exportFormat === 'pdf' ? 'active' : ''}`}>
+            <input
+              type="radio"
+              name="exportFormat"
+              value="pdf"
+              checked={exportFormat === 'pdf'}
+              onChange={(e) => setExportFormat(e.target.value)}
+              className="export-format-radio"
+            />
+            <div className="export-format-content">
+              <FileImage size={24} className={`export-format-icon ${exportFormat === 'pdf' ? 'active' : ''}`} />
+              <span className="export-format-name">PDF</span>
+              <span className="export-format-description">Print-ready</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      {/* Export Options */}
+      <div className="form-group">
+        <label className="form-label">Export Options</label>
+        <div className="export-options">
+          <label className="export-checkbox-label">
+            <input
+              type="checkbox"
+              checked={exportOptions.includeDeletedProducts}
+              onChange={(e) => setExportOptions(prev => ({ 
+                ...prev, 
+                includeDeletedProducts: e.target.checked 
+              }))}
+              className="export-checkbox-input"
+            />
+            <span className="export-checkbox-checkmark"></span>
+            <span className="export-checkbox-text">Include deleted/old products</span>
+          </label>
+
+          <label className="export-checkbox-label">
+            <input
+              type="checkbox"
+              checked={exportOptions.groupByCategory}
+              onChange={(e) => setExportOptions(prev => ({ 
+                ...prev, 
+                groupByCategory: e.target.checked 
+              }))}
+              className="export-checkbox-input"
+            />
+            <span className="export-checkbox-checkmark"></span>
+            <span className="export-checkbox-text">Group by product category</span>
+          </label>
+
+          <label className="export-checkbox-label">
+            <input
+              type="checkbox"
+              checked={exportOptions.includeImages}
+              onChange={(e) => setExportOptions(prev => ({ 
+                ...prev, 
+                includeImages: e.target.checked 
+              }))}
+              className="export-checkbox-input"
+            />
+            <span className="export-checkbox-checkmark"></span>
+            <span className="export-checkbox-text">Include product image URLs</span>
+          </label>
+        </div>
+      </div>
+
+      {/* Preview */}
+      {exportPreview && (
+        <div className="export-preview">
+          <h4 className="export-preview-title">Export Preview</h4>
+          <div className="export-preview-details">
+            <div className="export-preview-item">
+              <span className="export-preview-label">Format:</span>
+              <span className="export-preview-value">{exportPreview.format}</span>
+            </div>
+            <div className="export-preview-item">
+              <span className="export-preview-label">Items:</span>
+              <span className="export-preview-value">{exportPreview.itemCount} inventory items</span>
+            </div>
+            {exportPreview.columns && (
+              <div className="export-preview-item">
+                <span className="export-preview-label">Columns:</span>
+                <span className="export-preview-value">{exportPreview.columns.length} data fields</span>
+              </div>
+            )}
+            {exportPreview.features && exportPreview.features.length > 0 && (
+              <div className="export-preview-item">
+                <span className="export-preview-label">Features:</span>
+                <span className="export-preview-value">{exportPreview.features.slice(0, 3).join(', ')}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Export Actions */}
+      <div className="export-modal-actions">
+        <button
+          type="button"
+          className="export-modal-btn-secondary"
+          onClick={() => setShowExportModal(false)}
+          disabled={exportLoading}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          className="export-modal-btn-primary"
+          onClick={performExport}
+          disabled={filteredItems.length === 0 || exportLoading}
+        >
+          {exportLoading ? (
+            <div className="export-loading-content">
+              <div className="export-loading-spinner"></div>
+              <span>Exporting...</span>
+            </div>
+          ) : (
+            <div className="export-button-content">
+              <Download size={16} />
+              <span>Export {exportFormat.toUpperCase()}</span>
+            </div>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -1247,8 +1447,8 @@ const Inventory = () => {
       <div className="inventory-header">
         {/* Desktop Actions - Show Export and Bulk Refill buttons only on desktop */}
         {!isMobile && (
-          <div className="header-actions" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            <button className="btn btn-secondary" onClick={() => setActiveTab('export')}>
+          <div className="header-actions" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginLeft: 'auto' }}>
+            <button className="btn btn-secondary" onClick={handleExportClick}>
               <Download size={16} />
               Export Data
             </button>
@@ -1289,6 +1489,17 @@ const Inventory = () => {
       <div className="inventory-content">
         {renderTabContent()}
       </div>
+
+      {/* NEW: Export Modal for Desktop */}
+      {showExportModal && (
+        <Modal
+          title="Export Inventory Data"
+          onClose={() => setShowExportModal(false)}
+          size="large"
+        >
+          {renderExportModalContent()}
+        </Modal>
+      )}
 
       {/* Refill Modal */}
       {showRefillModal && (

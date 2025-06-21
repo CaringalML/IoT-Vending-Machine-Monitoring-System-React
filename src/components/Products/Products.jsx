@@ -112,6 +112,14 @@ const Products = () => {
     }
   }, [activeTab, isMobile, editingProduct]);
 
+  // FIX: Add this new useEffect hook to reset the form when switching to the 'add-product' tab.
+  useEffect(() => {
+    if (isMobile && activeTab === 'add-product') {
+      setEditingProduct(null);
+      resetForm();
+    }
+  }, [activeTab, isMobile]);
+
 
   const handleViewImage = (product) => {
     setSelectedImage({

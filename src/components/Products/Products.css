@@ -1014,3 +1014,12 @@
     height: 80px;
   }
 }
+
+/* Add horizontal padding to the modal form on desktop for better spacing */
+@media (min-width: 769px) {
+  .modal .product-form {
+    padding-top: 24px;
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+}
