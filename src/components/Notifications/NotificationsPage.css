@@ -1235,14 +1235,13 @@
     border: 1px solid #e2e8f0;
   }
 
-  /* Hide desktop layout elements on mobile */
-  .notification-header,
-  .notification-meta-mobile,
-  .notification-top-section,
-  .notification-title-section {
-    display: none;
-  }
-  
+  /*
+   * FIX: This block for hiding desktop elements has been removed.
+   * The new mobile layout in NotificationsPage.jsx uses different class names
+   * (e.g., .mobile-notification-body) and does not require these legacy rules.
+   * Keeping them caused conflicts that prevented items from rendering.
+  */
+
   /* Hide individual action buttons on mobile */
   .notification-actions {
     display: none;
