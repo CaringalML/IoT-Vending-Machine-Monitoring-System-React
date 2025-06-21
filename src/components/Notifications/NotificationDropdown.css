@@ -1,4 +1,4 @@
-/* NotificationDropdown.css */
+/* NotificationDropdown.css - Complete Updated Version */
 
 /* Main dropdown container */
 .notification-dropdown {
@@ -300,7 +300,7 @@
   color: #e53e3e;
 }
 
-/* Footer */
+/* Footer - UPDATED STYLES */
 .notification-dropdown-footer {
   padding: 12px 20px;
   border-top: 1px solid #e2e8f0;
@@ -310,6 +310,19 @@
   align-items: center;
   flex-shrink: 0;
   margin-top: auto;
+  min-height: 48px; /* Ensure consistent height */
+}
+
+.footer-left {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.footer-right {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
 }
 
 .notification-dropdown-footer .text-sm {
@@ -343,6 +356,9 @@
   padding: 8px 16px;
   border-radius: 6px;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .notification-dropdown-footer button:hover {
@@ -403,7 +419,16 @@
   }
 
   .notification-dropdown-footer {
-    padding: 10px 16px;
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+    padding: 12px 16px;
+  }
+
+  .footer-left,
+  .footer-right {
+    width: 100%;
+    justify-content: center;
   }
 
   .notification-dropdown-content {
@@ -443,6 +468,11 @@
 
   .notification-dropdown-content {
     max-height: 250px;
+  }
+
+  .notification-dropdown-footer button {
+    padding: 6px 12px;
+    font-size: 13px;
   }
 }
 

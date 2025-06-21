@@ -9,7 +9,8 @@ import {
   Package, 
   DollarSign,
   Clock,
-  Trash2
+  Trash2,
+  ArrowRight
 } from 'lucide-react';
 import { useNotifications } from '../../context/NotificationContext';
 import './NotificationDropdown.css';
@@ -64,6 +65,12 @@ const NotificationDropdown = ({ isOpen, onClose, onOpenSettings }) => {
   const handleRemoveNotification = async (e, notificationId) => {
     e.stopPropagation();
     await removeNotification(notificationId);
+  };
+
+  const handleClearAll = async () => {
+    if (window.confirm('Are you sure you want to clear all notifications?')) {
+      await clearAllNotifications();
+    }
   };
 
   const getNotificationIcon = (type) => {
@@ -197,7 +204,7 @@ const NotificationDropdown = ({ isOpen, onClose, onOpenSettings }) => {
                     {formatTime(notification.timestamp)}
                     {notification.slot && (
                       <span className="notification-slot">
-                        Slot {notification.slot}
+                        {notification.slot}
                       </span>
                     )}
                   </div>
@@ -216,30 +223,31 @@ const NotificationDropdown = ({ isOpen, onClose, onOpenSettings }) => {
         )}
       </div>
 
-      {/* Footer */}
+      {/* Footer - UPDATED WITH PROPER BUTTONS */}
       <div className="notification-dropdown-footer">
-        {notifications.length > 5 && (
-          <button
-            onClick={handleViewAll}
-            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-          >
-            View all {notifications.length} notifications
-          </button>
-        )}
+        <div className="footer-left">
+          {notifications.length > 0 && (
+            <button
+              onClick={handleViewAll}
+              className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+            >
+              View all notifications
+              <ArrowRight size={14} />
+            </button>
+          )}
+        </div>
         
-        {notifications.length > 0 && (
-          <button
-            onClick={clearAllNotifications}
-            className="text-sm text-red-600 hover:text-red-800 font-medium"
-          >
-            Clear all
-          </button>
-        )}
+        <div className="footer-right">
+          {notifications.length > 0 && (
+            <button
+              onClick={handleClearAll}
+              className="text-sm text-red-600 hover:text-red-800 font-medium"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
       </div>
-
-      <style jsx>{`
-        /* Removed all styles - now using external CSS file */
-      `}</style>
     </div>
   );
 };
