@@ -1,5 +1,5 @@
 // src/context/NotificationContext.js
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import firestoreNotificationService from '../services/FirestoreNotificationService';
 import { useAuth } from './AuthContext';
 
@@ -20,6 +20,10 @@ export const NotificationProvider = ({ children }) => {
   
   const { user } = useAuth();
 
+  // --- NEW: Use a ref to track the initial load ---
+  // This ref helps us know if it's the very first time the listener is firing.
+  const isInitialLoad = useRef(true);
+
   const cleanupNotificationService = useCallback(() => {
     if (window.notificationUnsubscribe) {
       window.notificationUnsubscribe();
@@ -37,23 +41,21 @@ export const NotificationProvider = ({ children }) => {
     // Prevent execution if there's no user
     if (!user) return;
 
-    setLoading(true); // Always start in a loading state
-
     try {
       // Initialize the service. This sets up the Firestore listeners.
       await firestoreNotificationService.initialize(user.uid);
       
-      // The listener is now solely responsible for updating state.
-      // It will set the loading state to false only after the first data payload arrives.
+      // This listener is now responsible for setting the loading state to false.
       const unsubscribe = firestoreNotificationService.addListener((newNotifications, newUnreadCount) => {
         setNotifications(newNotifications);
         setUnreadCount(newUnreadCount);
         
-        // This is the key fix: The loading spinner will now persist until
-        // the first batch of data has been successfully received from the listener.
-        // We check the 'loading' state to ensure this only runs once per initialization.
-        if (loading) {
+        // This is the key fix: Use the ref to check if this is the first data payload.
+        // If it is, we turn off the loading spinner and update the ref so this block
+        // doesn't run again until the next full initialization.
+        if (isInitialLoad.current) {
             setLoading(false);
+            isInitialLoad.current = false; // Mark initial load as complete
         }
       });
 
@@ -63,14 +65,16 @@ export const NotificationProvider = ({ children }) => {
     } catch (error) {
       console.error('Failed to initialize notification service:', error);
       setLoading(false); // Ensure loading is turned off if an error occurs
+      isInitialLoad.current = false;
     }
-    // We intentionally DO NOT set loading to false here on success.
-    // We wait for the listener to give us the first data set.
-  }, [user, loading]); // `loading` is included as a dependency to ensure the closure has the latest value.
+  }, [user]); // This callback now ONLY depends on the user, which is correct.
 
   // This effect hook handles the lifecycle of the notification service
   useEffect(() => {
     if (user) {
+      // Reset flags and set loading state before initializing
+      setLoading(true);
+      isInitialLoad.current = true;
       initializeNotificationService();
     } else {
       cleanupNotificationService();
