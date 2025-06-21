@@ -23,7 +23,7 @@ service cloud.firestore {
         isValidInventoryUpdate(request.resource.data);
     }
     
-    // Product History collection - NEW: For tracking deleted products
+    // Product History collection - For tracking deleted products
     match /product_history/{historyId} {
       allow read, write: if request.auth != null;
       
@@ -32,7 +32,7 @@ service cloud.firestore {
         isValidProductHistory(request.resource.data);
     }
     
-    // Machine Config collection - NEW: For machine configuration
+    // Machine Config collection - For machine configuration
     match /machine_config/{configId} {
       allow read, write: if request.auth != null;
     }
@@ -58,6 +58,27 @@ service cloud.firestore {
         isValidMachineStatus(request.resource.data);
     }
     
+    // NEW: Notifications collection - Real-time notifications
+    match /notifications/{notificationId} {
+      // Users can read their own notifications
+      allow read: if request.auth != null &&
+        request.auth.uid == resource.data.userId;
+      
+      // System can create notifications for users
+      allow create: if request.auth != null &&
+        isValidNotification(request.resource.data);
+      
+      // Users can update their own notifications (mark as read)
+      allow update: if request.auth != null &&
+        request.auth.uid == resource.data.userId &&
+        // Only allow updating read status and readAt timestamp
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt']);
+      
+      // Users can delete their own notifications
+      allow delete: if request.auth != null &&
+        request.auth.uid == resource.data.userId;
+    }
+    
     // Analytics collection (if you add it later)
     match /analytics/{analyticsId} {
       allow read, write: if request.auth != null;
@@ -72,16 +93,7 @@ service cloud.firestore {
         request.resource.data.size() < 50; // Limit log entry size
     }
     
-    // FCM Tokens collection - For notification tokens
-    match /fcm_tokens/{tokenId} {
-      allow read, write: if request.auth != null;
-      
-      // Users can only manage their own tokens
-      allow create, update: if request.auth != null &&
-        request.resource.data.userId == request.auth.uid;
-    }
-    
-    // Users collection - For user preferences and FCM tokens
+    // Users collection - For user preferences (no more FCM tokens)
     match /users/{userId} {
       allow read, write: if request.auth != null &&
         userId == request.auth.uid;
@@ -93,14 +105,14 @@ service cloud.firestore {
              data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
              data.price is number && data.price > 0 && data.price <= 1000 &&
              data.category is string && data.category.size() > 0 &&
-             data.slot is string && data.slot.size() > 0 && data.slot.size() <= 50 && // UPDATED: Allow custom slot names
+             data.slot is string && data.slot.size() > 0 && data.slot.size() <= 50 &&
              data.active is bool;
     }
     
     function isValidInventoryUpdate(data) {
       return data.quantity is number && 
              data.quantity >= 0 && 
-             data.quantity <= 200; // UPDATED: Increased max capacity limit
+             data.quantity <= 200;
     }
     
     function isValidProductHistory(data) {
@@ -112,7 +124,7 @@ service cloud.firestore {
     function isValidSale(data) {
       return data.keys().hasAll(['productId', 'slot', 'price']) &&
              data.productId is string && data.productId.size() > 0 &&
-             data.slot is string && data.slot.size() > 0 && // UPDATED: Allow custom slot names
+             data.slot is string && data.slot.size() > 0 &&
              data.price is number && data.price > 0 && data.price <= 1000;
     }
     
@@ -124,8 +136,24 @@ service cloud.firestore {
              (!('uptime' in data) || (data.uptime is number && data.uptime >= 0));
     }
     
+    // NEW: Notification validation function
+    function isValidNotification(data) {
+      return data.keys().hasAll(['type', 'title', 'message', 'userId', 'timestamp']) &&
+             data.type is string &&
+             data.type in ['low_stock', 'out_of_stock', 'sale', 'stock_replenished', 'system'] &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
+             data.message is string && data.message.size() > 0 && data.message.size() <= 500 &&
+             data.userId is string && data.userId.size() > 0 &&
+             data.timestamp is timestamp &&
+             (!('priority' in data) || data.priority in ['low', 'medium', 'high']) &&
+             (!('read' in data) || data.read is bool) &&
+             (!('slot' in data) || (data.slot is string && data.slot.size() <= 50)) &&
+             (!('productName' in data) || (data.productName is string && data.productName.size() <= 100)) &&
+             (!('quantity' in data) || (data.quantity is number && data.quantity >= 0)) &&
+             (!('price' in data) || (data.price is number && data.price >= 0));
+    }
+    
     // Allow all other collections for authenticated users (fallback)
-    // UPDATED: Changed from deny-all to allow authenticated access
     match /{document=**} {
       allow read, write: if request.auth != null;
     }

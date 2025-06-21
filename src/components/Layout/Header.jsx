@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Bell, User, LogOut, Settings, Menu, X } from 'lucide-react';
 import NotificationDropdown from '../Notifications/NotificationDropdown';
 import NotificationSettings from '../Notifications/NotificationSettings';
-import notificationService from '../../services/NotificationService';
+import { useNotifications } from '../../context/NotificationContext'; // CHANGED THIS LINE
 
 const Header = ({ onToggleSidebar, isSidebarOpen, isMobile }) => {
   const { user } = useAuth();
@@ -13,7 +13,7 @@ const Header = ({ onToggleSidebar, isSidebarOpen, isMobile }) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
-  const [notificationCount, setNotificationCount] = useState(0);
+  const { unreadCount } = useNotifications(); // CHANGED THIS LINE
   
   const userMenuRef = useRef(null);
   const notificationRef = useRef(null);
@@ -114,18 +114,6 @@ const Header = ({ onToggleSidebar, isSidebarOpen, isMobile }) => {
     setShowNotificationSettings(false);
   };
 
-  // Subscribe to real notification count updates
-  useEffect(() => {
-    const unsubscribe = notificationService.addListener((notifications, unreadCount) => {
-      setNotificationCount(unreadCount);
-    });
-
-    // Initial load
-    setNotificationCount(notificationService.getUnreadCount());
-
-    return unsubscribe;
-  }, []);
-
   return (
     <header className="header">
       <div className="header-content">
@@ -165,12 +153,12 @@ const Header = ({ onToggleSidebar, isSidebarOpen, isMobile }) => {
                 className="notification-btn"
                 onClick={handleNotificationClick}
                 title="Notifications"
-                aria-label={`Notifications ${notificationCount > 0 ? `(${notificationCount} unread)` : ''}`}
+                aria-label={`Notifications ${unreadCount > 0 ? `(${unreadCount} unread)` : ''}`}
               >
                 <Bell size={20} />
-                {notificationCount > 0 && (
+                {unreadCount > 0 && (
                   <span className="notification-badge" aria-hidden="true">
-                    {notificationCount > 99 ? '99+' : notificationCount}
+                    {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
               </button>

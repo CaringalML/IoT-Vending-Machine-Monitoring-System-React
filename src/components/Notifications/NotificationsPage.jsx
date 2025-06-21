@@ -1,3 +1,4 @@
+// src/components/Notifications/NotificationsPage.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Bell, 
@@ -11,14 +12,22 @@ import {
   CheckCircle,
   Settings
 } from 'lucide-react';
-import notificationService from '../../services/NotificationService';
+import { useNotifications } from '../../context/NotificationContext';
 import NotificationSettings from './NotificationSettings';
 import './NotificationsPage.css';
 
 const NotificationsPage = () => {
-  const [notifications, setNotifications] = useState([]);
+  const { 
+    notifications, 
+    unreadCount, 
+    loading, 
+    markAsRead, 
+    markAllAsRead, 
+    removeNotification, 
+    clearAllNotifications 
+  } = useNotifications();
+
   const [filteredNotifications, setFilteredNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedNotifications, setSelectedNotifications] = useState([]);
@@ -40,21 +49,25 @@ const NotificationsPage = () => {
 
   // Helper function to format message with underlined product name
   const formatNotificationMessage = (notification) => {
-    if (notification.type === 'sale' && notification.data?.productName) {
+    if (notification.type === 'sale' && notification.productName) {
       return (
         <>
-          <span style={{ textDecoration: 'underline' }}>{notification.data.productName}</span>
-          <span> sold for:</span>
+          <span style={{ textDecoration: 'underline' }}>{notification.productName}</span>
+          <span> sold for {formatCurrency(notification.price || 0)}</span>
         </>
       );
     }
-    return notification.message + ':';
+    return notification.message;
   };
+
   const formatTimeAgo = (timestamp) => {
     if (!timestamp) return 'Unknown';
     
+    // Handle Firestore timestamp
+    const notificationTime = timestamp.seconds ? 
+      new Date(timestamp.seconds * 1000) : 
+      new Date(timestamp);
     const now = new Date();
-    const notificationTime = timestamp instanceof Date ? timestamp : new Date(timestamp);
     const diffInMs = now - notificationTime;
     const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
     const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
@@ -101,27 +114,13 @@ const NotificationsPage = () => {
       filtered = filtered.filter(n => 
         n.title.toLowerCase().includes(searchLower) ||
         n.message.toLowerCase().includes(searchLower) ||
-        (n.data?.slot && n.data.slot.toLowerCase().includes(searchLower)) ||
-        (n.data?.productName && n.data.productName.toLowerCase().includes(searchLower))
+        (n.slot && n.slot.toLowerCase().includes(searchLower)) ||
+        (n.productName && n.productName.toLowerCase().includes(searchLower))
       );
     }
 
     setFilteredNotifications(filtered);
   }, [notifications, filter, searchTerm]);
-
-  useEffect(() => {
-    // Subscribe to real notification updates
-    const unsubscribe = notificationService.addListener((notifications, unreadCount) => {
-      setNotifications(notifications);
-      setLoading(false);
-    });
-
-    // Initial load
-    setNotifications(notificationService.getNotifications());
-    setLoading(false);
-
-    return unsubscribe;
-  }, []);
 
   useEffect(() => {
     filterNotifications();
@@ -140,24 +139,22 @@ const NotificationsPage = () => {
     return iconMap[type] || <Bell size={20} />;
   };
 
-  const handleMarkAsRead = (notificationId) => {
-    notificationService.markAsRead(notificationId);
-  };
-
-  const handleMarkAllAsRead = () => {
-    notificationService.markAllAsRead();
-    setSelectedNotifications([]);
-  };
-
-  const handleBulkAction = (action) => {
-    selectedNotifications.forEach(id => {
-      if (action === 'markRead') {
-        notificationService.markAsRead(id);
-      } else if (action === 'remove') {
-        notificationService.removeNotification(id);
-      }
-    });
-    setSelectedNotifications([]);
+  const handleBulkAction = async (action) => {
+    try {
+      const promises = selectedNotifications.map(id => {
+        if (action === 'markRead') {
+          return markAsRead(id);
+        } else if (action === 'remove') {
+          return removeNotification(id);
+        }
+        return Promise.resolve();
+      });
+      
+      await Promise.all(promises);
+      setSelectedNotifications([]);
+    } catch (error) {
+      console.error('Error performing bulk action:', error);
+    }
   };
 
   const handleSelectNotification = (notificationId) => {
@@ -178,7 +175,7 @@ const NotificationsPage = () => {
     }
   };
 
-  const handleNotificationClick = (notificationId, event) => {
+  const handleNotificationClick = async (notificationId, event) => {
     // Check if the click was on action buttons - if so, don't interfere
     if (event.target.closest('.notification-actions')) {
       return;
@@ -190,7 +187,7 @@ const NotificationsPage = () => {
     // Also mark as read if it's not already read
     const notification = notifications.find(n => n.id === notificationId);
     if (notification && !notification.read) {
-      handleMarkAsRead(notificationId);
+      await markAsRead(notificationId);
     }
   };
 
@@ -222,6 +219,13 @@ const NotificationsPage = () => {
     }
   };
 
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-NZ', {
+      style: 'currency',
+      currency: 'NZD'
+    }).format(amount);
+  };
+
   const navigationTabs = [
     { id: 'overview', label: 'All Notifications', icon: Bell },
     { id: 'settings', label: 'Settings', icon: Settings }
@@ -238,7 +242,7 @@ const NotificationsPage = () => {
 
   const renderSettingsTab = () => (
     <div className="notification-settings-tab-content">
-      <NotificationSettings />
+      <NotificationSettings embedded={true} />
     </div>
   );
 
@@ -371,31 +375,75 @@ const NotificationsPage = () => {
                       <h4 className="notification-title">{notification.title}</h4>
                       <span
                         className="priority-badge"
-                        style={{ backgroundColor: getPriorityColor(notification.priority) }}
+                        style={{ backgroundColor: getPriorityColor(notification.priority || 'medium') }}
                       >
-                        {notification.priority.toUpperCase()}
+                        {(notification.priority || 'medium').toUpperCase()}
                       </span>
                     </div>
 
                     <div className="notification-row-mobile">
-                      <p className="notification-message">{formatNotificationMessage(notification)}</p>
+                      <div className="notification-message">
+                        {formatNotificationMessage(notification)}
+                      </div>
                       <span className="notification-time">
                         {formatTimeAgo(notification.timestamp)}
                       </span>
                     </div>
 
-                    {notification.data && (
+                    {(notification.slot || notification.price || notification.quantity !== undefined) && (
                       <div className="notification-details">
-                        <div className="detail-badge">
-                          💰
-                          <span>{notification.data.amount || notification.amount}</span>
-                        </div>
-                        <div className="detail-badge">
-                          📍
-                          <span>slot: {notification.data.slot || notification.machineId}</span>
-                        </div>
+                        {notification.price && (
+                          <div className="detail-badge">
+                            💰
+                            <span>{formatCurrency(notification.price)}</span>
+                          </div>
+                        )}
+                        {notification.slot && (
+                          <div className="detail-badge">
+                            📍
+                            <span>slot: {notification.slot}</span>
+                          </div>
+                        )}
+                        {notification.quantity !== undefined && (
+                          <div className="detail-badge">
+                            📦
+                            <span>{notification.quantity} items</span>
+                          </div>
+                        )}
+                        {notification.paymentMethod && (
+                          <div className="detail-badge">
+                            💳
+                            <span>{notification.paymentMethod}</span>
+                          </div>
+                        )}
                       </div>
                     )}
+                  </div>
+
+                  {/* Desktop Action Buttons */}
+                  <div className="notification-actions">
+                    {!notification.read && (
+                      <button 
+                        className="action-btn mark-read"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          await markAsRead(notification.id);
+                        }}
+                        title="Mark as read"
+                      >
+                        <Check size={14} />
+                      </button>
+                    )}
+                    <button 
+                      className="action-btn remove"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        await removeNotification(notification.id);
+                      }}
+                      title="Remove notification"
+                    >
+                      <X size={14} />
+                    </button>
                   </div>
                 </div>
               ))}
@@ -434,12 +482,25 @@ const NotificationsPage = () => {
           </button>
           <button 
             className="btn btn-primary"
-            onClick={handleMarkAllAsRead}
-            disabled={notifications.filter(n => !n.read).length === 0}
+            onClick={markAllAsRead}
+            disabled={unreadCount === 0}
           >
             <Check size={16} />
             Mark All Read
           </button>
+          {notifications.length > 0 && (
+            <button 
+              className="btn btn-danger"
+              onClick={async () => {
+                if (window.confirm('Are you sure you want to clear all notifications? This action cannot be undone.')) {
+                  await clearAllNotifications();
+                }
+              }}
+            >
+              <Trash2 size={16} />
+              Clear All
+            </button>
+          )}
         </div>
       </div>
 
@@ -466,19 +527,13 @@ const NotificationsPage = () => {
         {renderTabContent()}
       </div>
 
-      {/* Settings Modal for Desktop */}
+      {/* Improved Settings Modal for Desktop */}
       {showSettings && !isMobile && (
-        <div className="settings-overlay" onClick={() => setShowSettings(false)}>
-          <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="settings-header">
-              <h2>Notification Settings</h2>
-              <button onClick={() => setShowSettings(false)}>
-                <X size={24} />
-              </button>
-            </div>
-            <NotificationSettings />
-          </div>
-        </div>
+        <NotificationSettings 
+          isOpen={showSettings}
+          onClose={() => setShowSettings(false)}
+          embedded={false}
+        />
       )}
     </div>
   );

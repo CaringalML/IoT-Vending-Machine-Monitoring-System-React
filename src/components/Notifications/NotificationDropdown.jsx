@@ -1,125 +1,161 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Check, X, AlertTriangle, Package, DollarSign } from 'lucide-react';
-import notificationService from '../../services/NotificationService';
-import './Notifications.css';
+import { 
+  Bell, 
+  X, 
+  Settings, 
+  CheckCircle, 
+  AlertTriangle, 
+  Package, 
+  DollarSign,
+  Clock,
+  Trash2
+} from 'lucide-react';
+import { useNotifications } from '../../context/NotificationContext';
+import './NotificationDropdown.css';
 
 const NotificationDropdown = ({ isOpen, onClose, onOpenSettings }) => {
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (isOpen) {
-      loadNotifications();
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    // Subscribe to real-time notification updates
-    const unsubscribe = notificationService.addListener((newNotifications) => {
-      setNotifications(newNotifications);
-      setLoading(false);
-    });
-
-    // Initial load
-    setNotifications(notificationService.getNotifications());
-    setLoading(false);
-
-    return unsubscribe;
-  }, []);
-
-  const loadNotifications = async () => {
-    setLoading(true);
-    try {
-      // Get real notifications from service
-      const realNotifications = notificationService.getNotifications();
-      setNotifications(realNotifications);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error loading notifications:', error);
-      setLoading(false);
-    }
-  };
-
-  const markAsRead = (notificationId) => {
-    notificationService.markAsRead(notificationId);
-  };
-
-  const markAllAsRead = () => {
-    notificationService.markAllAsRead();
-  };
-
-  const removeNotification = (notificationId) => {
-    notificationService.removeNotification(notificationId);
-  };
-
-  const getNotificationIcon = (type, IconComponent) => {
-    const iconProps = { size: 18 };
-    
-    switch (type) {
-      case 'low_stock':
-        return <Package {...iconProps} className="notification-icon warning" />;
-      case 'out_of_stock':
-        return <AlertTriangle {...iconProps} className="notification-icon error" />;
-      case 'stock_replenished':
-        return <Check {...iconProps} className="notification-icon success" />;
-      case 'sale':
-        return <DollarSign {...iconProps} className="notification-icon success" />;
-      case 'system':
-      case 'test':
-        return <Check {...iconProps} className="notification-icon info" />;
-      case 'error':
-        return <AlertTriangle {...iconProps} className="notification-icon error" />;
-      default:
-        return IconComponent ? <IconComponent {...iconProps} className="notification-icon info" /> : <Bell {...iconProps} className="notification-icon info" />;
-    }
-  };
-
-  const formatTimeAgo = (timestamp) => {
-    const now = new Date();
-    const diffInSeconds = Math.floor((now - timestamp) / 1000);
-    
-    if (diffInSeconds < 60) return 'Just now';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-    return `${Math.floor(diffInSeconds / 86400)}d ago`;
-  };
-
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const { 
+    notifications, 
+    unreadCount, 
+    markAsRead, 
+    markAllAsRead, 
+    removeNotification,
+    clearAllNotifications 
+  } = useNotifications();
 
   if (!isOpen) return null;
 
+  const recentNotifications = notifications.slice(0, 5);
+
+  const handleNotificationClick = async (notification) => {
+    if (!notification.read) {
+      await markAsRead(notification.id);
+    }
+    
+    // Navigate based on notification type
+    switch (notification.type) {
+      case 'out_of_stock':
+      case 'low_stock':
+      case 'stock_replenished':
+        navigate('/inventory');
+        break;
+      case 'sale':
+        navigate('/sales');
+        break;
+      default:
+        navigate('/notifications');
+        break;
+    }
+    
+    onClose();
+  };
+
+  const handleMarkAllRead = async () => {
+    await markAllAsRead();
+  };
+
+  const handleViewAll = () => {
+    navigate('/notifications');
+    onClose();
+  };
+
+  const handleRemoveNotification = async (e, notificationId) => {
+    e.stopPropagation();
+    await removeNotification(notificationId);
+  };
+
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case 'out_of_stock':
+        return <AlertTriangle size={16} className="text-red-500" />;
+      case 'low_stock':
+        return <Package size={16} className="text-yellow-500" />;
+      case 'sale':
+        return <DollarSign size={16} className="text-green-500" />;
+      case 'stock_replenished':
+        return <CheckCircle size={16} className="text-blue-500" />;
+      default:
+        return <Bell size={16} className="text-gray-500" />;
+    }
+  };
+
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 'high':
+        return 'border-l-red-500';
+      case 'medium':
+        return 'border-l-yellow-500';
+      case 'low':
+        return 'border-l-green-500';
+      default:
+        return 'border-l-gray-300';
+    }
+  };
+
+  const formatTime = (timestamp) => {
+    if (!timestamp) return 'Just now';
+    
+    try {
+      // Handle Firestore timestamp
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      const now = new Date();
+      const diffInSeconds = Math.floor((now - date) / 1000);
+      
+      if (diffInSeconds < 60) {
+        return 'Just now';
+      } else if (diffInSeconds < 3600) {
+        const minutes = Math.floor(diffInSeconds / 60);
+        return `${minutes}m ago`;
+      } else if (diffInSeconds < 86400) {
+        const hours = Math.floor(diffInSeconds / 3600);
+        return `${hours}h ago`;
+      } else {
+        const days = Math.floor(diffInSeconds / 86400);
+        return `${days}d ago`;
+      }
+    } catch (error) {
+      return 'Just now';
+    }
+  };
+
   return (
     <div className="notification-dropdown">
-      <div className="notification-header">
-        <div className="notification-title">
+      {/* Header */}
+      <div className="notification-dropdown-header">
+        <div className="flex items-center gap-2">
           <Bell size={18} />
-          <span>Notifications</span>
+          <h3 className="font-semibold text-gray-900">Notifications</h3>
           {unreadCount > 0 && (
-            <span className="notification-count">{unreadCount}</span>
+            <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
           )}
         </div>
-        <div className="notification-actions">
+        
+        <div className="flex items-center gap-2">
           {unreadCount > 0 && (
-            <button 
-              className="mark-all-read-btn"
-              onClick={markAllAsRead}
+            <button
+              onClick={handleMarkAllRead}
+              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
               title="Mark all as read"
             >
-              <Check size={16} />
+              Mark all read
             </button>
           )}
-          <button 
-            className="notification-settings-btn"
+          
+          <button
             onClick={onOpenSettings}
+            className="p-1 hover:bg-gray-100 rounded"
             title="Notification settings"
           >
-            ⚙️
+            <Settings size={16} />
           </button>
-          <button 
-            className="notification-close-btn"
+          
+          <button
             onClick={onClose}
+            className="p-1 hover:bg-gray-100 rounded"
             title="Close"
           >
             <X size={16} />
@@ -127,74 +163,83 @@ const NotificationDropdown = ({ isOpen, onClose, onOpenSettings }) => {
         </div>
       </div>
 
-      <div className="notification-content">
-        {loading ? (
-          <div className="notification-loading">
-            <div className="loading-spinner"></div>
-            <span>Loading notifications...</span>
-          </div>
-        ) : notifications.length === 0 ? (
+      {/* Content */}
+      <div className="notification-dropdown-content">
+        {recentNotifications.length === 0 ? (
           <div className="notification-empty">
-            <Bell size={48} />
-            <p>No notifications</p>
-            <span>You're all caught up!</span>
+            <Bell size={24} className="text-gray-400 mx-auto mb-2" />
+            <p className="text-gray-600 text-sm text-center">No notifications yet</p>
+            <p className="text-gray-400 text-xs text-center mt-1">
+              You'll see updates about your vending machine here
+            </p>
           </div>
         ) : (
           <div className="notification-list">
-            {notifications.map(notification => (
-              <div 
+            {recentNotifications.map((notification) => (
+              <div
                 key={notification.id}
-                className={`notification-item ${notification.read ? 'read' : 'unread'}`}
-                onClick={() => !notification.read && markAsRead(notification.id)}
+                className={`notification-item ${!notification.read ? 'notification-unread' : ''} ${getPriorityColor(notification.priority)}`}
+                onClick={() => handleNotificationClick(notification)}
               >
-                <div className="notification-icon-wrapper">
-                  {getNotificationIcon(notification.type, notification.icon)}
+                <div className="notification-icon">
+                  {getNotificationIcon(notification.type)}
                 </div>
-                <div className="notification-details">
-                  <div className="notification-item-title">
+                
+                <div className="notification-content">
+                  <div className="notification-title">
                     {notification.title}
                   </div>
                   <div className="notification-message">
                     {notification.message}
                   </div>
                   <div className="notification-time">
-                    {formatTimeAgo(notification.timestamp)}
+                    <Clock size={12} />
+                    {formatTime(notification.timestamp)}
+                    {notification.slot && (
+                      <span className="notification-slot">
+                        Slot {notification.slot}
+                      </span>
+                    )}
                   </div>
                 </div>
-                <div className="notification-item-actions">
-                  {!notification.read && (
-                    <div className="unread-indicator" title="Unread"></div>
-                  )}
-                  <button 
-                    className="remove-notification-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeNotification(notification.id);
-                    }}
-                    title="Remove notification"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
+
+                <button
+                  onClick={(e) => handleRemoveNotification(e, notification.id)}
+                  className="notification-remove"
+                  title="Remove notification"
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {notifications.length > 0 && (
-        <div className="notification-footer">
-          <button 
-            className="view-all-btn"
-            onClick={() => {
-              onClose();
-              navigate('/notifications');
-            }}
+      {/* Footer */}
+      <div className="notification-dropdown-footer">
+        {notifications.length > 5 && (
+          <button
+            onClick={handleViewAll}
+            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
           >
-            View All Notifications
+            View all {notifications.length} notifications
           </button>
-        </div>
-      )}
+        )}
+        
+        {notifications.length > 0 && (
+          <button
+            onClick={clearAllNotifications}
+            className="text-sm text-red-600 hover:text-red-800 font-medium"
+          >
+            Clear all
+          </button>
+        )}
+      </div>
+
+      <style jsx>{`
+        /* Removed all styles - now using external CSS file */
+      `}</style>
     </div>
   );
 };

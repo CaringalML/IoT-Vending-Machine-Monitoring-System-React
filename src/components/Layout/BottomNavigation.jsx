@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -7,24 +7,12 @@ import {
   Coffee,
   Bell
 } from 'lucide-react';
-import notificationService from '../../services/NotificationService';
+import { useNotifications } from '../../context/NotificationContext'; // CHANGED THIS LINE
 import './BottomNavigation.css';
 
 const BottomNavigation = () => {
   const location = useLocation();
-  const [notificationCount, setNotificationCount] = useState(0);
-
-  // Subscribe to real notification count updates
-  useEffect(() => {
-    const unsubscribe = notificationService.addListener((notifications, unreadCount) => {
-      setNotificationCount(unreadCount);
-    });
-
-    // Initial load
-    setNotificationCount(notificationService.getUnreadCount());
-
-    return unsubscribe;
-  }, []);
+  const { unreadCount } = useNotifications(); // CHANGED THIS LINE
 
   const navItems = [
     {
@@ -51,7 +39,7 @@ const BottomNavigation = () => {
       path: '/notifications',
       icon: Bell,
       label: 'Notifications',
-      badge: notificationCount > 0 ? notificationCount : null
+      badge: unreadCount > 0 ? unreadCount : null // SIMPLIFIED THIS LINE
     }
   ];
 

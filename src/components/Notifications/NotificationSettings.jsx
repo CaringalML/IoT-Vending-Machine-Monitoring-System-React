@@ -1,32 +1,37 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Bell, 
-  Check, 
-  AlertTriangle, 
-  Package, 
-  DollarSign, 
+// src/components/Notifications/NotificationSettings.jsx
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Bell,
+  Check,
+  AlertTriangle,
+  Package,
+  DollarSign,
   Settings,
   Volume2,
-  VolumeX,
-  Smartphone
+  VolumeX
 } from 'lucide-react';
 import Modal from '../Common/Modal';
-import notificationService from '../../services/NotificationService';
-import './Notifications.css';
+import { useNotifications } from '../../context/NotificationContext';
+import './NotificationSettings.css'; // Changed from './Notifications.css'
 
 const NotificationSettings = ({ isOpen, onClose, embedded = false }) => {
+  const {
+    getSettings,
+    updateSettings,
+    sendTestNotification,
+    requestNotificationPermission,
+    permissionStatus
+  } = useNotifications();
+
   const [settings, setSettings] = useState({
     enabled: true,
     sound: true,
     desktop: true,
-    email: false,
     lowStock: true,
     outOfStock: true,
     sales: false,
     systemUpdates: true,
-    machineOffline: true,
     lowStockThreshold: 5,
-    emailAddress: '',
     quietHours: {
       enabled: false,
       start: '22:00',
@@ -37,20 +42,21 @@ const NotificationSettings = ({ isOpen, onClose, embedded = false }) => {
   const [saving, setSaving] = useState(false);
   const [testNotification, setTestNotification] = useState(false);
 
-  useEffect(() => {
-    if (isOpen || embedded) {
-      loadSettings();
-    }
-  }, [isOpen, embedded]);
-
-  const loadSettings = async () => {
+  // Wrap loadSettings in useCallback to prevent unnecessary re-renders
+  const loadSettings = useCallback(() => {
     try {
-      const currentSettings = notificationService.loadSettings();
+      const currentSettings = getSettings();
       setSettings(currentSettings);
     } catch (error) {
       console.error('Error loading notification settings:', error);
     }
-  };
+  }, [getSettings]);
+
+  useEffect(() => {
+    if (isOpen || embedded) {
+      loadSettings();
+    }
+  }, [isOpen, embedded, loadSettings]);
 
   const handleToggle = (key) => {
     setSettings(prev => ({
@@ -86,30 +92,28 @@ const NotificationSettings = ({ isOpen, onClose, embedded = false }) => {
     }));
   };
 
-  // Fixed cancel handler
   const handleCancel = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('Cancel clicked'); // Debug log
     onClose();
   };
 
-  // Fixed save handler
   const handleSave = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     setSaving(true);
     try {
       // Update notification service settings
-      notificationService.updateSettings(settings);
-      
-      if (settings.desktop && settings.enabled) {
+      updateSettings(settings);
+
+      // Request browser notification permission if desktop notifications are enabled
+      if (settings.desktop && settings.enabled && permissionStatus !== 'granted') {
         await requestNotificationPermission();
       }
-      
+
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       if (embedded) {
         // Mobile: Show success message and stay on tab
         alert('Settings saved successfully!');
@@ -124,24 +128,15 @@ const NotificationSettings = ({ isOpen, onClose, embedded = false }) => {
     }
   };
 
-  const requestNotificationPermission = async () => {
-    if ('Notification' in window) {
-      const permission = await Notification.requestPermission();
-      return permission === 'granted';
-    }
-    return false;
-  };
-
-  const sendTestNotification = async (e) => {
+  const sendTest = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     setTestNotification(true);
-    
+
     try {
-      // Use the notification service to send test notification
-      notificationService.sendTestNotification();
-      
+      await sendTestNotification();
+
       setTimeout(() => {
         setTestNotification(false);
       }, 2000);
@@ -179,13 +174,6 @@ const NotificationSettings = ({ isOpen, onClose, embedded = false }) => {
       description: 'System status and updates',
       icon: Settings,
       color: '#667eea'
-    },
-    {
-      key: 'machineOffline',
-      label: 'Machine Offline',
-      description: 'When machine goes offline',
-      icon: AlertTriangle,
-      color: '#f56565'
     }
   ];
 
@@ -197,7 +185,7 @@ const NotificationSettings = ({ isOpen, onClose, embedded = false }) => {
           <Bell size={20} />
           <h3>Notifications</h3>
         </div>
-        
+
         <div className="setting-item">
           <div className="setting-info">
             <div className="setting-label">Enable Notifications</div>
@@ -219,10 +207,10 @@ const NotificationSettings = ({ isOpen, onClose, embedded = false }) => {
       {/* Delivery Methods */}
       <div className="settings-section">
         <div className="settings-section-header">
-          <Smartphone size={20} />
+          <Bell size={20} />
           <h3>Delivery Methods</h3>
         </div>
-        
+
         <div className="setting-item">
           <div className="setting-info">
             <div className="setting-label">
@@ -252,6 +240,11 @@ const NotificationSettings = ({ isOpen, onClose, embedded = false }) => {
             </div>
             <div className="setting-description">
               Show browser notifications
+              {permissionStatus === 'denied' && (
+                <span style={{ color: '#f56565', fontSize: '12px', display: 'block' }}>
+                  Browser notifications are blocked. Please enable them in your browser settings.
+                </span>
+              )}
             </div>
           </div>
           <label className="toggle-switch">
@@ -272,7 +265,7 @@ const NotificationSettings = ({ isOpen, onClose, embedded = false }) => {
           <AlertTriangle size={20} />
           <h3>Notification Types</h3>
         </div>
-        
+
         {notificationTypes.map(type => (
           <div key={type.key} className="setting-item">
             <div className="setting-info">
@@ -303,7 +296,7 @@ const NotificationSettings = ({ isOpen, onClose, embedded = false }) => {
           <Settings size={20} />
           <h3>Thresholds</h3>
         </div>
-        
+
         <div className="setting-item">
           <div className="setting-info">
             <div className="setting-label">Low Stock Threshold</div>
@@ -330,7 +323,7 @@ const NotificationSettings = ({ isOpen, onClose, embedded = false }) => {
           <VolumeX size={20} />
           <h3>Quiet Hours</h3>
         </div>
-        
+
         <div className="setting-item">
           <div className="setting-info">
             <div className="setting-label">Enable Quiet Hours</div>
@@ -381,7 +374,7 @@ const NotificationSettings = ({ isOpen, onClose, embedded = false }) => {
           <Check size={20} />
           <h3>Test</h3>
         </div>
-        
+
         <div className="setting-item">
           <div className="setting-info">
             <div className="setting-label">Test Notification</div>
@@ -392,7 +385,7 @@ const NotificationSettings = ({ isOpen, onClose, embedded = false }) => {
           <button
             type="button"
             className="btn btn-secondary"
-            onClick={sendTestNotification}
+            onClick={sendTest}
             disabled={!settings.enabled || testNotification}
           >
             {testNotification ? (

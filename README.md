@@ -502,4 +502,5 @@ firebase > Project settings > Messaging > Web Push certificates
 generate your Key pair and update you .env and your github secrets
 
 
-//updates
+//updates firestore rules
+firebase deploy --only firestore:rules
