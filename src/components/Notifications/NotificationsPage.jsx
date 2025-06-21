@@ -145,7 +145,13 @@ const NotificationsPage = () => {
   const getFilterCount = (filterType) => {
     if (filterType === 'all') return notifications.length;
     if (filterType === 'unread') return unreadCount;
-    return notifications.filter(n => n.type === filterType).length;
+    const types = {
+      low_stock: ['low_stock'],
+      out_of_stock: ['out_of_stock'],
+      sales: ['sale'],
+      system: ['system', 'stock_replenished']
+    };
+    return notifications.filter(n => types[filterType]?.includes(n.type)).length;
   };
 
   const formatCurrency = (amount) => new Intl.NumberFormat('en-NZ', { style: 'currency', currency: 'NZD' }).format(amount);
@@ -166,7 +172,6 @@ const NotificationsPage = () => {
     return renderOverviewTab();
   };
   
-  // --- UPDATED RENDER LOGIC WITH LOADING SPINNER ---
   const renderOverviewTab = () => (
     <>
       <div className="notifications-controls">
@@ -209,7 +214,6 @@ const NotificationsPage = () => {
       )}
 
       <div className="notifications-container">
-        {/* --- NEW LOADING STATE CHECK --- */}
         {loading ? (
           <div className="loading-container">
             <div className="loading-spinner"></div>
@@ -225,7 +229,11 @@ const NotificationsPage = () => {
           <>
             <div className="notifications-list-header">
               <label className="select-all-checkbox">
-                <input type="checkbox" checked={filteredNotifications.length > 0 && selectedNotifications.length === filteredNotifications.length} onChange={handleSelectAll} />
+                <input 
+                  type="checkbox" 
+                  checked={filteredNotifications.length > 0 && selectedNotifications.length === filteredNotifications.length} 
+                  onChange={handleSelectAll} 
+                />
                 <span className="checkmark"></span>
                 Select All
               </label>
@@ -233,31 +241,87 @@ const NotificationsPage = () => {
             </div>
             <div className="notifications-list">
               {filteredNotifications.map(notification => (
-                <div key={notification.id} className={`notification-item ${notification.read ? 'read' : 'unread'} ${selectedNotifications.includes(notification.id) ? 'selected' : ''}`} onClick={(e) => handleNotificationClick(notification.id, e)} style={{ cursor: 'pointer' }}>
+                <div 
+                  key={notification.id} 
+                  className={`notification-item ${notification.read ? 'read' : 'unread'} ${selectedNotifications.includes(notification.id) ? 'selected' : ''}`} 
+                  onClick={(e) => handleNotificationClick(notification.id, e)} 
+                  style={{ cursor: 'pointer' }}
+                >
                   <div className="notification-select" onClick={(e) => e.stopPropagation()}>
-                    <label className="checkbox"><input type="checkbox" checked={selectedNotifications.includes(notification.id)} onChange={() => handleSelectNotification(notification.id)} /><span className="checkmark"></span></label>
+                    <label className="checkbox">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedNotifications.includes(notification.id)} 
+                        onChange={() => handleSelectNotification(notification.id)} 
+                      />
+                      <span className="checkmark"></span>
+                    </label>
                   </div>
-                  <div className="notification-icon-container">{getNotificationIcon(notification.type)}</div>
-                  <div className="mobile-notification-body">
-                    <div className="notification-row-mobile">
+                  
+                  {/* Desktop Layout - Icon Container */}
+                  <div className="notification-icon-container">
+                    {getNotificationIcon(notification.type)}
+                  </div>
+                  
+                  {/* Mobile and Desktop Content */}
+                  <div className="notification-content">
+                    <div className="notification-header">
                       <h4 className="notification-title">{notification.title}</h4>
-                      <span className="priority-badge" style={{ backgroundColor: getPriorityColor(notification.priority || 'medium') }}>{notification.priority || 'medium'}</span>
+                      <div className="notification-meta">
+                        <span 
+                          className="priority-badge" 
+                          style={{ backgroundColor: getPriorityColor(notification.priority || 'medium') }}
+                        >
+                          {notification.priority || 'medium'}
+                        </span>
+                        <span className="notification-time">{formatTimeAgo(notification.timestamp)}</span>
+                      </div>
                     </div>
-                    <div className="notification-row-mobile">
-                      <div className="notification-message">{formatNotificationMessage(notification)}</div>
-                      <span className="notification-time">{formatTimeAgo(notification.timestamp)}</span>
+                    
+                    <div className="notification-message">
+                      {formatNotificationMessage(notification)}
                     </div>
+                    
                     {(notification.slot || notification.price || notification.quantity !== undefined) && (
                       <div className="notification-details">
-                        {notification.price && <div className="detail-badge"><DollarSign size={12}/><span>{formatCurrency(notification.price)}</span></div>}
-                        {notification.slot && <div className="detail-badge"><span>Slot: {notification.slot}</span></div>}
-                        {notification.quantity !== undefined && <div className="detail-badge"><span>Qty: {notification.quantity}</span></div>}
+                        {notification.price && (
+                          <div className="detail-badge">
+                            <DollarSign size={12}/>
+                            <span>{formatCurrency(notification.price)}</span>
+                          </div>
+                        )}
+                        {notification.slot && (
+                          <div className="detail-badge">
+                            <span>Slot: {notification.slot}</span>
+                          </div>
+                        )}
+                        {notification.quantity !== undefined && (
+                          <div className="detail-badge">
+                            <span>Qty: {notification.quantity}</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
+                  
+                  {/* Desktop Action Buttons */}
                   <div className="notification-actions">
-                    {!notification.read && <button className="action-btn mark-read" onClick={(e) => { e.stopPropagation(); markAsRead(notification.id); }} title="Mark as read"><Check size={14} /></button>}
-                    <button className="action-btn remove" onClick={(e) => { e.stopPropagation(); removeNotification(notification.id); }} title="Remove notification"><X size={14} /></button>
+                    {!notification.read && (
+                      <button 
+                        className="action-btn mark-read" 
+                        onClick={(e) => { e.stopPropagation(); markAsRead(notification.id); }} 
+                        title="Mark as read"
+                      >
+                        <Check size={14} />
+                      </button>
+                    )}
+                    <button 
+                      className="action-btn remove" 
+                      onClick={(e) => { e.stopPropagation(); removeNotification(notification.id); }} 
+                      title="Remove notification"
+                    >
+                      <X size={14} />
+                    </button>
                   </div>
                 </div>
               ))}
@@ -276,9 +340,20 @@ const NotificationsPage = () => {
           <p>Stay updated with your vending machine activity</p>
         </div>
         <div className="header-actions">
-          <button className="btn btn-secondary" onClick={() => setShowSettings(true)}><Settings size={16} /> Settings</button>
-          <button className="btn btn-primary" onClick={markAllAsRead} disabled={unreadCount === 0}><Check size={16} /> Mark All Read</button>
-          {notifications.length > 0 && <button className="btn btn-danger" onClick={() => { if (window.confirm('Are you sure?')) clearAllNotifications(); }}><Trash2 size={16} /> Clear All</button>}
+          <button className="btn btn-secondary" onClick={() => setShowSettings(true)}>
+            <Settings size={16} /> Settings
+          </button>
+          <button className="btn btn-primary" onClick={markAllAsRead} disabled={unreadCount === 0}>
+            <Check size={16} /> Mark All Read
+          </button>
+          {notifications.length > 0 && (
+            <button 
+              className="btn btn-danger" 
+              onClick={() => { if (window.confirm('Are you sure?')) clearAllNotifications(); }}
+            >
+              <Trash2 size={16} /> Clear All
+            </button>
+          )}
         </div>
       </div>
 
@@ -286,8 +361,13 @@ const NotificationsPage = () => {
         <div className="mobile-inventory-navigation">
           <div className="mobile-nav-tabs">
             {navigationTabs.map((tab) => (
-              <button key={tab.id} className={`mobile-nav-tab ${activeTab === tab.id ? 'active' : ''}`} onClick={() => setActiveTab(tab.id)}>
-                <tab.icon size={20} /><span className="mobile-nav-label">{tab.label}</span>
+              <button 
+                key={tab.id} 
+                className={`mobile-nav-tab ${activeTab === tab.id ? 'active' : ''}`} 
+                onClick={() => setActiveTab(tab.id)}
+              >
+                <tab.icon size={20} />
+                <span className="mobile-nav-label">{tab.label}</span>
               </button>
             ))}
           </div>
@@ -296,7 +376,13 @@ const NotificationsPage = () => {
 
       <div className="notifications-content">{renderTabContent()}</div>
 
-      {showSettings && !isMobile && <NotificationSettings isOpen={showSettings} onClose={() => setShowSettings(false)} embedded={false} />}
+      {showSettings && !isMobile && (
+        <NotificationSettings 
+          isOpen={showSettings} 
+          onClose={() => setShowSettings(false)} 
+          embedded={false} 
+        />
+      )}
     </div>
   );
 };
