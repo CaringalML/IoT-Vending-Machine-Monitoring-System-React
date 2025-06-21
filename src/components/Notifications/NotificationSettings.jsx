@@ -8,11 +8,13 @@ import {
   DollarSign,
   Settings,
   Volume2,
-  VolumeX
+  VolumeX,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 import Modal from '../Common/Modal';
 import { useNotifications } from '../../context/NotificationContext';
-import './NotificationSettings.css'; // Changed from './Notifications.css'
+import './NotificationSettings.css';
 
 const NotificationSettings = ({ isOpen, onClose, embedded = false }) => {
   const {
@@ -20,13 +22,15 @@ const NotificationSettings = ({ isOpen, onClose, embedded = false }) => {
     updateSettings,
     sendTestNotification,
     requestNotificationPermission,
-    permissionStatus
+    permissionStatus,
+    unlockAudio, // Get the new function to unlock audio
   } = useNotifications();
 
   const [settings, setSettings] = useState({
     enabled: true,
     sound: true,
-    desktop: true,
+    // The 'desktop' key is now managed by the browser permission status,
+    // so we can simplify the state here.
     lowStock: true,
     outOfStock: true,
     sales: false,
@@ -41,27 +45,45 @@ const NotificationSettings = ({ isOpen, onClose, embedded = false }) => {
 
   const [saving, setSaving] = useState(false);
   const [testNotification, setTestNotification] = useState(false);
+  const [localPermissionStatus, setLocalPermissionStatus] = useState(permissionStatus);
 
-  // Wrap loadSettings in useCallback to prevent unnecessary re-renders
   const loadSettings = useCallback(() => {
     try {
       const currentSettings = getSettings();
       setSettings(currentSettings);
+      setLocalPermissionStatus(permissionStatus);
     } catch (error) {
       console.error('Error loading notification settings:', error);
     }
-  }, [getSettings]);
+  }, [getSettings, permissionStatus]);
 
   useEffect(() => {
     if (isOpen || embedded) {
       loadSettings();
     }
   }, [isOpen, embedded, loadSettings]);
+  
+  // --- NEW: Function to handle enabling notifications ---
+  // This function is called by the new button. It requests browser
+  // permission and unlocks the audio context in one user gesture.
+  const handleEnablePushNotifications = async () => {
+    // First, unlock the audio context. This MUST be in the same user-initiated event.
+    if(unlockAudio) unlockAudio();
 
-  const handleToggle = (key) => {
+    // Then, request notification permission.
+    const newPermission = await requestNotificationPermission();
+    setLocalPermissionStatus(newPermission);
+
+    // Also, update the main 'enabled' setting
+    if (newPermission === 'granted') {
+        handleToggle('enabled', true);
+    }
+  };
+
+  const handleToggle = (key, value) => {
     setSettings(prev => ({
       ...prev,
-      [key]: !prev[key]
+      [key]: value !== undefined ? value : !prev[key]
     }));
   };
 
@@ -72,13 +94,6 @@ const NotificationSettings = ({ isOpen, onClose, embedded = false }) => {
         ...prev[parent],
         [key]: !prev[parent][key]
       }
-    }));
-  };
-
-  const handleInputChange = (key, value) => {
-    setSettings(prev => ({
-      ...prev,
-      [key]: value
     }));
   };
 
@@ -101,24 +116,13 @@ const NotificationSettings = ({ isOpen, onClose, embedded = false }) => {
   const handleSave = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-
     setSaving(true);
     try {
-      // Update notification service settings
       updateSettings(settings);
-
-      // Request browser notification permission if desktop notifications are enabled
-      if (settings.desktop && settings.enabled && permissionStatus !== 'granted') {
-        await requestNotificationPermission();
-      }
-
       await new Promise(resolve => setTimeout(resolve, 1000));
-
       if (embedded) {
-        // Mobile: Show success message and stay on tab
         alert('Settings saved successfully!');
       } else {
-        // Desktop: Close modal
         onClose();
       }
     } catch (error) {
@@ -131,325 +135,153 @@ const NotificationSettings = ({ isOpen, onClose, embedded = false }) => {
   const sendTest = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-
     setTestNotification(true);
-
     try {
       await sendTestNotification();
-
-      setTimeout(() => {
-        setTestNotification(false);
-      }, 2000);
+      setTimeout(() => setTestNotification(false), 2000);
     } catch (error) {
       console.error('Error sending test notification:', error);
       setTestNotification(false);
     }
   };
-
+  
   const notificationTypes = [
-    {
-      key: 'lowStock',
-      label: 'Low Stock Alerts',
-      description: 'When items are running low',
-      icon: Package,
-      color: '#ed8936'
-    },
-    {
-      key: 'outOfStock',
-      label: 'Out of Stock Alerts',
-      description: 'When items are completely out',
-      icon: AlertTriangle,
-      color: '#f56565'
-    },
-    {
-      key: 'sales',
-      label: 'Sales Notifications',
-      description: 'When purchases are made',
-      icon: DollarSign,
-      color: '#38a169'
-    },
-    {
-      key: 'systemUpdates',
-      label: 'System Updates',
-      description: 'System status and updates',
-      icon: Settings,
-      color: '#667eea'
-    }
+    { key: 'lowStock', label: 'Low Stock Alerts', icon: Package, color: '#ed8936' },
+    { key: 'outOfStock', label: 'Out of Stock Alerts', icon: AlertTriangle, color: '#f56565' },
+    { key: 'sales', label: 'Sales Notifications', icon: DollarSign, color: '#38a169' },
+    { key: 'systemUpdates', label: 'System Updates', icon: Settings, color: '#667eea' }
   ];
 
   const renderSettingsContent = () => (
     <div className="notification-settings">
-      {/* Master Toggle */}
+      {/* --- NEW: Centralized Permissions Section --- */}
       <div className="settings-section">
         <div className="settings-section-header">
           <Bell size={20} />
-          <h3>Notifications</h3>
+          <h3>Push Notifications</h3>
         </div>
-
-        <div className="setting-item">
+        <div className="setting-item permission-control">
           <div className="setting-info">
-            <div className="setting-label">Enable Notifications</div>
+            <div className="setting-label">
+                Browser Push Notifications & Sound
+            </div>
             <div className="setting-description">
-              Turn on/off all notifications
+              {localPermissionStatus === 'granted' && "You will receive push notifications and sound alerts from your browser."}
+              {localPermissionStatus === 'denied' && "Permissions are blocked. You must enable them in your browser settings."}
+              {localPermissionStatus !== 'granted' && localPermissionStatus !== 'denied' && "Click to allow notifications from this site."}
             </div>
           </div>
+          {localPermissionStatus === 'granted' ? (
+            <div className="permission-status granted">
+              <CheckCircle size={20} />
+              <span>Enabled</span>
+            </div>
+          ) : localPermissionStatus === 'denied' ? (
+            <div className="permission-status denied">
+              <XCircle size={20} />
+              <span>Blocked</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleEnablePushNotifications}
+            >
+              Enable
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <div className="settings-section-header">
+          <Settings size={20} />
+          <h3>General Settings</h3>
+        </div>
+        <div className="setting-item">
+          <div className="setting-info">
+            <div className="setting-label">Master Notification Toggle</div>
+            <div className="setting-description">Turn on/off all alert generation</div>
+          </div>
           <label className="toggle-switch">
-            <input
-              type="checkbox"
-              checked={settings.enabled}
-              onChange={() => handleToggle('enabled')}
-            />
+            <input type="checkbox" checked={settings.enabled} onChange={() => handleToggle('enabled')} />
+            <span className="toggle-slider"></span>
+          </label>
+        </div>
+        <div className="setting-item">
+          <div className="setting-info">
+            <div className="setting-label"><Volume2 size={16} /> Sound Alerts</div>
+            <div className="setting-description">Play sound when notifications arrive</div>
+          </div>
+          <label className="toggle-switch">
+            <input type="checkbox" checked={settings.sound && settings.enabled} onChange={() => handleToggle('sound')} disabled={!settings.enabled || localPermissionStatus !== 'granted'}/>
             <span className="toggle-slider"></span>
           </label>
         </div>
       </div>
 
-      {/* Delivery Methods */}
       <div className="settings-section">
-        <div className="settings-section-header">
-          <Bell size={20} />
-          <h3>Delivery Methods</h3>
-        </div>
-
-        <div className="setting-item">
-          <div className="setting-info">
-            <div className="setting-label">
-              <Volume2 size={16} />
-              Sound Notifications
-            </div>
-            <div className="setting-description">
-              Play sound when notifications arrive
-            </div>
-          </div>
-          <label className="toggle-switch">
-            <input
-              type="checkbox"
-              checked={settings.sound && settings.enabled}
-              onChange={() => handleToggle('sound')}
-              disabled={!settings.enabled}
-            />
-            <span className="toggle-slider"></span>
-          </label>
-        </div>
-
-        <div className="setting-item">
-          <div className="setting-info">
-            <div className="setting-label">
-              <Bell size={16} />
-              Desktop Notifications
-            </div>
-            <div className="setting-description">
-              Show browser notifications
-              {permissionStatus === 'denied' && (
-                <span style={{ color: '#f56565', fontSize: '12px', display: 'block' }}>
-                  Browser notifications are blocked. Please enable them in your browser settings.
-                </span>
-              )}
-            </div>
-          </div>
-          <label className="toggle-switch">
-            <input
-              type="checkbox"
-              checked={settings.desktop && settings.enabled}
-              onChange={() => handleToggle('desktop')}
-              disabled={!settings.enabled}
-            />
-            <span className="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      {/* Notification Types */}
-      <div className="settings-section">
-        <div className="settings-section-header">
-          <AlertTriangle size={20} />
-          <h3>Notification Types</h3>
-        </div>
-
+        <div className="settings-section-header"><AlertTriangle size={20} /><h3>Notification Types</h3></div>
         {notificationTypes.map(type => (
           <div key={type.key} className="setting-item">
             <div className="setting-info">
-              <div className="setting-label">
-                <type.icon size={16} style={{ color: type.color }} />
-                {type.label}
-              </div>
-              <div className="setting-description">
-                {type.description}
-              </div>
+              <div className="setting-label"><type.icon size={16} style={{ color: type.color }} />{type.label}</div>
             </div>
             <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={settings[type.key] && settings.enabled}
-                onChange={() => handleToggle(type.key)}
-                disabled={!settings.enabled}
-              />
+              <input type="checkbox" checked={settings[type.key] && settings.enabled} onChange={() => handleToggle(type.key)} disabled={!settings.enabled}/>
               <span className="toggle-slider"></span>
             </label>
           </div>
         ))}
       </div>
 
-      {/* Thresholds */}
       <div className="settings-section">
-        <div className="settings-section-header">
-          <Settings size={20} />
-          <h3>Thresholds</h3>
-        </div>
-
-        <div className="setting-item">
-          <div className="setting-info">
-            <div className="setting-label">Low Stock Threshold</div>
-            <div className="setting-description">
-              Alert when stock falls below this number
-            </div>
-          </div>
-          <input
-            type="number"
-            className="form-input"
-            style={{ width: '80px' }}
-            min="1"
-            max="20"
-            value={settings.lowStockThreshold}
-            onChange={(e) => handleInputChange('lowStockThreshold', parseInt(e.target.value) || 5)}
-            disabled={!settings.enabled || !settings.lowStock}
-          />
-        </div>
-      </div>
-
-      {/* Quiet Hours */}
-      <div className="settings-section">
-        <div className="settings-section-header">
-          <VolumeX size={20} />
-          <h3>Quiet Hours</h3>
-        </div>
-
+        <div className="settings-section-header"><VolumeX size={20} /><h3>Quiet Hours</h3></div>
         <div className="setting-item">
           <div className="setting-info">
             <div className="setting-label">Enable Quiet Hours</div>
-            <div className="setting-description">
-              Disable sound notifications during specified hours
-            </div>
+            <div className="setting-description">Mute notifications during specified hours</div>
           </div>
           <label className="toggle-switch">
-            <input
-              type="checkbox"
-              checked={settings.quietHours.enabled && settings.enabled}
-              onChange={() => handleNestedToggle('quietHours', 'enabled')}
-              disabled={!settings.enabled}
-            />
+            <input type="checkbox" checked={settings.quietHours.enabled && settings.enabled} onChange={() => handleNestedToggle('quietHours', 'enabled')} disabled={!settings.enabled}/>
             <span className="toggle-slider"></span>
           </label>
         </div>
-
         {settings.quietHours.enabled && settings.enabled && (
           <div className="quiet-hours-config">
             <div className="time-input-group">
-              <div className="time-input-item">
-                <label>Start Time</label>
-                <input
-                  type="time"
-                  className="form-input"
-                  value={settings.quietHours.start}
-                  onChange={(e) => handleNestedInputChange('quietHours', 'start', e.target.value)}
-                />
-              </div>
-              <div className="time-input-item">
-                <label>End Time</label>
-                <input
-                  type="time"
-                  className="form-input"
-                  value={settings.quietHours.end}
-                  onChange={(e) => handleNestedInputChange('quietHours', 'end', e.target.value)}
-                />
-              </div>
+              <div className="time-input-item"><label>Start</label><input type="time" className="form-input" value={settings.quietHours.start} onChange={(e) => handleNestedInputChange('quietHours', 'start', e.target.value)}/></div>
+              <div className="time-input-item"><label>End</label><input type="time" className="form-input" value={settings.quietHours.end} onChange={(e) => handleNestedInputChange('quietHours', 'end', e.target.value)}/></div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Test Notification */}
       <div className="settings-section">
-        <div className="settings-section-header">
-          <Check size={20} />
-          <h3>Test</h3>
-        </div>
-
+        <div className="settings-section-header"><Check size={20} /><h3>Test</h3></div>
         <div className="setting-item">
           <div className="setting-info">
-            <div className="setting-label">Test Notification</div>
-            <div className="setting-description">
-              Send a test notification to verify your settings
-            </div>
+            <div className="setting-label">Send Test Notification</div>
+            <div className="setting-description">Verify your settings by sending a test alert.</div>
           </div>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={sendTest}
-            disabled={!settings.enabled || testNotification}
-          >
-            {testNotification ? (
-              <>
-                <div className="loading-spinner small"></div>
-                Sending...
-              </>
-            ) : (
-              'Send Test'
-            )}
+          <button type="button" className="btn btn-secondary" onClick={sendTest} disabled={!settings.enabled || testNotification || localPermissionStatus !== 'granted'}>
+            {testNotification ? 'Sending...' : 'Send Test'}
           </button>
         </div>
       </div>
 
-      {/* Actions */}
       <div className="settings-actions">
-        {!embedded && (
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={handleCancel}
-            disabled={saving}
-            style={{ cursor: 'pointer' }}
-          >
-            Cancel
-          </button>
-        )}
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={handleSave}
-          disabled={saving}
-          style={{ cursor: 'pointer', width: embedded ? '100%' : 'auto' }}
-        >
-          {saving ? (
-            <>
-              <div className="loading-spinner small"></div>
-              Saving...
-            </>
-          ) : (
-            'Save Settings'
-          )}
+        {!embedded && <button type="button" className="btn btn-secondary" onClick={handleCancel} disabled={saving}>Cancel</button>}
+        <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ width: embedded ? '100%' : 'auto' }}>
+          {saving ? 'Saving...' : 'Save Settings'}
         </button>
       </div>
     </div>
   );
 
   if (!isOpen && !embedded) return null;
-
-  // If embedded (mobile tab), return content directly
-  if (embedded) {
-    return renderSettingsContent();
-  }
-
-  // Otherwise, return content wrapped in modal (desktop)
-  return (
-    <Modal
-      title="Notification Settings"
-      onClose={onClose}
-      size="medium"
-    >
-      {renderSettingsContent()}
-    </Modal>
-  );
+  if (embedded) return renderSettingsContent();
+  return <Modal title="Notification Settings" onClose={onClose} size="medium">{renderSettingsContent()}</Modal>;
 };
 
 export default NotificationSettings;
