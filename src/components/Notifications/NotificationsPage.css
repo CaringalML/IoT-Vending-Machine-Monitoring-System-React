@@ -1,4 +1,4 @@
-/* NotificationsPage.css - Fixed Mobile Version */
+/* NotificationsPage.css - Complete Updated Version */
 
 /* Notifications Page Styles */
 .notifications-page {
@@ -77,7 +77,7 @@
   box-shadow: none;
 }
 
-/* MOBILE NAVIGATION */
+/* MOBILE NAVIGATION - Reuse styles from Products */
 .mobile-inventory-navigation {
   margin: 0 -24px 24px -24px;
   background: white;
@@ -359,7 +359,6 @@
   overflow-y: auto;
 }
 
-/* Notification Item - Default (Desktop) Layout */
 .notification-item {
   display: flex;
   align-items: flex-start;
@@ -411,6 +410,40 @@
 
 .notification-icon-container svg {
   color: #38a169; /* Green color for dollar sign */
+}
+
+.notification-icon.warning {
+  color: #ed8936;
+}
+
+.notification-icon.error {
+  color: #f56565;
+}
+
+.notification-icon.success {
+  color: #38a169;
+}
+
+.notification-icon.info {
+  color: #3182ce;
+}
+
+/* UPDATED MOBILE NOTIFICATION LAYOUT */
+.mobile-notification-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.notification-row-mobile {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
 }
 
 .notification-content {
@@ -467,7 +500,9 @@
   color: #4a5568;
   font-size: 14px;
   line-height: 1.5;
-  margin: 0 0 12px 0;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
 }
 
 .notification-details {
@@ -508,18 +543,28 @@
   opacity: 1; /* Always visible on desktop */
 }
 
-.action-btn:hover {
-  transform: scale(1.1);
+/* Only hide on mobile */
+@media (max-width: 768px) {
+  .notification-actions {
+    display: none;
+  }
 }
 
-.action-btn.mark-read:hover {
-  background: #c6f6d5;
-  color: #22543d;
-}
+/* Desktop hover effects */
+@media (min-width: 769px) {
+  .action-btn:hover {
+    transform: scale(1.1);
+  }
 
-.action-btn.remove:hover {
-  background: #fed7d7;
-  color: #e53e3e;
+  .action-btn.mark-read:hover {
+    background: #c6f6d5;
+    color: #22543d;
+  }
+
+  .action-btn.remove:hover {
+    background: #fed7d7;
+    color: #e53e3e;
+  }
 }
 
 /* Empty State */
@@ -623,6 +668,389 @@
   background: #e53e3e;
 }
 
+/* Enhanced Modal Overlay with Backdrop Blur */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: fadeInBackdrop 0.2s ease-out;
+}
+
+@keyframes fadeInBackdrop {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
+
+/* Enhanced Modal Container */
+.modal-container {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.15),
+    0 10px 25px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  position: relative;
+  animation: slideInModal 0.3s ease-out;
+  transform-origin: center;
+}
+
+/* Modal Size Variants */
+.modal-small {
+  max-width: 400px;
+}
+
+.modal-medium {
+  max-width: 600px;
+}
+
+.modal-large {
+  max-width: 800px;
+}
+
+@keyframes slideInModal {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Modal Header with Glass Effect */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 28px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.95) 0%, 
+    rgba(247, 250, 252, 0.95) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  position: relative;
+}
+
+.modal-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(102, 126, 234, 0.3) 50%, 
+    transparent 100%);
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a202c;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  color: #718096;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close-btn:hover {
+  background: rgba(226, 232, 240, 0.6);
+  color: #4a5568;
+  transform: scale(1.05);
+}
+
+.modal-close-btn:active {
+  transform: scale(0.95);
+}
+
+.modal-close-btn:focus {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
+/* Modal Content */
+.modal-content {
+  padding: 0;
+  max-height: calc(90vh - 140px);
+  overflow-y: auto;
+  background: white;
+}
+
+/* Custom Scrollbar for Modal Content */
+.modal-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: rgba(241, 245, 249, 0.5);
+  border-radius: 4px;
+  margin: 8px 0;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.5);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.7);
+  background-clip: content-box;
+}
+
+/* Enhanced Settings Modal Styles */
+.notification-settings {
+  padding: 28px;
+}
+
+.settings-section {
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+  position: relative;
+}
+
+.settings-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.settings-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  color: #4c51bf;
+}
+
+.settings-section-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0;
+}
+
+/* Enhanced Toggle Switches */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e0 100%);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 28px;
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 24px;
+  width: 24px;
+  left: 2px;
+  bottom: 2px;
+  background: white;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 50%;
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.15),
+    0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 
+    inset 0 2px 4px rgba(102, 126, 234, 0.2),
+    0 1px 2px rgba(102, 126, 234, 0.15);
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(24px);
+  box-shadow: 
+    0 2px 8px rgba(102, 126, 234, 0.3),
+    0 1px 3px rgba(102, 126, 234, 0.2);
+}
+
+.toggle-switch input:disabled + .toggle-slider {
+  background: #e2e8f0;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.toggle-switch input:disabled + .toggle-slider:before {
+  background: #f7fafc;
+}
+
+/* Enhanced Setting Items */
+.setting-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 20px;
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(247, 250, 252, 0.5);
+  border: 1px solid rgba(226, 232, 240, 0.6);
+  transition: all 0.2s ease;
+}
+
+.setting-item:hover {
+  background: rgba(247, 250, 252, 0.8);
+  border-color: rgba(102, 126, 234, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.setting-item:last-child {
+  margin-bottom: 0;
+}
+
+.setting-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.setting-label {
+  font-weight: 500;
+  color: #2d3748;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.setting-description {
+  color: #718096;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Form Inputs */
+.form-input {
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+  background: white;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-input:disabled {
+  background: #f7fafc;
+  color: #a0aec0;
+  cursor: not-allowed;
+}
+
+/* Quiet Hours Configuration */
+.quiet-hours-config {
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(247, 250, 252, 0.8);
+  border-radius: 8px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.time-input-group {
+  display: flex;
+  gap: 16px;
+}
+
+.time-input-item {
+  flex: 1;
+}
+
+.time-input-item label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #4a5568;
+  margin-bottom: 4px;
+}
+
+/* Settings Actions */
+.settings-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+/* Loading Spinner */
+.loading-spinner.small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e2e8f0;
+  border-top: 2px solid #667eea;
+  margin-right: 8px;
+}
+
 /* Custom Scrollbar */
 .notifications-list::-webkit-scrollbar {
   width: 6px;
@@ -715,7 +1143,6 @@
     text-align: center;
   }
 
-  /* Mobile Notification Item Layout */
   .notification-item {
     padding: 16px;
     border-radius: 12px;
@@ -726,7 +1153,6 @@
     display: flex;
     align-items: flex-start;
     gap: 12px;
-    flex-direction: row; /* Keep row layout but simpler */
   }
 
   .notification-item.unread {
@@ -744,65 +1170,77 @@
     background: #f0fff4;
   }
 
-  /* Hide the icon container on mobile to save space */
+  /* Hide the icon container on mobile */
   .notification-icon-container {
     display: none;
   }
+  
+  /* Mobile notification body takes full width */
+  .mobile-notification-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+  }
 
-  /* Mobile content takes full available width */
-  .notification-content {
+  /* Mobile rows with proper spacing */
+  .notification-row-mobile {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .notification-title {
+    margin: 0;
+    line-height: 1.4;
     flex: 1;
     min-width: 0;
   }
 
-  /* Simplified mobile header layout */
-  .notification-header {
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-
-  .notification-title {
-    font-size: 14px;
-    margin: 0;
-    line-height: 1.4;
-  }
-
-  .notification-meta {
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-  }
-
   .notification-message {
-    margin: 0 0 8px 0;
-    font-size: 13px;
+    margin: 0;
+    flex: 1;
+    min-width: 0;
     line-height: 1.4;
+    color: #4a5568;
+    font-size: 14px;
   }
 
   .notification-time {
-    font-size: 11px;
+    flex-shrink: 0;
+    font-weight: 500;
   }
 
   .priority-badge {
-    font-size: 9px;
-    padding: 2px 6px;
+    flex-shrink: 0;
+    align-self: flex-start;
   }
 
   .notification-details {
-    margin-top: 8px;
-    gap: 6px;
+    margin-top: 4px;
+    gap: 8px;
   }
 
   .detail-badge {
     background: #edf2f7;
     color: #4a5568;
-    padding: 3px 8px;
-    border-radius: 12px;
-    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 16px;
+    font-size: 12px;
     font-weight: 500;
     border: 1px solid #e2e8f0;
   }
+
+  /*
+   * FIX: This block for hiding desktop elements has been removed.
+   * The new mobile layout in NotificationsPage.jsx uses different class names
+   * (e.g., .mobile-notification-body) and does not require these legacy rules.
+   * Keeping them caused conflicts that prevented items from rendering.
+  */
 
   /* Hide individual action buttons on mobile */
   .notification-actions {
@@ -851,6 +1289,53 @@
     font-weight: 600;
     padding: 16px 24px;
   }
+
+  /* Mobile Modal Styles */
+  .modal-overlay {
+    padding: 10px;
+  }
+  
+  .modal-container {
+    max-width: 100%;
+    max-height: 95vh;
+    border-radius: 12px;
+  }
+  
+  .modal-header {
+    padding: 20px 24px;
+  }
+  
+  .modal-title {
+    font-size: 18px;
+  }
+  
+  .notification-settings {
+    padding: 24px 20px;
+  }
+  
+  .setting-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    padding: 16px;
+  }
+  
+  .toggle-switch {
+    align-self: flex-start;
+  }
+  
+  .time-input-group {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .settings-actions {
+    flex-direction: column;
+  }
+  
+  .settings-actions .btn {
+    width: 100%;
+  }
 }
 
 @media (max-width: 1024px) and (min-width: 769px) {
@@ -868,21 +1353,19 @@
 @media (max-width: 480px) {
   .filter-tab {
     font-size: 12px;
-    padding: 8px 6px;
-    min-height: 50px;
+    padding: 6px 12px;
   }
 
   .notification-title {
-    font-size: 13px;
+    font-size: 14px;
   }
 
   .notification-message {
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .detail-badge {
-    font-size: 10px;
-    padding: 2px 6px;
+    font-size: 11px;
   }
 
   .bulk-buttons {
@@ -920,6 +1403,13 @@
   outline-offset: 2px;
 }
 
+.toggle-switch:focus-within .toggle-slider {
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
 .btn:focus {
   outline: 2px solid #667eea;
   outline-offset: 2px;
@@ -943,6 +1433,20 @@
     background: #cbd5e0;
     border: 1px solid #4a5568;
   }
+
+  .modal-overlay {
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  
+  .modal-container {
+    border: 2px solid #000;
+  }
+  
+  .toggle-slider {
+    border: 1px solid #000;
+  }
 }
 
 /* Reduced motion support */
@@ -951,14 +1455,21 @@
   .btn,
   .action-btn,
   .mobile-nav-tab,
-  .filter-tab {
+  .filter-tab,
+  .modal-overlay,
+  .modal-container,
+  .toggle-slider,
+  .toggle-slider:before,
+  .setting-item {
     transition: none;
     animation: none;
   }
   
   .filter-tab:hover,
   .btn:hover:not(:disabled),
-  .action-btn:hover {
+  .action-btn:hover,
+  .setting-item:hover,
+  .modal-close-btn:hover {
     transform: none;
   }
 }
