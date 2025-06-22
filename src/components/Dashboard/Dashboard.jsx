@@ -240,39 +240,39 @@ const Dashboard = () => {
 
 
       <div className="stats-grid">
-        <div className="stat-card revenue">
-          <div className="stat-icon">
-            <DollarSign size={28} />
+        <div className="stat-card">
+          <div className="stat-icon revenue-icon">
+            <DollarSign size={24} />
           </div>
           <div className="stat-content">
             <h3>{formatCurrency(stats.totalRevenue)}</h3>
             <p>Total Revenue</p>
           </div>
         </div>
-        
-        <div className="stat-card sales">
-          <div className="stat-icon">
-            <ShoppingCart size={28} />
+
+        <div className="stat-card">
+          <div className="stat-icon sales-icon">
+            <ShoppingCart size={24} />
           </div>
           <div className="stat-content">
             <h3>{stats.totalSales}</h3>
             <p>Total Sales</p>
           </div>
         </div>
-        
-        <div className="stat-card products">
-          <div className="stat-icon">
-            <Package size={28} />
+
+        <div className="stat-card">
+          <div className="stat-icon products-icon">
+            <Package size={24} />
           </div>
           <div className="stat-content">
             <h3>{stats.activeProducts}</h3>
             <p>Active Products</p>
           </div>
         </div>
-        
-        <div className="stat-card alerts">
-          <div className="stat-icon">
-            <AlertTriangle size={28} />
+
+        <div className="stat-card">
+          <div className="stat-icon alerts-icon">
+            <AlertTriangle size={24} />
           </div>
           <div className="stat-content">
             <h3>{stats.lowStockItems}</h3>
