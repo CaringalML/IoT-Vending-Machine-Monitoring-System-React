@@ -1083,17 +1083,25 @@
   }
 
   .notifications-header {
-    display: none;
     flex-direction: column;
     gap: 16px;
     align-items: stretch;
     margin-bottom: 0 !important;
+    height: 0;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    overflow: hidden;
   }
 
   .notifications-header h1 {
     font-size: 24px;
     margin-bottom: 0 !important;
     display: none !important;
+  }
+
+  .notifications-header .header-left {
+    display: none;
   }
 
   .notifications-header .header-left p {
