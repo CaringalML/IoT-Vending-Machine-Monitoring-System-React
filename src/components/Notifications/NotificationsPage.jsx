@@ -6,7 +6,6 @@ import {
   X, 
   AlertTriangle, 
   Package, 
-  DollarSign, 
   Search,
   Trash2,
   CheckCircle,
@@ -98,7 +97,7 @@ const NotificationsPage = () => {
 
   const getNotificationIcon = (type) => {
     const iconMap = {
-      sale: <DollarSign size={20} />,
+      sale: <Bell size={20} />, // Changed from DollarSign to Bell for consistency, as price is shown below
       out_of_stock: <AlertTriangle size={20} />,
       low_stock: <Package size={20} />,
       stock_replenished: <CheckCircle size={20} />,
@@ -166,7 +165,6 @@ const NotificationsPage = () => {
     return renderOverviewTab();
   };
   
-  // --- UPDATED RENDER LOGIC WITH LOADING SPINNER ---
   const renderOverviewTab = () => (
     <>
       <div className="notifications-controls">
@@ -187,7 +185,7 @@ const NotificationsPage = () => {
             { key: 'unread', label: 'Unread', icon: Bell },
             { key: 'out_of_stock', label: 'Out of Stock', icon: AlertTriangle },
             { key: 'low_stock', label: 'Low Stock', icon: Package },
-            { key: 'sales', label: 'Sales', icon: DollarSign },
+            { key: 'sales', label: 'Sales', icon: Bell },
             { key: 'system', label: 'System', icon: Settings }
           ].map(tab => (
             <button key={tab.key} className={`filter-tab ${filter === tab.key ? 'active' : ''}`} onClick={() => setFilter(tab.key)}>
@@ -209,7 +207,6 @@ const NotificationsPage = () => {
       )}
 
       <div className="notifications-container">
-        {/* --- NEW LOADING STATE CHECK --- */}
         {loading ? (
           <div className="loading-container">
             <div className="loading-spinner"></div>
@@ -249,15 +246,11 @@ const NotificationsPage = () => {
                     </div>
                     {(notification.slot || notification.price || notification.quantity !== undefined) && (
                       <div className="notification-details">
-                        {notification.price && <div className="detail-badge"><DollarSign size={12}/><span>{formatCurrency(notification.price)}</span></div>}
-                        {notification.slot && <div className="detail-badge"><span>Slot: {notification.slot}</span></div>}
+                        {notification.price && <div className="detail-badge">💵<span>{formatCurrency(notification.price)}</span></div>}
+                        {notification.slot && <div className="detail-badge">📍<span>Slot: {notification.slot}</span></div>}
                         {notification.quantity !== undefined && <div className="detail-badge"><span>Qty: {notification.quantity}</span></div>}
                       </div>
                     )}
-                  </div>
-                  <div className="notification-actions">
-                    {!notification.read && <button className="action-btn mark-read" onClick={(e) => { e.stopPropagation(); markAsRead(notification.id); }} title="Mark as read"><Check size={14} /></button>}
-                    <button className="action-btn remove" onClick={(e) => { e.stopPropagation(); removeNotification(notification.id); }} title="Remove notification"><X size={14} /></button>
                   </div>
                 </div>
               ))}
