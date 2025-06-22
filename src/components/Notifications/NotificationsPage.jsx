@@ -46,7 +46,7 @@ const NotificationsPage = () => {
       return (
         <>
           <span style={{ textDecoration: 'underline' }}>{notification.productName}</span>
-          <span> sold for {formatCurrency(notification.price || 0)}</span>
+          <span> sold for:</span>
         </>
       );
     }
@@ -97,7 +97,7 @@ const NotificationsPage = () => {
 
   const getNotificationIcon = (type) => {
     const iconMap = {
-      sale: <Bell size={20} />, // Changed from DollarSign to Bell for consistency, as price is shown below
+      sale: <Bell size={20} />,
       out_of_stock: <AlertTriangle size={20} />,
       low_stock: <Package size={20} />,
       stock_replenished: <CheckCircle size={20} />,
