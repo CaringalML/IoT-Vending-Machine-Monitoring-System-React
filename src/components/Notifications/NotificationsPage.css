@@ -546,7 +546,13 @@
 /* Only hide on mobile */
 @media (max-width: 768px) {
   .notification-actions {
-    display: none;
+    display: flex;
+    flex-basis: 100%;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e2e8f0;
   }
 }
 
@@ -1153,6 +1159,7 @@
     display: flex;
     align-items: flex-start;
     gap: 12px;
+    flex-wrap: wrap;
   }
 
   .notification-item.unread {
@@ -1242,9 +1249,15 @@
    * Keeping them caused conflicts that prevented items from rendering.
   */
 
-  /* Hide individual action buttons on mobile */
+  /* Show individual action buttons on mobile, but styled for touch */
   .notification-actions {
-    display: none;
+    display: flex;
+    flex-basis: 100%;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e2e8f0;
   }
 
   /* Mobile Settings Tab Styles */
