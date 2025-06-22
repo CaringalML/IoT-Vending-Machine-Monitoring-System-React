@@ -1,7 +1,7 @@
 // src/services/FirestoreNotificationService.js
-// COMPLETE FIXED VERSION with LOCAL SOUND FILES and Audio Context Error Resolution
+// COMPLETE FINAL FIXED VERSION with CORRECT SOUND MAPPING
 // Uses local files from public/assets/sounds/ directory
-// PART 1 of 3 - FIXED
+// PART 1 of 3 - FINAL FIXED
 
 import {
   collection,
@@ -47,25 +47,25 @@ class FirestoreNotificationService {
   }
 
   // ===============================
-  // FIXED AUDIO SYSTEM WITH LOCAL SOUND FILES
+  // FIXED AUDIO SYSTEM WITH CORRECT SOUND MAPPING
   // ===============================
 
-  // Load audio files from local public/assets/sounds/ directory
+  // FIXED - Load audio files from local public/assets/sounds/ directory with CORRECT MAPPING
   loadAudioFiles() {
     console.log('🎵 Loading notification sounds from local files...');
 
-    // Map notification types to your actual sound files
+    // FIXED: Map notification types to your actual sound files with CORRECT GENERAL NOTIFICATION MAPPING
     const soundFiles = {
-      // Map to your actual files in public/assets/sounds/
+      // Specific notification types to actual files
       sale: '/assets/sounds/sales.mp3',
       low_stock: '/assets/sounds/low-stock.mp3',
       out_of_stock: '/assets/sounds/out-of-stock.mp3',
       stock_replenished: '/assets/sounds/restocked.mp3',
       
-      // Use notification.mp3 for general notifications
+      // FIXED: General notifications should use notification.mp3, not low-stock
       high: '/assets/sounds/notification.mp3',
       medium: '/assets/sounds/notification.mp3',
-      low: '/assets/sounds/low-stock.mp3',
+      low: '/assets/sounds/notification.mp3',  // FIXED: was low-stock.mp3
       success: '/assets/sounds/restocked.mp3',
       warning: '/assets/sounds/out-of-stock.mp3',
       system: '/assets/sounds/notification.mp3'
@@ -85,10 +85,11 @@ class FirestoreNotificationService {
       // Success ascending tones
       stock_replenished: this.generateBase64Sound([400, 600, 800], [0.12, 0.12, 0.2]),
 
-      // Priority-based patterns
-      high: this.generateBase64Sound([900, 700, 900], [0.1, 0.1, 0.1]),
-      medium: this.generateBase64Sound([650, 800], [0.15, 0.2]),
-      low: this.generateBase64Sound([450, 600], [0.2, 0.25])
+      // FIXED: Priority-based patterns - all general notifications use gentle tones
+      high: this.generateBase64Sound([750, 900], [0.15, 0.2]),      // Gentle but attention-getting
+      medium: this.generateBase64Sound([650, 800], [0.15, 0.2]),   // Standard notification
+      low: this.generateBase64Sound([550, 650], [0.2, 0.25]),      // Gentle notification
+      system: this.generateBase64Sound([650, 800], [0.15, 0.2])    // Same as medium
     };
 
     // Load sounds with enhanced fallback strategy
@@ -214,11 +215,12 @@ class FirestoreNotificationService {
             waveType: 'sine',
             description: 'Success pattern'
           },
+          // FIXED: Gentle patterns for general notifications
           'high': {
-            frequencies: [900, 1100, 900],
-            durations: [0.1, 0.1, 0.1],
-            waveType: 'square',
-            description: 'High priority pattern'
+            frequencies: [750, 900],
+            durations: [0.15, 0.2],
+            waveType: 'sine',
+            description: 'Gentle attention pattern'
           },
           'medium': {
             frequencies: [650, 800],
@@ -227,10 +229,16 @@ class FirestoreNotificationService {
             description: 'Standard notification pattern'
           },
           'low': {
-            frequencies: [450, 550],
+            frequencies: [550, 650],
             durations: [0.2, 0.25],
-            waveType: 'triangle',
+            waveType: 'sine',
             description: 'Gentle notification pattern'
+          },
+          'system': {
+            frequencies: [650, 800],
+            durations: [0.15, 0.2],
+            waveType: 'sine',
+            description: 'System notification pattern'
           }
         };
 
@@ -364,8 +372,8 @@ class FirestoreNotificationService {
     }
   }
 
-  // PART 2 of 3 - FIXED FirestoreNotificationService.js
-// Audio file playback, sound selection, and settings management - ALL FIXED
+  // PART 2 of 3 - FINAL FIXED FirestoreNotificationService.js
+// Audio file playback, sound selection, and settings management - WITH CORRECT SOUND MAPPING
 
   // FIXED - Enhanced audio file playback with better synthetic support
   playAudioFile(notification) {
@@ -643,7 +651,7 @@ class FirestoreNotificationService {
   }
 
   // ===============================
-  // ENHANCED SOUND TESTING METHODS WITH LOCAL FILES - FIXED
+  // ENHANCED SOUND TESTING METHODS WITH CORRECT MAPPING - FIXED
   // ===============================
 
   // FIXED - Enhanced sound testing with comprehensive debugging for local files
@@ -677,6 +685,20 @@ class FirestoreNotificationService {
     const selectedKey = this.selectSoundKey(testNotification);
     console.log(`🎯 Selected sound key: ${selectedKey}`);
 
+    // Show which file should be playing - FIXED MAPPING
+    const soundMapping = {
+      sale: 'sales.mp3',
+      low_stock: 'low-stock.mp3',
+      out_of_stock: 'out-of-stock.mp3',
+      stock_replenished: 'restocked.mp3',
+      high: 'notification.mp3',     // FIXED
+      medium: 'notification.mp3',   // FIXED
+      low: 'notification.mp3',      // FIXED: was low-stock.mp3
+      system: 'notification.mp3'    // FIXED
+    };
+    
+    console.log(`📁 Should play: /assets/sounds/${soundMapping[selectedKey] || 'notification.mp3'}`);
+
     // Check if the audio file exists and its status
     const audioFile = this.audioFiles[selectedKey];
     console.log(`🎧 Local audio file status for ${selectedKey}:`, {
@@ -707,7 +729,7 @@ class FirestoreNotificationService {
     console.log(`✅ Test sound request completed for: ${soundType}`);
   }
 
-  // FIXED - Test all local sound files
+  // FIXED - Test all local sound files with correct mapping
   async testAllLocalSounds() {
     const soundTypes = ['sale', 'low_stock', 'out_of_stock', 'stock_replenished', 'medium'];
 
@@ -726,13 +748,13 @@ class FirestoreNotificationService {
       const soundType = soundTypes[i];
       console.log(`\n🎵 Testing local sound ${i + 1}/${soundTypes.length}: ${soundType}`);
       
-      // Show which file should be playing
+      // FIXED - Show which file should be playing with correct mapping
       const soundMapping = {
         sale: 'sales.mp3',
         low_stock: 'low-stock.mp3',
         out_of_stock: 'out-of-stock.mp3',
         stock_replenished: 'restocked.mp3',
-        medium: 'notification.mp3'
+        medium: 'notification.mp3'  // FIXED: general notifications use notification.mp3
       };
       
       console.log(`📁 Should play: /assets/sounds/${soundMapping[soundType]}`);
@@ -750,17 +772,21 @@ class FirestoreNotificationService {
     console.log('📊 Final audio status:', this.getAudioStatus());
   }
 
-  // Check local file loading status
+  // FIXED - Check local file loading status with correct mapping
   getLocalFileStatus() {
     const status = {};
+    // FIXED: Corrected expected files mapping
     const expectedFiles = {
       sale: '/assets/sounds/sales.mp3',
       low_stock: '/assets/sounds/low-stock.mp3',
       out_of_stock: '/assets/sounds/out-of-stock.mp3',
       stock_replenished: '/assets/sounds/restocked.mp3',
+      
+      // FIXED: All general notifications should use notification.mp3
       high: '/assets/sounds/notification.mp3',
       medium: '/assets/sounds/notification.mp3',
-      low: '/assets/sounds/low-stock.mp3'
+      low: '/assets/sounds/notification.mp3',        // FIXED: was low-stock.mp3
+      system: '/assets/sounds/notification.mp3'
     };
 
     Object.entries(expectedFiles).forEach(([key, expectedPath]) => {
@@ -798,7 +824,7 @@ class FirestoreNotificationService {
     
     const fileStatus = this.getLocalFileStatus();
     
-    console.log('\n📋 Expected local sound files:');
+    console.log('\n📋 Expected local sound files (FIXED MAPPING):');
     Object.entries(fileStatus).forEach(([key, info]) => {
       const statusIcon = info.status === 'loaded' ? '✅' : 
                          info.status === 'loading' ? '⏳' : 
@@ -831,12 +857,13 @@ class FirestoreNotificationService {
       });
     } else {
       console.log('\n✅ All local sound files loaded successfully!');
+      console.log('🎵 General notifications will now use notification.mp3 (FIXED!)');
     }
   }
 
   // FIXED - Force reload local audio files
   async reloadLocalAudioFiles() {
-    console.log('🔄 Reloading local audio files...');
+    console.log('🔄 Reloading local audio files with FIXED sound mapping...');
 
     // Clear existing audio files
     Object.values(this.audioFiles).forEach(audio => {
@@ -849,7 +876,7 @@ class FirestoreNotificationService {
     this.soundsPreloaded = false;
     this.audioLoadAttempts = {};
 
-    // Reload audio files
+    // Reload audio files with fixed mapping
     this.loadAudioFiles();
 
     // Wait a moment then verify loading
@@ -862,12 +889,12 @@ class FirestoreNotificationService {
     }, 1000);
   }
 
-  // PART 3 of 3 - FIXED FirestoreNotificationService.js
-// Core notification system, Firebase integration, and developer utilities - ALL FIXED
+  // PART 3 of 3 - FINAL FIXED FirestoreNotificationService.js
+// Core notification system, Firebase integration, and developer utilities - WITH CORRECT SOUND MAPPING
 
   // FIXED - Enhanced sound preloading with progress tracking
   async preloadSounds() {
-    console.log('📥 Preloading notification sounds...');
+    console.log('📥 Preloading notification sounds with FIXED mapping...');
 
     const totalSounds = Object.keys(this.audioFiles).length;
     let loadedCount = 0;
@@ -1493,7 +1520,7 @@ class FirestoreNotificationService {
   }
 
   // ===============================
-  // DEBUGGING AND UTILITIES - FIXED
+  // DEBUGGING AND UTILITIES - FINAL FIXED VERSION
   // ===============================
 
   // Enhanced audio system status for debugging
@@ -1530,9 +1557,9 @@ class FirestoreNotificationService {
     };
   }
 
-  // FIXED - Quick test for developers
+  // FIXED - Quick test for developers with correct sound mapping
   async runQuickSoundTest() {
-    console.log('\n🎵 === QUICK LOCAL SOUND TEST ===');
+    console.log('\n🎵 === QUICK LOCAL SOUND TEST (FIXED MAPPING) ===');
     console.log('Testing local MP3 files from /assets/sounds/...\n');
 
     // Unlock audio first
@@ -1542,22 +1569,28 @@ class FirestoreNotificationService {
       await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    // Test the most different sounds
-    console.log('🛒 1/3: Playing SALE sound (sales.mp3)...');
+    // Test the most different sounds with FIXED mapping
+    console.log('🛒 1/4: Playing SALE sound (sales.mp3)...');
     await this.testSound('sale');
 
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    console.log('🚨 2/3: Playing OUT_OF_STOCK sound (out-of-stock.mp3)...');
+    console.log('🚨 2/4: Playing OUT_OF_STOCK sound (out-of-stock.mp3)...');
     await this.testSound('out_of_stock');
 
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    console.log('✅ 3/3: Playing STOCK_REPLENISHED sound (restocked.mp3)...');
+    console.log('✅ 3/4: Playing STOCK_REPLENISHED sound (restocked.mp3)...');
     await this.testSound('stock_replenished');
+
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    console.log('🔔 4/4: Playing GENERAL NOTIFICATION sound (notification.mp3) - FIXED!...');
+    await this.testSound('medium');
 
     console.log('\n✅ Quick test completed!');
     console.log('💡 Did you hear your local MP3 files playing?');
+    console.log('🎵 General notifications should now use notification.mp3 (FIXED!)');
   }
 
   // FIXED - Emergency reset for when things go wrong
@@ -1593,10 +1626,10 @@ class FirestoreNotificationService {
     this.soundsPreloaded = false;
     this.audioLoadAttempts = {};
 
-    // Reload everything
+    // Reload everything with fixed mapping
     this.loadAudioFiles();
 
-    console.log('✅ Emergency reset completed. Try unlocking audio and testing sounds again.');
+    console.log('✅ Emergency reset completed with FIXED sound mapping.');
     console.log('💡 Use: firestoreNotificationService.unlockAudio() then test sounds');
   }
 
@@ -1647,9 +1680,9 @@ class FirestoreNotificationService {
     return health;
   }
 
-  // FIXED - Developer summary
+  // FIXED - Developer summary with correct mapping info
   printSystemSummary() {
-    console.log('\n🔍 === NOTIFICATION SYSTEM SUMMARY ===');
+    console.log('\n🔍 === NOTIFICATION SYSTEM SUMMARY (FINAL FIXED) ===');
 
     const health = this.getSystemHealth();
     console.log(`📊 System Status: ${health.status.toUpperCase()}`);
@@ -1664,9 +1697,9 @@ class FirestoreNotificationService {
       health.recommendations.forEach((rec, i) => console.log(`   ${i + 1}. ${rec}`));
     }
 
-    console.log('\n🎵 Available Test Commands for Local Files:');
+    console.log('\n🎵 Available Test Commands (FIXED MAPPING):');
     console.log('   • firestoreNotificationService.unlockAudio() - Enable audio first!');
-    console.log('   • firestoreNotificationService.runQuickSoundTest()');
+    console.log('   • firestoreNotificationService.runQuickSoundTest() - Test with FIXED mapping');
     console.log('   • firestoreNotificationService.testAllLocalSounds()');
     console.log('   • firestoreNotificationService.verifyLocalFiles()');
     console.log('   • firestoreNotificationService.reloadLocalAudioFiles()');
@@ -1680,6 +1713,13 @@ class FirestoreNotificationService {
     console.log(`   Synthetic Fallbacks: ${status.syntheticSounds.length}`);
     console.log(`   Sound Enabled: ${status.settings.sound ? '✅' : '❌'}`);
     console.log(`   Volume: ${Math.round(status.settings.volume * 100)}%`);
+
+    console.log('\n🔧 FIXED SOUND MAPPING:');
+    console.log('   General Notifications → notification.mp3 ✅ (FIXED!)');
+    console.log('   Low Stock Alerts → low-stock.mp3 ✅');
+    console.log('   Sales → sales.mp3 ✅');
+    console.log('   Out of Stock → out-of-stock.mp3 ✅');
+    console.log('   Restocked → restocked.mp3 ✅');
 
     if (!status.isAudioUnlocked) {
       console.log('\n🔓 IMPORTANT: Audio is not unlocked! Run:');
@@ -1701,7 +1741,7 @@ if (typeof window !== 'undefined') {
 
   // Auto-run system summary after a brief delay
   setTimeout(() => {
-    console.log('\n🚀 Notification System Ready with Local Sound Files! (FIXED VERSION)');
+    console.log('\n🚀 Notification System Ready with FIXED Local Sound Mapping! 🎉');
     firestoreNotificationService.printSystemSummary();
   }, 2000);
 }
