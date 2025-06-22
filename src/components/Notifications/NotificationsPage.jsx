@@ -144,7 +144,20 @@ const NotificationsPage = () => {
   const getFilterCount = (filterType) => {
     if (filterType === 'all') return notifications.length;
     if (filterType === 'unread') return unreadCount;
-    return notifications.filter(n => n.type === filterType).length;
+
+    const typeMap = {
+      low_stock: ['low_stock'],
+      out_of_stock: ['out_of_stock'],
+      sales: ['sale'],
+      system: ['system', 'stock_replenished']
+    };
+
+    const typesToCount = typeMap[filterType];
+    if (typesToCount) {
+      return notifications.filter(n => typesToCount.includes(n.type)).length;
+    }
+
+    return 0; // Fallback for any other keys
   };
 
   const formatCurrency = (amount) => new Intl.NumberFormat('en-NZ', { style: 'currency', currency: 'NZD' }).format(amount);
