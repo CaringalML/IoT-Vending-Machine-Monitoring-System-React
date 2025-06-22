@@ -58,21 +58,24 @@ service cloud.firestore {
         isValidMachineStatus(request.resource.data);
     }
     
-    // NEW: Notifications collection - Real-time notifications
+    // FIXED: Notifications collection - Real-time notifications with proper sync
     match /notifications/{notificationId} {
       // Users can read their own notifications
       allow read: if request.auth != null &&
-        request.auth.uid == resource.data.userId;
+        (request.auth.uid == resource.data.userId || 
+         request.auth.uid == request.resource.data.userId);
       
-      // System can create notifications for users
+      // FIXED: Allow authenticated users to create notifications for themselves
+      // This enables test notifications and system notifications to work properly
       allow create: if request.auth != null &&
-        isValidNotification(request.resource.data);
+        isValidNotification(request.resource.data) &&
+        request.auth.uid == request.resource.data.userId;
       
-      // Users can update their own notifications (mark as read)
+      // FIXED: Users can update their own notifications (more flexible)
+      // Allow updating read status, readAt, and other notification fields
       allow update: if request.auth != null &&
         request.auth.uid == resource.data.userId &&
-        // Only allow updating read status and readAt timestamp
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt']);
+        isValidNotificationUpdate(request.resource.data, resource.data);
       
       // Users can delete their own notifications
       allow delete: if request.auth != null &&
@@ -93,7 +96,7 @@ service cloud.firestore {
         request.resource.data.size() < 50; // Limit log entry size
     }
     
-    // Users collection - For user preferences (no more FCM tokens)
+    // Users collection - For user preferences
     match /users/{userId} {
       allow read, write: if request.auth != null &&
         userId == request.auth.uid;
@@ -136,7 +139,7 @@ service cloud.firestore {
              (!('uptime' in data) || (data.uptime is number && data.uptime >= 0));
     }
     
-    // NEW: Notification validation function
+    // ENHANCED: Notification validation function
     function isValidNotification(data) {
       return data.keys().hasAll(['type', 'title', 'message', 'userId', 'timestamp']) &&
              data.type is string &&
@@ -151,6 +154,21 @@ service cloud.firestore {
              (!('productName' in data) || (data.productName is string && data.productName.size() <= 100)) &&
              (!('quantity' in data) || (data.quantity is number && data.quantity >= 0)) &&
              (!('price' in data) || (data.price is number && data.price >= 0));
+    }
+    
+    // NEW: Notification update validation function
+    function isValidNotificationUpdate(newData, existingData) {
+      // Allow updating read status and readAt timestamp
+      let allowedFields = ['read', 'readAt'].toSet();
+      let changedFields = newData.diff(existingData).affectedKeys();
+      
+      // Check if only allowed fields are being updated
+      return changedFields.hasOnly(allowedFields) &&
+             // Validate the updated values
+             (!('read' in newData) || newData.read is bool) &&
+             (!('readAt' in newData) || newData.readAt is timestamp) &&
+             // Ensure userId doesn't change
+             newData.userId == existingData.userId;
     }
     
     // Allow all other collections for authenticated users (fallback)

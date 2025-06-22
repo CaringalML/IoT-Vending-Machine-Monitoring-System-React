@@ -157,6 +157,57 @@
   padding: 20px 0;
 }
 
+/* =========================================================
+ * ===== NEWLY ADDED STYLES FOR SETTINGS ITEM LAYOUT =====
+ * =========================================================
+ */
+.setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding: 20px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.settings-section > .setting-item:first-of-type {
+  padding-top: 12px;
+}
+
+.settings-section > .setting-item:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.setting-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.setting-label {
+  font-weight: 500;
+  color: #2d3748;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+}
+
+.setting-description {
+  font-size: 14px;
+  color: #718096;
+  margin-top: 4px;
+}
+
+.toggle-switch, .permission-status, .btn {
+  flex-shrink: 0; /* Prevent controls from shrinking */
+}
+
+/* ===================================================
+ * ===== END NEWLY ADDED SETTINGS ITEM STYLES =====
+ * ===================================================
+ */
+
 /* Controls Section */
 .notifications-controls {
   background: white;
@@ -192,6 +243,32 @@
 }
 
 .search-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-select {
+  padding: 10px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  background-color: white;
+  color: #2d3748;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.75rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+  max-width: 320px; /* Set a max-width for desktop */
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.form-select:focus {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
@@ -644,22 +721,215 @@
   background: #a8a8a8;
 }
 
-/* Responsive Design */
+/* Improved Sound Test Grid */
+.sound-test-grid-improved {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+/* Sound Test Cards */
+.sound-test-card {
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.sound-test-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--accent-color, #667eea);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+.sound-test-card:hover {
+  border-color: var(--accent-color, #667eea);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.sound-test-card:hover::before {
+  transform: scaleX(1);
+}
+
+.sound-test-card.testing {
+  border-color: var(--accent-color, #667eea);
+  background: rgba(102, 126, 234, 0.02);
+  animation: cardPulse 1.5s ease-in-out infinite;
+}
+
+.sound-test-card.testing::before {
+  transform: scaleX(1);
+  animation: colorPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes cardPulse {
+  0%, 100% { transform: translateY(-2px) scale(1); }
+  50% { transform: translateY(-2px) scale(1.02); }
+}
+
+@keyframes colorPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Card Header */
+.sound-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.sound-card-icon {
+  font-size: 28px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(102, 126, 234, 0.1);
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.sound-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+  line-height: 1.3;
+}
+
+/* Card Description */
+.sound-card-description {
+  color: #718096;
+  font-size: 14px;
+  line-height: 1.4;
+  margin-bottom: 16px;
+  min-height: 40px;
+  flex-grow: 1; /* Allow description to grow */
+}
+
+/* Sound Test Button */
+.sound-test-button {
+  width: 100%;
+  padding: 12px 20px;
+  border: 2px solid var(--accent-color, #667eea);
+  background: white;
+  color: var(--accent-color, #667eea);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-top: auto; /* Push button to the bottom */
+}
+
+.sound-test-button:hover:not(:disabled) {
+  background: var(--accent-color, #667eea);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.sound-test-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.sound-test-button.testing {
+  background: var(--accent-color, #667eea);
+  color: white;
+  cursor: wait;
+}
+
+/* Sound Playing Indicator */
+.sound-playing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-right: 8px;
+}
+
+.sound-wave-dot {
+  width: 4px;
+  height: 4px;
+  background: white;
+  border-radius: 50%;
+  animation: soundWaveDot 1.4s ease-in-out infinite;
+}
+
+.sound-wave-dot:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.sound-wave-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.sound-wave-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes soundWaveDot {
+  0%, 60%, 100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  30% {
+    transform: scale(1.4);
+    opacity: 1;
+  }
+}
+
+/* Preload Status */
+.preload-status {
+  color: #667eea;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+/* ==============================================
+==== RESPONSIVE DESIGN AND MOBILE STYLES =====
+==============================================
+*/
+
+/* Tablet and Mobile Breakpoint */
 @media (max-width: 768px) {
   .notifications-page {
-    padding: 0 20px;
+    padding: 0;
   }
 
   .notifications-header {
     flex-direction: column;
     gap: 16px;
     align-items: stretch;
-    margin-bottom: 0 !important; /* Remove gap between header and tabs ONLY on mobile */
+    margin-bottom: 0 !important;
+    padding: 24px 20px 0 20px;
   }
 
   .notifications-header h1 {
     font-size: 24px;
-    margin-bottom: 0 !important; /* Remove bottom margin from title */
+    margin-bottom: 0 !important;
   }
 
   /* Hide desktop header actions on mobile */
@@ -667,9 +937,8 @@
     display: none;
   }
 
-  /* Ensure mobile navigation sticks to header with no gap */
   .mobile-inventory-navigation {
-    margin-top: -16px !important; /* Pull navigation up more to completely close gap */
+    margin-top: 16px;
     margin-bottom: 24px;
     margin-left: -20px;
     margin-right: -20px;
@@ -677,85 +946,65 @@
 
   .notifications-controls {
     padding: 16px;
+    border-radius: 0;
+    box-shadow: none;
+    border-left: none;
+    border-right: none;
+  }
+  
+  .notification-settings-tab-content {
+      padding: 0;
   }
 
-  .search-container {
-    max-width: 100%;
+  /* --- Styles specific to the Notification Settings Component on Mobile --- */
+  
+  .notification-settings {
+    padding: 0 16px; /* Add padding for use in modals or embedded views */
   }
 
-  .filter-tabs {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .filter-tab {
-    justify-content: center;
-    text-align: center;
-  }
-
-  .bulk-actions {
-    flex-direction: column;
-    gap: 12px;
-    text-align: center;
-  }
-
-  .notifications-list-header {
-    flex-direction: column;
-    gap: 8px;
-    align-items: stretch;
-    text-align: center;
-  }
-
-  .notification-item {
-    flex-direction: column;
-    gap: 12px;
-    padding: 16px;
-  }
-
-  .notification-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
-
-  .notification-meta {
-    justify-content: space-between;
-  }
-
-  .notification-actions {
-    align-self: flex-end;
-  }
-
-  .notification-actions .action-btn {
-    opacity: 1;
-  }
-
-  /* Mobile Settings Tab Styles */
-  .notification-settings-tab-content .notification-settings {
-    max-width: 100%;
-  }
-
-  .notification-settings-tab-content .settings-section {
+  .settings-section {
     margin-bottom: 24px;
     padding-bottom: 20px;
   }
 
-  .notification-settings-tab-content .setting-item {
+  .setting-item {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
+    padding: 16px 0;
+  }
+  
+  .setting-item .setting-info {
+      padding-right: 0; /* Remove padding that might restrict width */
+  }
+  
+  /* Make the Sound Type dropdown full-width on mobile */
+  .form-select {
+    width: 100%;
+    max-width: none; /* Remove desktop max-width on mobile */
   }
 
-  .notification-settings-tab-content .toggle-switch {
+  .toggle-switch {
     align-self: flex-start;
   }
 
-  .notification-settings-tab-content .time-input-group {
+  /* Make volume control stack vertically */
+  .volume-control {
+      flex-wrap: wrap;
+      gap: 12px;
+  }
+  
+  .volume-slider {
+      order: 1;
+      flex-basis: 100%;
+  }
+
+  .quiet-hours-config .time-input-group {
     flex-direction: column;
     gap: 12px;
   }
-
-  .notification-settings-tab-content .settings-actions {
+  
+  .settings-actions {
     margin: 24px 0 0 0;
     padding: 20px 0 0 0;
     border-top: 1px solid #e2e8f0;
@@ -765,13 +1014,36 @@
     gap: 12px;
   }
 
-  .notification-settings-tab-content .settings-actions .btn {
+  .settings-actions .btn {
     width: 100%;
-    min-height: 52px;
+    min-height: 48px;
     font-size: 16px;
-    font-weight: 600;
-    padding: 16px 24px;
   }
+
+  /* Sound Test Grid */
+  .sound-test-grid-improved {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .sound-test-card { padding: 16px; }
+  .sound-card-header { gap: 10px; margin-bottom: 10px; }
+  .sound-card-icon { font-size: 24px; width: 40px; height: 40px; }
+  .sound-card-title { font-size: 15px; }
+  .sound-card-description { font-size: 13px; min-height: 36px; margin-bottom: 14px; }
+  .sound-test-button { padding: 10px 16px; font-size: 13px; min-height: 40px; }
+
+  /* Other mobile adjustments from original file */
+  .search-container { max-width: 100%; }
+  .filter-tabs { flex-direction: column; gap: 8px; }
+  .filter-tab { justify-content: center; text-align: center; }
+  .bulk-actions { flex-direction: column; gap: 12px; text-align: center; }
+  .notifications-list-header { flex-direction: column; gap: 8px; align-items: stretch; text-align: center; }
+  .notification-item { flex-direction: column; gap: 12px; padding: 16px; }
+  .notification-header { flex-direction: column; align-items: stretch; gap: 8px; }
+  .notification-meta { justify-content: space-between; }
+  .notification-actions { align-self: flex-end; }
+  .notification-actions .action-btn { opacity: 1; }
 }
 
 @media (max-width: 1024px) and (min-width: 769px) {
@@ -787,31 +1059,15 @@
 }
 
 @media (max-width: 480px) {
-  .filter-tab {
-    font-size: 12px;
-    padding: 6px 12px;
-  }
-
-  .notification-title {
-    font-size: 14px;
-  }
-
-  .notification-message {
-    font-size: 13px;
-  }
-
-  .detail-badge {
-    font-size: 11px;
-  }
-
-  .bulk-buttons {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .bulk-buttons .btn {
-    width: 100%;
-  }
+  .filter-tab { font-size: 12px; padding: 6px 12px; }
+  .notification-title { font-size: 14px; }
+  .notification-message { font-size: 13px; }
+  .detail-badge { font-size: 11px; }
+  .bulk-buttons { flex-direction: column; gap: 8px; }
+  .bulk-buttons .btn { width: 100%; }
+  .sound-test-grid-improved { gap: 10px; }
+  .sound-test-card { padding: 14px; }
+  .sound-card-description { min-height: 32px; margin-bottom: 12px; }
 }
 
 /* Animation for notification items */
@@ -820,14 +1076,8 @@
 }
 
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Focus states for accessibility */
@@ -841,38 +1091,26 @@
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {
-  .notifications-container {
-    border-width: 2px;
-  }
-  
-  .notification-item.unread {
-    border-left-width: 6px;
-  }
-  
-  .btn-primary {
-    background: #4c51bf;
-  }
-  
-  .btn-secondary {
-    background: #cbd5e0;
-    border: 1px solid #4a5568;
-  }
+  .notifications-container, .sound-test-card { border-width: 2px; }
+  .notification-item.unread { border-left-width: 6px; }
+  .btn-primary { background: #4c51bf; }
+  .btn-secondary { background: #cbd5e0; border: 1px solid #4a5568; }
+  .sound-test-button { border-width: 3px; }
 }
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-  .notification-item,
-  .btn,
-  .action-btn,
-  .mobile-nav-tab,
-  .filter-tab {
+  .notification-item, .btn, .action-btn, .mobile-nav-tab, .filter-tab,
+  .sound-test-card, .sound-test-card::before, .sound-test-button,
+  .sound-playing-indicator, .sound-wave-dot {
     transition: none;
     animation: none;
   }
   
-  .filter-tab:hover,
-  .btn:hover:not(:disabled),
-  .action-btn:hover {
+  .filter-tab:hover, .btn:hover:not(:disabled), .action-btn:hover,
+  .sound-test-card:hover, .sound-test-button:hover:not(:disabled) {
     transform: none;
   }
+  
+  .sound-test-card.testing { animation: none; }
 }

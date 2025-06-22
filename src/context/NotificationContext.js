@@ -1,4 +1,4 @@
-// src/context/NotificationContext.js
+// src/context/NotificationContext.js - Updated with new methods
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import firestoreNotificationService from '../services/FirestoreNotificationService';
 import { useAuth } from './AuthContext';
@@ -108,7 +108,7 @@ export const NotificationProvider = ({ children }) => {
 
   // Settings management
   const getSettings = () => {
-    return firestoreNotificationService.loadSettings();
+    return firestoreNotificationService.getSettings();
   };
 
   const updateSettings = (newSettings) => {
@@ -117,6 +117,43 @@ export const NotificationProvider = ({ children }) => {
 
   const requestNotificationPermission = async () => {
     return await firestoreNotificationService.requestNotificationPermission();
+  };
+
+  // NEW: Audio methods - Make sure these are properly bound
+  const testSound = async (soundType) => {
+    try {
+      console.log('Testing sound from context:', soundType);
+      await firestoreNotificationService.testSound(soundType);
+    } catch (error) {
+      console.error('Error testing sound:', error);
+    }
+  };
+
+  const setVolume = (volume) => {
+    try {
+      console.log('Setting volume from context:', volume);
+      firestoreNotificationService.setVolume(volume);
+    } catch (error) {
+      console.error('Error setting volume:', error);
+    }
+  };
+
+  const preloadSounds = async () => {
+    try {
+      console.log('Preloading sounds from context');
+      await firestoreNotificationService.preloadSounds();
+    } catch (error) {
+      console.error('Error preloading sounds:', error);
+    }
+  };
+
+  const unlockAudio = () => {
+    try {
+      console.log('Unlocking audio from context');
+      firestoreNotificationService.unlockAudio();
+    } catch (error) {
+      console.error('Error unlocking audio:', error);
+    }
   };
 
   const value = {
@@ -137,8 +174,14 @@ export const NotificationProvider = ({ children }) => {
     updateSettings,
     requestNotificationPermission,
     
+    // NEW: Audio methods
+    testSound,
+    setVolume,
+    preloadSounds,
+    unlockAudio,
+    
     // Service info
-    isSupported: true, // Firestore is always supported
+    isSupported: true,
     permissionStatus: 'Notification' in window ? Notification.permission : 'denied'
   };
 
