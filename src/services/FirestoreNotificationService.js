@@ -1,6 +1,7 @@
 // src/services/FirestoreNotificationService.js
-// Complete Updated Version with FIXED Different Sound System and No Circular Dependencies
-// Eslint 'no-unused-vars' warning for 'totalSamples' has been fixed.
+// COMPLETE FIXED VERSION with LOCAL SOUND FILES and Audio Context Error Resolution
+// Uses local files from public/assets/sounds/ directory
+// PART 1 of 3 - FIXED
 
 import {
   collection,
@@ -46,34 +47,31 @@ class FirestoreNotificationService {
   }
 
   // ===============================
-  // FIXED AUDIO SYSTEM WITH DIFFERENT SOUNDS
+  // FIXED AUDIO SYSTEM WITH LOCAL SOUND FILES
   // ===============================
 
-  // Load audio files with working URLs and guaranteed different fallbacks
+  // Load audio files from local public/assets/sounds/ directory
   loadAudioFiles() {
-    console.log('🎵 Loading notification sounds with working URLs...');
+    console.log('🎵 Loading notification sounds from local files...');
 
-    // Using reliable audio sources that actually work
+    // Map notification types to your actual sound files
     const soundFiles = {
-      // Free sounds from reliable sources
-      sale: 'https://www.soundjay.com/misc/sounds/cash-register-01.wav',
-
-      // Alternative working sources
-      low_stock: 'https://www.soundjay.com/misc/sounds/beep-28.wav',
-      out_of_stock: 'https://www.soundjay.com/misc/sounds/fail-buzzer-02.wav',
-      stock_replenished: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav',
-
-      // General notification sounds
-      high: 'https://www.soundjay.com/misc/sounds/beep-07a.wav',
-      medium: 'https://www.soundjay.com/misc/sounds/bell-ringing-04.wav',
-      low: 'https://www.soundjay.com/misc/sounds/bell-ringing-03.wav',
-
-      // Additional backup sources
-      success: 'https://www.soundjay.com/misc/sounds/bell-ringing-02.wav',
-      warning: 'https://www.soundjay.com/misc/sounds/beep-09.wav'
+      // Map to your actual files in public/assets/sounds/
+      sale: '/assets/sounds/sales.mp3',
+      low_stock: '/assets/sounds/low-stock.mp3',
+      out_of_stock: '/assets/sounds/out-of-stock.mp3',
+      stock_replenished: '/assets/sounds/restocked.mp3',
+      
+      // Use notification.mp3 for general notifications
+      high: '/assets/sounds/notification.mp3',
+      medium: '/assets/sounds/notification.mp3',
+      low: '/assets/sounds/low-stock.mp3',
+      success: '/assets/sounds/restocked.mp3',
+      warning: '/assets/sounds/out-of-stock.mp3',
+      system: '/assets/sounds/notification.mp3'
     };
 
-    // Base64 encoded backup sounds - DIFFERENT for each type
+    // Base64 encoded backup sounds - DIFFERENT for each type (fallback only)
     const backupSounds = {
       // Cash register simulation (high-low-high pattern)
       sale: this.generateBase64Sound([800, 1200, 800], [0.1, 0.1, 0.15]),
@@ -99,12 +97,8 @@ class FirestoreNotificationService {
     });
   }
 
-  // Generate unique base64 sounds for each notification type
+  // Generate unique base64 sounds for each notification type (fallback only)
   generateBase64Sound(frequencies, durations) {
-    // This function creates a unique identifier for different sound patterns.
-    // The previous 'totalSamples' and 'sampleRate' variables were removed
-    // as they are unused, fixing the ESLint 'no-unused-vars' warning.
-
     // Create a unique identifier for different sound patterns
     const patternId = frequencies.join('-') + durations.join('-');
 
@@ -112,56 +106,66 @@ class FirestoreNotificationService {
     return `data:audio/synthetic;pattern=${patternId}`;
   }
 
-
-  // Enhanced audio file loading with better fallback
+  // FIXED - Enhanced audio file loading with better local file handling
   loadAudioFileWithBackup(key, primarySrc, syntheticPattern = null) {
     try {
-      console.log(`🔊 Loading sound: ${key} from ${primarySrc}`);
+      console.log(`🔊 Loading local sound: ${key} from ${primarySrc}`);
 
       const audio = new Audio();
       audio.preload = 'auto';
       audio.volume = this.settings?.volume || 0.7;
-      audio.crossOrigin = 'anonymous';
-
+      
       // Set loading timeout
       const loadTimeout = setTimeout(() => {
         console.warn(`⏰ Loading timeout for ${key}, using fallback`);
         this.handleAudioLoadFailure(key, syntheticPattern);
-      }, 10000); // 10 second timeout
+      }, 10000);
 
       // Success handler
       const handleSuccess = () => {
         clearTimeout(loadTimeout);
-        console.log(`✅ Successfully loaded: ${key}`);
+        console.log(`✅ Successfully loaded local file: ${key}`);
         audio.removeEventListener('canplaythrough', handleSuccess);
         audio.removeEventListener('error', handleError);
+        audio.removeEventListener('loadeddata', handleSuccess);
       };
 
-      // Error handler
+      // FIXED - Error handler (no audio context dependency)
       const handleError = (e) => {
         clearTimeout(loadTimeout);
-        console.warn(`❌ Failed to load ${key}:`, e);
+        console.warn(`❌ Failed to load local file ${key}:`, e);
+        console.warn(`   File path: ${primarySrc}`);
         audio.removeEventListener('canplaythrough', handleSuccess);
         audio.removeEventListener('error', handleError);
+        audio.removeEventListener('loadeddata', handleSuccess);
+        
+        // Don't try to create audio context here - just mark as failed
         this.handleAudioLoadFailure(key, syntheticPattern);
       };
 
-      audio.addEventListener('canplaythrough', handleSuccess);
-      audio.addEventListener('error', handleError);
+      // Listen for both events to ensure we catch successful loads
+      audio.addEventListener('canplaythrough', handleSuccess, { once: true });
+      audio.addEventListener('loadeddata', handleSuccess, { once: true });
+      audio.addEventListener('error', handleError, { once: true });
+
+      // Set the source to trigger loading
       audio.src = primarySrc;
       this.audioFiles[key] = audio;
 
+      // Track load attempts
+      this.audioLoadAttempts[key] = (this.audioLoadAttempts[key] || 0) + 1;
+
     } catch (error) {
-      console.error(`💥 Exception loading ${key}:`, error);
+      console.error(`💥 Exception loading local file ${key}:`, error);
       this.handleAudioLoadFailure(key, syntheticPattern);
     }
   }
 
-  // Handle audio loading failures with synthetic fallback
+  // FIXED - Handle audio loading failures with synthetic fallback
   handleAudioLoadFailure(key, syntheticPattern) {
-    console.log(`🎛️ Using synthetic sound for: ${key}`);
+    console.log(`🎛️ Using synthetic sound for: ${key} (local file failed to load)`);
 
-    // Mark as synthetic sound type
+    // Mark as synthetic sound type - Don't try to create audio context here
     this.audioFiles[key] = {
       type: 'synthetic',
       key: key,
@@ -170,11 +174,12 @@ class FirestoreNotificationService {
     };
   }
 
-  // Play synthetic sound for specific key
+  // FIXED - Play synthetic sound for specific key
   playSyntheticSoundForKey(key) {
+    // Check if audio context is available, if not just return resolved promise
     if (!this.isAudioUnlocked || !this.audioContext) {
-      console.log('🔒 Audio context not available for synthetic sound');
-      return Promise.reject('Audio context not available');
+      console.log('🔒 Audio context not available for synthetic sound - skipping playback');
+      return Promise.resolve(); // Return resolved promise instead of rejected
     }
 
     return new Promise((resolve, reject) => {
@@ -188,26 +193,26 @@ class FirestoreNotificationService {
           'sale': {
             frequencies: [800, 1200, 800, 600],
             durations: [0.1, 0.1, 0.1, 0.15],
-            waveType: 'square', // Cash register-like
-            description: 'Cash register pattern (high-low-high-medium)'
+            waveType: 'square',
+            description: 'Cash register pattern'
           },
           'low_stock': {
             frequencies: [600, 400, 600],
             durations: [0.12, 0.08, 0.12],
-            waveType: 'sawtooth', // Warning-like
-            description: 'Warning pattern (medium-low-medium)'
+            waveType: 'sawtooth',
+            description: 'Warning pattern'
           },
           'out_of_stock': {
             frequencies: [300, 200, 300, 200, 300],
             durations: [0.08, 0.06, 0.08, 0.06, 0.1],
-            waveType: 'square', // Urgent/harsh
-            description: 'Urgent pattern (rapid low-frequency alerts)'
+            waveType: 'square',
+            description: 'Urgent pattern'
           },
           'stock_replenished': {
             frequencies: [400, 500, 650, 800],
             durations: [0.1, 0.1, 0.1, 0.2],
-            waveType: 'sine', // Pleasant ascending
-            description: 'Success pattern (ascending tones)'
+            waveType: 'sine',
+            description: 'Success pattern'
           },
           'high': {
             frequencies: [900, 1100, 900],
@@ -232,7 +237,7 @@ class FirestoreNotificationService {
         const pattern = syntheticPatterns[key] || syntheticPatterns.medium;
         const volume = (this.settings?.volume || 0.7) * 0.3;
 
-        console.log(`🎵 Pattern for ${key}:`, pattern);
+        console.log(`🎵 Synthetic pattern for ${key}:`, pattern);
 
         // Create audio nodes
         const gainNode = audioCtx.createGain();
@@ -267,40 +272,52 @@ class FirestoreNotificationService {
 
       } catch (error) {
         console.error(`💥 Error in synthetic sound for ${key}:`, error);
-        reject(error);
+        resolve(); // Resolve instead of reject to prevent cascading errors
       }
     });
   }
 
-  // Enhanced audio context unlocking
+  // FIXED - Add method to safely initialize audio context only when needed
+  initializeAudioContextSafely() {
+    if (this.audioContext) {
+      return true; // Already initialized
+    }
+
+    try {
+      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      console.log(`🎧 AudioContext created safely, state: ${this.audioContext.state}`);
+
+      if (this.audioContext.state === 'suspended') {
+        // Don't try to resume immediately - wait for user interaction
+        console.log('🔒 AudioContext created but suspended - user interaction required');
+        return false;
+      } else {
+        this.isAudioUnlocked = true;
+        console.log('✅ Audio context created and ready');
+        return true;
+      }
+    } catch (e) {
+      console.error('❌ Could not create AudioContext:', e);
+      return false;
+    }
+  }
+
+  // FIXED - Enhanced audio context unlocking
   unlockAudio() {
     console.log('🔓 Unlocking audio context...');
 
-    if (!this.audioContext) {
-      try {
-        this.audioContext = new(window.AudioContext || window.webkitAudioContext)();
-        console.log(`🎧 AudioContext created, state: ${this.audioContext.state}`);
+    // Try to initialize audio context safely first
+    if (!this.audioContext && !this.initializeAudioContextSafely()) {
+      console.log('🔒 Audio context initialization failed');
+      return;
+    }
 
-        if (this.audioContext.state === 'suspended') {
-          this.audioContext.resume().then(() => {
-            this.isAudioUnlocked = true;
-            console.log('✅ Audio context resumed and unlocked');
-          }).catch(error => {
-            console.error('❌ Failed to resume audio context:', error);
-          });
-        } else {
-          this.isAudioUnlocked = true;
-          console.log('✅ Audio context created and unlocked');
-        }
-      } catch (e) {
-        console.error('❌ Could not create AudioContext:', e);
-      }
-    } else if (this.audioContext.state === 'suspended') {
+    if (this.audioContext.state === 'suspended') {
       this.audioContext.resume().then(() => {
         this.isAudioUnlocked = true;
-        console.log('✅ Audio context resumed');
+        console.log('✅ Audio context resumed and unlocked');
       }).catch(error => {
-        console.error('❌ Failed to resume existing audio context:', error);
+        console.error('❌ Failed to resume audio context:', error);
       });
     } else {
       this.isAudioUnlocked = true;
@@ -308,7 +325,7 @@ class FirestoreNotificationService {
     }
   }
 
-  // Enhanced notification sound playing with better debugging
+  // FIXED - Enhanced notification sound playing with better error handling
   playNotificationSound(notification) {
     if (!this.settings.sound || !this.canPlaySound()) {
       console.log('🔇 Sound disabled or in quiet hours, skipping playback');
@@ -321,23 +338,36 @@ class FirestoreNotificationService {
       title: notification.title
     });
 
-    // Ensure audio is unlocked
+    // Ensure audio is unlocked - but don't fail if it's not
     if (!this.isAudioUnlocked) {
       console.log('🔒 Audio not unlocked, attempting to unlock...');
       this.unlockAudio();
+      
+      // If audio still not unlocked, just log and continue
+      if (!this.isAudioUnlocked) {
+        console.log('🔒 Audio unlock failed - user interaction required first');
+        return;
+      }
     }
 
-    // Try to play audio file first (unless user prefers synthetic)
+    // Try to play local audio file first (unless user prefers synthetic)
     if (this.settings.soundType !== 'synthetic' && this.playAudioFile(notification)) {
-      return; // Successfully played audio file
+      return; // Successfully played local audio file
     }
 
-    // Fallback to synthetic sounds
-    console.log('🔄 Falling back to synthetic sound');
-    this.playSyntheticSound(notification);
+    // Fallback to synthetic sounds - but only if audio context is available
+    if (this.isAudioUnlocked && this.audioContext) {
+      console.log('🔄 Falling back to synthetic sound');
+      this.playSyntheticSound(notification);
+    } else {
+      console.log('🔒 Cannot play fallback sound - audio context not available');
+    }
   }
 
-  // Enhanced audio file playback with better synthetic support
+  // PART 2 of 3 - FIXED FirestoreNotificationService.js
+// Audio file playback, sound selection, and settings management - ALL FIXED
+
+  // FIXED - Enhanced audio file playback with better synthetic support
   playAudioFile(notification) {
     try {
       let soundKey = this.selectSoundKey(notification);
@@ -363,9 +393,17 @@ class FirestoreNotificationService {
       if (audio) {
         console.log(`🎵 Playing sound: ${soundKey}`);
 
-        // Handle synthetic sounds
+        // FIXED - Handle synthetic sounds - but only if audio context is ready
         if (audio.type === 'synthetic') {
-          return audio.play().then(() => true).catch(() => false);
+          if (this.isAudioUnlocked && this.audioContext) {
+            return audio.play().then(() => true).catch((error) => {
+              console.warn('Synthetic sound playback failed:', error);
+              return false;
+            });
+          } else {
+            console.log('🔒 Synthetic sound skipped - audio context not ready');
+            return false;
+          }
         }
 
         // Handle regular audio files
@@ -376,11 +414,13 @@ class FirestoreNotificationService {
           const playPromise = audio.play();
           if (playPromise !== undefined) {
             playPromise
-              .then(() => console.log(`✅ Audio file played: ${soundKey}`))
+              .then(() => console.log(`✅ Local audio file played: ${soundKey}`))
               .catch(error => {
-                console.warn(`❌ Audio playback failed: ${soundKey}`, error);
-                // Fallback to synthetic
-                this.playSyntheticSoundForKey(soundKey);
+                console.warn(`❌ Local audio playback failed: ${soundKey}`, error);
+                // FIXED - Only try synthetic fallback if audio context is ready
+                if (this.isAudioUnlocked && this.audioContext) {
+                  this.playSyntheticSoundForKey(soundKey);
+                }
               });
           }
           return true;
@@ -409,7 +449,7 @@ class FirestoreNotificationService {
       'low_stock': 'low_stock',
       'out_of_stock': 'out_of_stock',
       'stock_replenished': 'stock_replenished',
-      'system': 'success'
+      'system': 'system'
     };
 
     if (notification.type && typeMap[notification.type]) {
@@ -457,7 +497,7 @@ class FirestoreNotificationService {
     return uniqueFallbacks;
   }
 
-  // Enhanced synthetic sound generation for fallback
+  // FIXED - Enhanced synthetic sound generation for fallback
   playSyntheticSound(notification) {
     if (!this.isAudioUnlocked || !this.audioContext) {
       console.log('🔒 Audio context not available for synthetic sound, skipping');
@@ -509,9 +549,7 @@ class FirestoreNotificationService {
     const oldVolume = this.settings.volume;
 
     // Update settings object
-    this.settings = { ...this.settings,
-      ...newSettings
-    };
+    this.settings = { ...this.settings, ...newSettings };
 
     // Save to storage
     this.saveSettingsToStorage();
@@ -574,9 +612,7 @@ class FirestoreNotificationService {
       if (saved) {
         const parsedSettings = JSON.parse(saved);
         // Merge with defaults to ensure all properties exist
-        return { ...defaultSettings,
-          ...parsedSettings
-        };
+        return { ...defaultSettings, ...parsedSettings };
       }
 
       return defaultSettings;
@@ -607,12 +643,12 @@ class FirestoreNotificationService {
   }
 
   // ===============================
-  // ENHANCED SOUND TESTING METHODS
+  // ENHANCED SOUND TESTING METHODS WITH LOCAL FILES - FIXED
   // ===============================
 
-  // Enhanced sound testing with comprehensive debugging
+  // FIXED - Enhanced sound testing with comprehensive debugging for local files
   async testSound(soundType = 'medium') {
-    console.log(`\n🧪 === TESTING SOUND: ${soundType.toUpperCase()} ===`);
+    console.log(`\n🧪 === TESTING LOCAL SOUND: ${soundType.toUpperCase()} ===`);
 
     // First try to unlock audio if needed
     if (!this.isAudioUnlocked) {
@@ -632,7 +668,7 @@ class FirestoreNotificationService {
       priority: soundType === 'high' || soundType === 'out_of_stock' ? 'high' :
         soundType === 'low' || soundType === 'low_stock' ? 'medium' : 'low',
       title: `Test ${soundType} Notification`,
-      message: `Testing ${soundType} sound`
+      message: `Testing ${soundType} sound from local file`
     };
 
     console.log(`📋 Test notification created:`, testNotification);
@@ -643,14 +679,14 @@ class FirestoreNotificationService {
 
     // Check if the audio file exists and its status
     const audioFile = this.audioFiles[selectedKey];
-    console.log(`🎧 Audio file status for ${selectedKey}:`, {
+    console.log(`🎧 Local audio file status for ${selectedKey}:`, {
       exists: !!audioFile,
-      type: audioFile?.type || 'audio file',
+      type: audioFile?.type || 'local audio file',
       readyState: audioFile?.readyState,
       networkState: audioFile?.networkState,
       duration: audioFile?.duration,
       volume: audioFile?.volume,
-      src: audioFile?.src?.substring(0, 60) + '...'
+      src: audioFile?.src
     });
 
     // Check fallback options
@@ -665,199 +701,171 @@ class FirestoreNotificationService {
     }
 
     // Try to play the sound
-    console.log('🎵 Attempting to play sound...');
+    console.log('🎵 Attempting to play local sound...');
     this.playNotificationSound(testNotification);
 
     console.log(`✅ Test sound request completed for: ${soundType}`);
   }
 
-  // Force all sounds to use synthetic for testing (to guarantee different sounds)
-  async testSyntheticSounds() {
-    console.log('🧪 === TESTING SYNTHETIC SOUNDS (GUARANTEED DIFFERENT) ===');
-
+  // FIXED - Test all local sound files
+  async testAllLocalSounds() {
     const soundTypes = ['sale', 'low_stock', 'out_of_stock', 'stock_replenished', 'medium'];
+
+    console.log('🧪 === TESTING ALL LOCAL NOTIFICATION SOUNDS ===');
+    console.log(`📋 Testing sequence: ${soundTypes.join(' -> ')}`);
+    console.log('🎵 These should play your local MP3 files from /assets/sounds/');
+
+    // Ensure audio is unlocked first
+    if (!this.isAudioUnlocked) {
+      console.log('🔓 Unlocking audio before testing...');
+      this.unlockAudio();
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
 
     for (let i = 0; i < soundTypes.length; i++) {
       const soundType = soundTypes[i];
-      console.log(`\n🎵 Testing synthetic sound ${i + 1}/${soundTypes.length}: ${soundType}`);
+      console.log(`\n🎵 Testing local sound ${i + 1}/${soundTypes.length}: ${soundType}`);
+      
+      // Show which file should be playing
+      const soundMapping = {
+        sale: 'sales.mp3',
+        low_stock: 'low-stock.mp3',
+        out_of_stock: 'out-of-stock.mp3',
+        stock_replenished: 'restocked.mp3',
+        medium: 'notification.mp3'
+      };
+      
+      console.log(`📁 Should play: /assets/sounds/${soundMapping[soundType]}`);
+      
+      await this.testSound(soundType);
 
-      // Force synthetic sound
-      await this.playSyntheticSoundForKey(soundType);
-
-      // Wait between sounds
+      // Wait between sounds to hear the difference
       if (i < soundTypes.length - 1) {
-        console.log('⏳ Waiting 2 seconds...');
+        console.log('⏳ Waiting 2 seconds before next test...');
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
 
-    console.log('\n✅ Synthetic sound test completed!');
+    console.log('\n✅ All local sound tests completed!');
+    console.log('📊 Final audio status:', this.getAudioStatus());
   }
 
-  // Test with detailed frequency analysis
-  async testSoundFrequencies() {
-    console.log('🎼 === TESTING SOUND FREQUENCIES ===');
-
-    const soundTypes = ['sale', 'low_stock', 'out_of_stock', 'stock_replenished', 'medium'];
-
-    soundTypes.forEach(type => {
-      const pattern = this.getSyntheticPattern(type);
-      console.log(`🎵 ${type.toUpperCase()}:`, {
-        frequencies: pattern.frequencies,
-        durations: pattern.durations,
-        waveType: pattern.waveType,
-        pattern: pattern.frequencies.join('Hz → ') + 'Hz',
-        description: pattern.description
-      });
-    });
-  }
-
-  // Get synthetic pattern for debugging
-  getSyntheticPattern(key) {
-    const syntheticPatterns = {
-      'sale': {
-        frequencies: [800, 1200, 800, 600],
-        durations: [0.1, 0.1, 0.1, 0.15],
-        waveType: 'square',
-        description: 'Cash register pattern (high-low-high-medium)'
-      },
-      'low_stock': {
-        frequencies: [600, 400, 600],
-        durations: [0.12, 0.08, 0.12],
-        waveType: 'sawtooth',
-        description: 'Warning pattern (medium-low-medium)'
-      },
-      'out_of_stock': {
-        frequencies: [300, 200, 300, 200, 300],
-        durations: [0.08, 0.06, 0.08, 0.06, 0.1],
-        waveType: 'square',
-        description: 'Urgent pattern (rapid low-frequency alerts)'
-      },
-      'stock_replenished': {
-        frequencies: [400, 500, 650, 800],
-        durations: [0.1, 0.1, 0.1, 0.2],
-        waveType: 'sine',
-        description: 'Success pattern (ascending tones)'
-      },
-      'high': {
-        frequencies: [900, 1100, 900],
-        durations: [0.1, 0.1, 0.1],
-        waveType: 'square',
-        description: 'High priority pattern'
-      },
-      'medium': {
-        frequencies: [650, 800],
-        durations: [0.15, 0.2],
-        waveType: 'sine',
-        description: 'Standard notification pattern'
-      },
-      'low': {
-        frequencies: [450, 550],
-        durations: [0.2, 0.25],
-        waveType: 'triangle',
-        description: 'Gentle notification pattern'
-      }
+  // Check local file loading status
+  getLocalFileStatus() {
+    const status = {};
+    const expectedFiles = {
+      sale: '/assets/sounds/sales.mp3',
+      low_stock: '/assets/sounds/low-stock.mp3',
+      out_of_stock: '/assets/sounds/out-of-stock.mp3',
+      stock_replenished: '/assets/sounds/restocked.mp3',
+      high: '/assets/sounds/notification.mp3',
+      medium: '/assets/sounds/notification.mp3',
+      low: '/assets/sounds/low-stock.mp3'
     };
 
-    return syntheticPatterns[key] || syntheticPatterns.medium;
-  }
-
-  // Force use synthetic sounds for all notifications (debugging)
-  enableSyntheticOnly() {
-    console.log('🎛️ Enabling synthetic-only mode for testing...');
-
-    // Mark all audio files as synthetic
-    Object.keys(this.audioFiles).forEach(key => {
-      this.audioFiles[key] = {
-        type: 'synthetic',
-        key: key,
-        play: () => this.playSyntheticSoundForKey(key)
-      };
+    Object.entries(expectedFiles).forEach(([key, expectedPath]) => {
+      const audio = this.audioFiles[key];
+      
+      if (!audio) {
+        status[key] = {
+          file: expectedPath,
+          status: 'not_loaded',
+          error: 'Audio object not created'
+        };
+      } else if (audio.type === 'synthetic') {
+        status[key] = {
+          file: expectedPath,
+          status: 'synthetic_fallback',
+          error: 'Local file failed, using synthetic sound'
+        };
+      } else {
+        status[key] = {
+          file: expectedPath,
+          status: audio.readyState >= 2 ? 'loaded' : 'loading',
+          readyState: audio.readyState,
+          src: audio.src,
+          canPlay: audio.readyState >= 2
+        };
+      }
     });
 
-    console.log('✅ All sounds now using synthetic patterns');
+    return status;
   }
 
-  // Quick test to verify different sounds work
-  async quickDifferenceTest() {
-    console.log('⚡ === QUICK DIFFERENCE TEST ===');
-    console.log('Testing two very different sounds back-to-back...\n');
-
-    // Test cash register vs urgent alert
-    console.log('🛒 Playing SALE sound (cash register pattern)...');
-    await this.playSyntheticSoundForKey('sale');
-
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    console.log('🚨 Playing OUT_OF_STOCK sound (urgent alert pattern)...');
-    await this.playSyntheticSoundForKey('out_of_stock');
-
-    console.log('\n❓ Did you hear two DIFFERENT sounds?');
-    console.log('   - First: High-pitched cash register pattern (800→1200→800→600 Hz)');
-    console.log('   - Second: Low-pitched urgent alerts (300→200→300→200→300 Hz)');
-  }
-
-  // Comprehensive debugging script
-  async debugSoundSystem() {
-    console.log('🔍 === COMPREHENSIVE SOUND SYSTEM DEBUG ===\n');
-
-    // 1. Check audio context
-    console.log('1. Audio Context Status:');
-    console.log({
-      exists: !!this.audioContext,
-      state: this.audioContext?.state,
-      unlocked: this.isAudioUnlocked
+  // FIXED - Verify local files are accessible
+  async verifyLocalFiles() {
+    console.log('🔍 === VERIFYING LOCAL SOUND FILES ===');
+    
+    const fileStatus = this.getLocalFileStatus();
+    
+    console.log('\n📋 Expected local sound files:');
+    Object.entries(fileStatus).forEach(([key, info]) => {
+      const statusIcon = info.status === 'loaded' ? '✅' : 
+                         info.status === 'loading' ? '⏳' : 
+                         info.status === 'synthetic_fallback' ? '🎛️' : '❌';
+      
+      console.log(`   ${statusIcon} ${key}: ${info.file}`);
+      if (info.error) {
+        console.log(`      Error: ${info.error}`);
+      }
     });
 
-    // 2. Check loaded sounds
-    console.log('\n2. Loaded Sounds:');
-    Object.entries(this.audioFiles).forEach(([key, audio]) => {
-      console.log(`   ${key}:`, {
-        type: audio?.type || 'audio file',
-        available: !!audio,
-        canPlay: audio?.readyState >= 2 || audio?.type === 'synthetic'
+    const loadedCount = Object.values(fileStatus).filter(s => s.status === 'loaded').length;
+    const totalCount = Object.keys(fileStatus).length;
+    
+    console.log(`\n📊 Summary: ${loadedCount}/${totalCount} local files loaded successfully`);
+    
+    if (loadedCount === 0) {
+      console.log('\n❌ No local files loaded! Check:');
+      console.log('   1. Files exist in public/assets/sounds/');
+      console.log('   2. File names match exactly (case-sensitive)');
+      console.log('   3. Files are accessible from the web server');
+      console.log('   4. No CORS issues with local files');
+      console.log('   5. Audio context unlocked (try firestoreNotificationService.unlockAudio())');
+    } else if (loadedCount < totalCount) {
+      console.log('\n⚠️ Some local files failed to load:');
+      Object.entries(fileStatus).forEach(([key, info]) => {
+        if (info.status !== 'loaded') {
+          console.log(`   - ${key}: ${info.error || 'Loading failed'}`);
+        }
       });
-    });
-
-    // 3. Show frequency patterns
-    console.log('\n3. Frequency Patterns:');
-    this.testSoundFrequencies();
-
-    // 4. Test notification type mapping
-    console.log('\n4. Notification Type Mapping:');
-    const testNotifications = [{
-      type: 'sale',
-      priority: 'low'
-    }, {
-      type: 'low_stock',
-      priority: 'medium'
-    }, {
-      type: 'out_of_stock',
-      priority: 'high'
-    }, {
-      type: 'stock_replenished',
-      priority: 'low'
-    }, {
-      type: null,
-      priority: 'medium'
-    }];
-
-    testNotifications.forEach(notification => {
-      const selectedKey = this.selectSoundKey(notification);
-      console.log(`   ${notification.type || 'null'} (${notification.priority}) → ${selectedKey}`);
-    });
-
-    // 5. Settings check
-    console.log('\n5. Current Settings:');
-    console.log({
-      soundEnabled: this.settings.sound,
-      volume: this.settings.volume,
-      soundType: this.settings.soundType,
-      enabled: this.settings.enabled
-    });
+    } else {
+      console.log('\n✅ All local sound files loaded successfully!');
+    }
   }
 
-  // Enhanced sound preloading with progress tracking
+  // FIXED - Force reload local audio files
+  async reloadLocalAudioFiles() {
+    console.log('🔄 Reloading local audio files...');
+
+    // Clear existing audio files
+    Object.values(this.audioFiles).forEach(audio => {
+      if (audio && typeof audio.pause === 'function') {
+        audio.pause();
+      }
+    });
+
+    this.audioFiles = {};
+    this.soundsPreloaded = false;
+    this.audioLoadAttempts = {};
+
+    // Reload audio files
+    this.loadAudioFiles();
+
+    // Wait a moment then verify loading
+    setTimeout(async () => {
+      await this.verifyLocalFiles();
+      
+      if (this.settings.sound && this.settings.enabled) {
+        this.preloadSounds();
+      }
+    }, 1000);
+  }
+
+  // PART 3 of 3 - FIXED FirestoreNotificationService.js
+// Core notification system, Firebase integration, and developer utilities - ALL FIXED
+
+  // FIXED - Enhanced sound preloading with progress tracking
   async preloadSounds() {
     console.log('📥 Preloading notification sounds...');
 
@@ -889,12 +897,8 @@ class FirestoreNotificationService {
               resolve(); // Resolve anyway to not block other sounds
             };
 
-            audio.addEventListener('canplay', handleLoad, {
-              once: true
-            });
-            audio.addEventListener('error', handleError, {
-              once: true
-            });
+            audio.addEventListener('canplay', handleLoad, { once: true });
+            audio.addEventListener('error', handleError, { once: true });
 
             // Trigger loading if not already started
             if (audio.readyState === 0) {
@@ -930,206 +934,6 @@ class FirestoreNotificationService {
     } catch (error) {
       console.error('💥 Error during sound preloading:', error);
     }
-  }
-
-  // Test all sounds sequentially with detailed feedback
-  async testAllSounds() {
-    const soundTypes = ['sale', 'low_stock', 'out_of_stock', 'stock_replenished', 'medium'];
-
-    console.log('🧪 === TESTING ALL NOTIFICATION SOUNDS ===');
-    console.log(`📋 Testing sequence: ${soundTypes.join(' -> ')}`);
-
-    for (let i = 0; i < soundTypes.length; i++) {
-      const soundType = soundTypes[i];
-      console.log(`\n🎵 Testing sound ${i + 1}/${soundTypes.length}: ${soundType}`);
-
-      await this.testSound(soundType);
-
-      // Wait between sounds to hear the difference
-      if (i < soundTypes.length - 1) {
-        console.log('⏳ Waiting 2 seconds before next test...');
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
-    }
-
-    console.log('\n✅ All sound tests completed!');
-    console.log('📊 Final audio status:', this.getAudioStatus());
-  }
-
-  // ===============================
-  // DEBUGGING AND UTILITIES
-  // ===============================
-
-  // Enhanced audio system status for debugging
-  getAudioStatus() {
-    return {
-      // Audio Context
-      audioContext: !!this.audioContext,
-      audioContextState: this.audioContext?.state,
-      isAudioUnlocked: this.isAudioUnlocked,
-
-      // Sound Loading
-      soundsPreloaded: this.soundsPreloaded,
-      totalSounds: Object.keys(this.audioFiles).length,
-      loadedSounds: Object.keys(this.audioFiles).filter(key =>
-        this.audioFiles[key] && this.audioFiles[key] !== null
-      ),
-      syntheticSounds: Object.keys(this.audioFiles).filter(key =>
-        this.audioFiles[key]?.type === 'synthetic'
-      ),
-      failedSounds: Object.keys(this.audioFiles).filter(key =>
-        this.audioFiles[key] === null
-      ),
-
-      // Settings
-      settings: {
-        sound: this.settings.sound,
-        volume: this.settings.volume,
-        soundType: this.settings.soundType,
-        enabled: this.settings.enabled
-      },
-
-      // Load Attempts
-      loadAttempts: this.audioLoadAttempts
-    };
-  }
-
-  // Get detailed sound loading status for each file
-  getLoadedSounds() {
-    const status = {};
-
-    Object.entries(this.audioFiles).forEach(([key, audio]) => {
-      if (audio === null) {
-        status[key] = {
-          status: 'failed',
-          attempts: this.audioLoadAttempts[key] || 0
-        };
-      } else if (!audio) {
-        status[key] = {
-          status: 'not_loaded',
-          attempts: 0
-        };
-      } else if (audio.type === 'synthetic') {
-        status[key] = {
-          status: 'synthetic',
-          pattern: this.getSyntheticPattern(key),
-          canPlay: true
-        };
-      } else {
-        status[key] = {
-          status: 'loaded',
-          readyState: audio.readyState,
-          networkState: audio.networkState,
-          duration: audio.duration || 'unknown',
-          volume: audio.volume,
-          src: audio.src?.substring(0, 50) + '...',
-          canPlay: audio.readyState >= 2
-        };
-      }
-    });
-
-    return status;
-  }
-
-  // Get detailed sound loading status
-  getSoundLoadingStatus() {
-    return this.getLoadedSounds();
-  }
-
-  // Force reload all audio files
-  async reloadAudioFiles() {
-    console.log('🔄 Reloading all audio files...');
-
-    // Clear existing audio files
-    Object.values(this.audioFiles).forEach(audio => {
-      if (audio && typeof audio.pause === 'function') {
-        audio.pause();
-      }
-    });
-
-    this.audioFiles = {};
-    this.soundsPreloaded = false;
-    this.audioLoadAttempts = {};
-
-    // Reload audio files
-    this.loadAudioFiles();
-
-    // Wait a moment then preload if sound is enabled
-    setTimeout(() => {
-      if (this.settings.sound && this.settings.enabled) {
-        this.preloadSounds();
-      }
-    }, 1000);
-  }
-
-  // ===============================
-  // CONVENIENCE TESTING METHODS
-  // ===============================
-
-  // Quick test for developers
-  async runQuickSoundTest() {
-    console.log('\n🎵 === QUICK SOUND TEST FOR DEVELOPERS ===');
-    console.log('This will test if different sounds are actually playing...\n');
-
-    // Unlock audio first
-    this.unlockAudio();
-    await new Promise(resolve => setTimeout(resolve, 200));
-
-    // Test the most different sounds
-    console.log('🛒 1/3: Playing SALE sound (should be high-pitched)...');
-    await this.playSyntheticSoundForKey('sale');
-
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    console.log('🚨 2/3: Playing OUT_OF_STOCK sound (should be low-pitched urgent)...');
-    await this.playSyntheticSoundForKey('out_of_stock');
-
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    console.log('✅ 3/3: Playing STOCK_REPLENISHED sound (should be ascending)...');
-    await this.playSyntheticSoundForKey('stock_replenished');
-
-    console.log('\n✅ Quick test completed!');
-    console.log('💡 Did you hear 3 DIFFERENT sounds?');
-    console.log('   - Sale: High-pitched (like cash register)');
-    console.log('   - Out of Stock: Low-pitched urgent beeps');
-    console.log('   - Restocked: Pleasant ascending tones');
-  }
-
-  // Test notification types with actual notifications
-  async testNotificationTypes() {
-    console.log('🧪 === TESTING NOTIFICATION TYPES ===');
-
-    const testNotifications = [{
-      type: 'sale',
-      title: 'Test Sale',
-      message: 'Sale notification test'
-    }, {
-      type: 'low_stock',
-      title: 'Test Low Stock',
-      message: 'Low stock notification test'
-    }, {
-      type: 'out_of_stock',
-      title: 'Test Out of Stock',
-      message: 'Out of stock notification test'
-    }, {
-      type: 'stock_replenished',
-      title: 'Test Restocked',
-      message: 'Restock notification test'
-    }];
-
-    for (let i = 0; i < testNotifications.length; i++) {
-      const notification = testNotifications[i];
-      console.log(`\n🔔 ${i + 1}/4: Testing ${notification.type} notification...`);
-
-      this.playNotificationSound(notification);
-
-      if (i < testNotifications.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
-    }
-
-    console.log('\n✅ Notification type test completed!');
   }
 
   // ===============================
@@ -1380,9 +1184,7 @@ class FirestoreNotificationService {
 
       const product = item.productId ?
         productLookup[item.productId] :
-        {
-          name: item.deletedProductName
-        };
+        { name: item.deletedProductName };
 
       if (!product) continue;
 
@@ -1691,10 +1493,74 @@ class FirestoreNotificationService {
   }
 
   // ===============================
-  // ENHANCED DEVELOPER UTILITIES
+  // DEBUGGING AND UTILITIES - FIXED
   // ===============================
 
-  // Emergency reset for when things go wrong
+  // Enhanced audio system status for debugging
+  getAudioStatus() {
+    return {
+      // Audio Context
+      audioContext: !!this.audioContext,
+      audioContextState: this.audioContext?.state,
+      isAudioUnlocked: this.isAudioUnlocked,
+
+      // Sound Loading
+      soundsPreloaded: this.soundsPreloaded,
+      totalSounds: Object.keys(this.audioFiles).length,
+      loadedSounds: Object.keys(this.audioFiles).filter(key =>
+        this.audioFiles[key] && this.audioFiles[key] !== null
+      ),
+      syntheticSounds: Object.keys(this.audioFiles).filter(key =>
+        this.audioFiles[key]?.type === 'synthetic'
+      ),
+      failedSounds: Object.keys(this.audioFiles).filter(key =>
+        this.audioFiles[key] === null
+      ),
+
+      // Settings
+      settings: {
+        sound: this.settings.sound,
+        volume: this.settings.volume,
+        soundType: this.settings.soundType,
+        enabled: this.settings.enabled
+      },
+
+      // Load Attempts
+      loadAttempts: this.audioLoadAttempts
+    };
+  }
+
+  // FIXED - Quick test for developers
+  async runQuickSoundTest() {
+    console.log('\n🎵 === QUICK LOCAL SOUND TEST ===');
+    console.log('Testing local MP3 files from /assets/sounds/...\n');
+
+    // Unlock audio first
+    if (!this.isAudioUnlocked) {
+      console.log('🔓 Unlocking audio...');
+      this.unlockAudio();
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    // Test the most different sounds
+    console.log('🛒 1/3: Playing SALE sound (sales.mp3)...');
+    await this.testSound('sale');
+
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    console.log('🚨 2/3: Playing OUT_OF_STOCK sound (out-of-stock.mp3)...');
+    await this.testSound('out_of_stock');
+
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    console.log('✅ 3/3: Playing STOCK_REPLENISHED sound (restocked.mp3)...');
+    await this.testSound('stock_replenished');
+
+    console.log('\n✅ Quick test completed!');
+    console.log('💡 Did you hear your local MP3 files playing?');
+  }
+
+  // FIXED - Emergency reset for when things go wrong
   emergencyReset() {
     console.log('🚨 === EMERGENCY RESET ===');
     console.log('Resetting all audio and clearing caches...');
@@ -1730,10 +1596,11 @@ class FirestoreNotificationService {
     // Reload everything
     this.loadAudioFiles();
 
-    console.log('✅ Emergency reset completed. Try testing sounds again.');
+    console.log('✅ Emergency reset completed. Try unlocking audio and testing sounds again.');
+    console.log('💡 Use: firestoreNotificationService.unlockAudio() then test sounds');
   }
 
-  // Developer-friendly status check
+  // FIXED - Developer-friendly status check
   getSystemHealth() {
     const health = {
       status: 'healthy',
@@ -1744,10 +1611,10 @@ class FirestoreNotificationService {
     // Check audio context
     if (!this.audioContext) {
       health.issues.push('No audio context created');
-      health.recommendations.push('Click "Enable Notifications" to unlock audio');
+      health.recommendations.push('Click "Enable Notifications" or run firestoreNotificationService.unlockAudio()');
     } else if (this.audioContext.state === 'suspended') {
       health.issues.push('Audio context suspended');
-      health.recommendations.push('Interact with the page to unlock audio');
+      health.recommendations.push('Interact with the page or run firestoreNotificationService.unlockAudio()');
     }
 
     // Check sound loading
@@ -1759,7 +1626,7 @@ class FirestoreNotificationService {
     if (loadedSounds === 0) {
       health.status = 'critical';
       health.issues.push('No sounds loaded successfully');
-      health.recommendations.push('Check network connection and try firestoreNotificationService.reloadAudioFiles()');
+      health.recommendations.push('Check that files exist in /assets/sounds/ and try firestoreNotificationService.reloadLocalAudioFiles()');
     } else if (loadedSounds < totalSounds) {
       health.status = 'warning';
       health.issues.push(`Only ${loadedSounds}/${totalSounds} sounds loaded`);
@@ -1780,7 +1647,7 @@ class FirestoreNotificationService {
     return health;
   }
 
-  // Developer summary
+  // FIXED - Developer summary
   printSystemSummary() {
     console.log('\n🔍 === NOTIFICATION SYSTEM SUMMARY ===');
 
@@ -1797,20 +1664,27 @@ class FirestoreNotificationService {
       health.recommendations.forEach((rec, i) => console.log(`   ${i + 1}. ${rec}`));
     }
 
-    console.log('\n🎵 Available Test Commands:');
+    console.log('\n🎵 Available Test Commands for Local Files:');
+    console.log('   • firestoreNotificationService.unlockAudio() - Enable audio first!');
     console.log('   • firestoreNotificationService.runQuickSoundTest()');
-    console.log('   • firestoreNotificationService.enableSyntheticOnly()');
-    console.log('   • firestoreNotificationService.debugSoundSystem()');
+    console.log('   • firestoreNotificationService.testAllLocalSounds()');
+    console.log('   • firestoreNotificationService.verifyLocalFiles()');
+    console.log('   • firestoreNotificationService.reloadLocalAudioFiles()');
     console.log('   • firestoreNotificationService.emergencyReset()');
 
     console.log('\n📈 Current Status:');
     const status = this.getAudioStatus();
     console.log(`   Audio Context: ${status.audioContext ? '✅' : '❌'}`);
     console.log(`   Audio Unlocked: ${status.isAudioUnlocked ? '✅' : '❌'}`);
-    console.log(`   Sounds Loaded: ${status.loadedSounds.length}/${status.totalSounds}`);
-    console.log(`   Synthetic Sounds: ${status.syntheticSounds.length}`);
+    console.log(`   Local Sounds Loaded: ${status.loadedSounds.length}/${status.totalSounds}`);
+    console.log(`   Synthetic Fallbacks: ${status.syntheticSounds.length}`);
     console.log(`   Sound Enabled: ${status.settings.sound ? '✅' : '❌'}`);
     console.log(`   Volume: ${Math.round(status.settings.volume * 100)}%`);
+
+    if (!status.isAudioUnlocked) {
+      console.log('\n🔓 IMPORTANT: Audio is not unlocked! Run:');
+      console.log('   firestoreNotificationService.unlockAudio()');
+    }
   }
 }
 
@@ -1827,7 +1701,7 @@ if (typeof window !== 'undefined') {
 
   // Auto-run system summary after a brief delay
   setTimeout(() => {
-    console.log('\n🚀 Notification System Ready!');
+    console.log('\n🚀 Notification System Ready with Local Sound Files! (FIXED VERSION)');
     firestoreNotificationService.printSystemSummary();
   }, 2000);
 }
