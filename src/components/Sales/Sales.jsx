@@ -376,10 +376,14 @@ const Sales = () => {
     }
   };
 
+  // FIX: Replaced the faulty useEffect with two separate, correctly scoped effects to prevent an infinite loop.
   useEffect(() => {
     filterAndCalculateAll();
+  }, [filterAndCalculateAll]);
+
+  useEffect(() => {
     calculateDataInfo();
-  }, [filterAndCalculateAll, calculateDataInfo]);
+  }, [calculateDataInfo]);
 
   // Render Export Tab Content
   const renderExportTab = () => (
